@@ -1,10 +1,10 @@
 from alpaca_trade_api.rest import TimeFrame
 from alpaca_trade_api.rest import REST
-from techindicators import techindicators
+import techindicators as techindicators
 import alpaca_trade_api
 import pandas as pd
 import numpy as np
-import sys
+import sys,os
 import datetime
 import base as b
 import time
@@ -199,20 +199,39 @@ columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% C
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0
-for s in b.stock_lista:
+#for s in b.stock_lista:
+for s in b.stock_list:
     if s[0]=='SPY':
         continue
     if j%4==0 and j!=0:
         time.sleep(56)
-    if j>1:
-        break
+    #if j>2:
+    #    break
     print(s[0])
     stock=runTickerAlpha(ts,s[0])
     entries+=[formatInput(stock, s[0],spy_info, spy=spy)]
     j+=1
 #entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
 
-b.makeHTMLTable('stockinfo.html',columns=columns,entries=entries)
+b.makeHTMLTable('/eos/atlas/user/s/schae/fcsvalidation/FUN/stockinfo.html',columns=columns,entries=entries)
+
+# build the sector ETFs
+columns=['Description']+columns
+j=0
+entries=[]
+entries+=[['SPY']+formatInput(spy, 'SPY',spy_info,spy=spy)]
+for s in b.etfs:
+    if s[0]=='SPY':
+        continue
+    if j%4==0 and j!=0:
+        time.sleep(56)
+    #if j>1:
+    #    break
+    print(s[0])
+    stock=runTickerAlpha(ts,s[0])
+    entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
+    j+=1
+b.makeHTMLTable('sectorinfo.html',columns=columns,entries=entries)
 
 if draw:
     #plt.plot(stock_info.index,stock_info['close'])
