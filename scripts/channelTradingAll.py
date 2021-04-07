@@ -260,8 +260,8 @@ for s in b.stock_list:
     print(s[0])
     sys.stdout.flush()
     stock_info=None
-    if j>2:
-        break
+    #if j>2:
+    #    break
     try:
         stock_info=runTickerAlpha(ts,s[0])
     except ValueError:

@@ -8,6 +8,7 @@ out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
 outdir = '/tmp/'
+
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
         return '<h7 style="color: %s;">%0.2f</h7>' %(color,text)        
@@ -184,7 +185,6 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[])
         line+=' </thead>\n'
         # generate body
         line+=' <tbody>\n'
-
         for e in entries:
             line+='   <tr>\n'
             ij=0
@@ -618,6 +618,18 @@ stock_lista = [
         #['SUM',2.0,155.0,'NYSE','summit materials (denver)'],  # summit materials (denver)
         ['SCCO',20.0,55.0,'NYSE','copper company'],  # copper company 0.5%
         ['SPR',20.0,105.0,'NYSE','spirit airlines'],  # spirit airlines 0.7%
+    ['IWS',30.0,500.0,'NYSEARCA','russel 2000'], # russel 2000. 1.7% dividend
+    ['IWM',30.0,500.0,'NYSEARCA','russel midcaps'], # russel midcaps. 2.3% dividend
+    ['IWO',30.0,500.0,'NYSEARCA','russel 2000 growth index'], # russel 2000 growth index. 1.2% dividend
+    ['IWN',30.0,500.0,'NYSEARCA','russel 2000 value index'], # russel 2000 value index. 2.3% dividend
+    ['IWB',30.0,500.0,'NYSEARCA','russel 1000 index'], # russel 1000 index. 2.4% dividend
+    ['IWL',30.0,500.0,'NYSEARCA','russel top 200'], # russel top 200 1.88% dividend
+    ['IWF',30.0,500.0,'NYSEARCA','russel 1000 growth index'], # russel 1000 growth index. 1.8% dividend
+        ['FSLR',10.0,500.0, 'NASDAQ','first solar'], #first solar, arizona based
+        ['CLF',2.0,55.0,'NYSE','OH - iron ore'],  # iron ore company
+        ['MPC',30.0,98.0,'NYSE','marathon gas refinery'],  # marathon gas refinery
+        ['OXY',30.0,98.0,'NYSE','occidental-fracing'],  # occidental petrol. 4.5%
+        ['TGT',65.0,85.0,'NYSE','target'], # target. 3%        
         #['SFLY',20.0,105.0,'NASDAQ','shutterfly'],  # shutterfly                  
                   ]
 stock_list = [
@@ -636,7 +648,7 @@ stock_list = [
         ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000
         ['VTWO',25.0,120.0,'NYSE','Top 2000'], # Top 2000
         ['VTHR',25.0,120.0,'NYSE','Top 3000'], # Top 3000        
-        ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000        
+        ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000 
         ['RIOT',25.0,120.0,'NYSE','RIOT'], # RIOT        
         ['MJ',25.0,120.0,'NYSE','Marjo ETF'], # MJ        
         ['FB',93.0,130.0,'NASDAQ','facebook'],
@@ -673,7 +685,7 @@ stock_list = [
     #['SUNEQ',10.0,500.0, 'NASDAQ'], #first solar, arizona based
         ['SPWR',10.0,500.0, 'NASDAQ','sun power'], # sun power, san jose based
         ['SO',10.0,500.0, 'NYSE','southern co'], # southern co, 4.7%
-        ['TSL',10.0,500.0, 'NYSE','trina solar limited, chinese'], # trina solar limited, chinese
+        #['TSL',10.0,500.0, 'NYSE','trina solar limited, chinese'], # trina solar limited, chinese
         ['EIX',10.0,500.0, 'NYSE','edison solar'], # edison international, 2.8% solar
         ['NEE',10.0,500.0, 'NYSE','nextera broad energy'], # nextera energy, 2.7%, florida
         ['PCG',10.0,500.0, 'NYSE','PG&E energy CA'], # PG&E, 3%, san fransico
@@ -903,7 +915,7 @@ stock_list = [
          ['SBUX',35.0,75.0,'NASDAQ','starbucks'], # starbucks. 1.5% dividend         
     #['KKD',15.0,30.0,'NYSE','krispy kreme'], # krispy kreme 
          ['JVA',4.0,10.0,'NASDAQ','pure coffee holding'], # JAVA. pure coffee holding
-         ['VIAB',30.0,80.0,'NASDAQ','viacom'], # viacom 3.7% dividend
+    #['VIAB',30.0,80.0,'NASDAQ','viacom'], # viacom 3.7% dividend
 
          ['^DJI',17.0e3,22.0e3,'NYSE','DJIA'], # DJIA
          ['XTN',30.0,80.0,'NYSE','S&P transport'], # S&P transport

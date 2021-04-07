@@ -60,8 +60,8 @@ def GetPastPerformance(stock):
     day365 = GetTimeSlot(stock,365)
     entry=-1
     input_list = ['sma10','sma20','sma100','sma200','rstd10']
-    percent_change = 100*(stock['close'][entry]-stock['open'][entry])/stock['open'][entry]
     percent_change30=0.0; percent_change180=0.0;percent_change365=0.0
+    percent_change = 100*(stock['close'][entry]-stock['open'][entry])/stock['open'][entry]
     if len(day30)>0:
         percent_change30 = 100*(stock['adj_close'][entry]-day30['adj_close'][entry])/day30['adj_close'][entry]
     if len(day180)>0:
@@ -212,15 +212,17 @@ for s in b.stock_list:
         continue
     if j%4==0 and j!=0:
         time.sleep(56)
-    if j>0:
-        break
+    #if j>0:
+    #    break
     print(s[0])
+    sys.stdout.flush()    
     stock=None
     try:
         stock=runTickerAlpha(ts,s[0])
     except ValueError:
         j+=1
         continue
+
     entries+=[formatInput(stock, s[0],spy_info, spy=spy)]
     j+=1
 #entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
@@ -240,7 +242,12 @@ for s in b.etfs:
     if j>1:
         break
     print(s[0])
-    stock=runTickerAlpha(ts,s[0])
+    stock=None
+    try:
+        stock=runTickerAlpha(ts,s[0])
+    except ValueError:
+        j+=1
+        continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
     j+=1
 b.makeHTMLTable(outdir+'sectorinfo.html',columns=columns,entries=entries)
