@@ -1,11 +1,13 @@
 import math
 import sys
 import datetime
+import glob
 WAIT=False
 style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
-
+outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
+outdir = '/tmp/'
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
         return '<h7 style="color: %s;">%0.2f</h7>' %(color,text)        
@@ -39,9 +41,9 @@ def makeHTMLIndex(outFileName,title, jetNames):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTML(outFileName,title):
+def makeHTML(outFileName,title,filterPattern='',describe=''):
 
-    plots = glob.glob('*.pdf')
+    plots = glob.glob(filterPattern+'*.pdf')
 
     with open(outFileName, 'w') as outFile:
         # write HTML header
@@ -62,8 +64,8 @@ def makeHTML(outFileName,title):
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
 
-        plots = glob.glob('*.png')
-        outFile.write("<h2> %s - %s </h2>" %(title,options.describe))
+        plots = glob.glob(filterPattern+'*.png')
+        outFile.write("<h2> %s - %s </h2>" %(title,describe))
         outFile.write('<table style="width:100%">')
         outFile.write("<tr>\n")
         for i in range(0,len(plots)):
@@ -185,11 +187,16 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[])
 
         for e in entries:
             line+='   <tr>\n'
+            ij=0
             for i in e:
                 try:
                     line+='    <td>%0.2f</td>\n' %(i)
                 except:
-                    line+='    <td>%s</td>\n' %(i)
+                    if ij==0:
+                        line+='    <td><a href="%s.html">%s</a></td>\n' %(i,i)
+                    else:
+                        line+='    <td>%s</td>\n' %(i)
+                ij+=1
             line+='   </tr>\n'
         # end table
         line+=' </tbody>\n'        
@@ -626,7 +633,10 @@ stock_list = [
         ['JFU',25.0,40.0,'NYSE','JFU'], # JFU
         ['HAS',25.0,120.0,'NYSE','hasbro'], # hasbro
         ['TLRY',25.0,120.0,'NYSE','Tilray'], # Tilray
+        ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000
         ['VTWO',25.0,120.0,'NYSE','Top 2000'], # Top 2000
+        ['VTHR',25.0,120.0,'NYSE','Top 3000'], # Top 3000        
+        ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000        
         ['RIOT',25.0,120.0,'NYSE','RIOT'], # RIOT        
         ['MJ',25.0,120.0,'NYSE','Marjo ETF'], # MJ        
         ['FB',93.0,130.0,'NASDAQ','facebook'],
@@ -669,7 +679,7 @@ stock_list = [
         ['PCG',10.0,500.0, 'NYSE','PG&E energy CA'], # PG&E, 3%, san fransico
         ['CPRI',45.0,60.0,'NYSE','KORS'], # cosmetics
         ['NGL',5.0,15.0,'NYSE','pipeline company'], # pipeline company
-        ['ETP-E',5.0,55.0,'NYSE','pipeline company'], # pipeline company. 11%
+        #['ETP-E',5.0,55.0,'NYSE','pipeline company'], # pipeline company. 11%
         #['ETE',5.0,55.0,'NYSE','pipeline company'], # pipeline company. 5.9%    
         ['CVX',78.0,100.0,'NYSE','chevron'], # chevron
         ['UAA',35.0,50.0,'NYSE','under armour'], # under armour
@@ -931,7 +941,11 @@ stock_list = [
         #['NDX',2000.0,5000.0], # nasdaq index  
         ]
 etfs = [['SPY',8.0,20.0,'NYSE','SPY'], 
-            ['QQQ',8.0,20.0,'NYSE','nasdaq'], 
+            ['QQQ',8.0,20.0,'NYSE','nasdaq'],
+            ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000
+            ['VTWO',25.0,120.0,'NYSE','Top 2000'], # Top 2000
+            ['VTHR',25.0,120.0,'NYSE','Top 3000'], # Top 3000        
+            ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000 
             ['XLE',8.0,20.0,'NYSE','Energy Select Sector SPDR Fund'], 
             ['XLF',8.0,20.0,'NYSE','Financial Select Sector SPDR Fund'],
             ['XLU',8.0,20.0,'NYSE','Utilities Select Sector SPDR Fund'],

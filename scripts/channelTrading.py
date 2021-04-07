@@ -1,7 +1,7 @@
 from alpaca_trade_api.rest import TimeFrame
 from alpaca_trade_api.rest import REST
-#from techindicators import techindicators
-import techindicators as techindicators
+from techindicators import techindicators
+#import techindicators as techindicators
 import alpaca_trade_api
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ import mplfinance as mpf
 draw=True
 from alpha_vantage.timeseries import TimeSeries
 from dateutil.parser import parse
-
+outdir='/tmp/'
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -49,12 +49,12 @@ def CandleStick(data, ticker):
             mav=(200),
             addplot=ap0,
             returnfig=True,
-            savefig='test-mplfiance'+ticker+'.pdf')
+            savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
         # Configure chart legend and title
     axes[0].legend(['Price','Bolanger Up','Bolanger Down','SMA200','Kelt+','Kelt-'])
     #axes[0].set_title(ticker)
     # Save figure to file
-    fig.savefig('test-mplfiance'+ticker+'.pdf')
+    fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
     techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ])
     # adds below as a sub-plot
     #ap2 = [ mpf.make_addplot(df['UpperB'],color='g',panel=2),  # panel 2 specified
@@ -164,7 +164,7 @@ ALPHA_ID = os.getenv('ALPHA_ID')
 api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
 ts = TimeSeries(key=ALPHA_ID)
 spy = runTicker(api,'SPY')
-ticker='X'
+ticker='TSLA'
 #ticker='TSLA'
 stock_info=None
 spy=None
@@ -178,6 +178,8 @@ else:
     pickle.dump( spy, open( "SPY.p", "wb" ) )
     pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
 # add info
+if len(stock_info)==0:
+    print('ERROR - empy info %s' %ticker)
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 AddInfo(stock_info, spy)
 stock_info = GetTimeSlot(stock_info)
@@ -191,40 +193,40 @@ if draw:
     plt.ylabel('Closing price')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('price_support%s.pdf' %ticker)
+    plt.savefig(outdir+'price_support_%s.pdf' %ticker)
     plt.plot(stock_info.index,stock_info['copp'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Coppuck Curve')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('copp%s.pdf' %ticker)
+    plt.savefig(outdir+'copp_%s.pdf' %ticker)
     plt.plot(stock_info.index,stock_info['sharpe'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Sharpe Ratio')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('sharpe%s.pdf' %ticker)
+    plt.savefig(outdir+'sharpe_%s.pdf' %ticker)
     plt.plot(stock_info.index,stock_info['beta'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Beta')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('beta%s.pdf' %ticker)
+    plt.savefig(outdir+'beta_%s.pdf' %ticker)
     plt.plot(stock_info.index,stock_info['alpha'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Alpha')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('alpha%s.pdf' %ticker)
+    plt.savefig(outdir+'alpha_%s.pdf' %ticker)
     plt.plot(stock_info.index,stock_info['rsquare'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('R-squared')
     plt.xlabel('Date')
     plt.show()
-    plt.savefig('rsquare%s.pdf' %ticker)    
+    plt.savefig(outdir+'rsquare_%s.pdf' %ticker)    
     CandleStick(stock_info,ticker)
