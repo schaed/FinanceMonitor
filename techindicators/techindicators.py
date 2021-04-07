@@ -676,7 +676,7 @@ def supportLevels(data):
     return levels
 
 # plot the support levels
-def plot_support_levels(ticker,df,plots=[]):
+def plot_support_levels(ticker,df,plots=[],outdir=''):
   
     levels = getMinLevels(df)
     sline = []
@@ -688,11 +688,11 @@ def plot_support_levels(ticker,df,plots=[]):
             #hlines=dict(hlines=sline,colors=['b','b'],linestyle='-'),
             ylabel='Price ($) for %s' %ticker,
             ylabel_lower='Shares \nTraded',
-            volume=True, 
+            volume=True,
             mav=(200),
             returnfig=True,
             addplot=plots,
-            savefig='test-mplfiance_support'+ticker+'.pdf')
+            savefig=outdir+'test-mplfiance_support_'+ticker+'.pdf')
     
     axes[0].legend(['SMA200'])
     for level in levels:
@@ -701,7 +701,8 @@ def plot_support_levels(ticker,df,plots=[]):
         axes[0].text(mylim[0]+5, level[1], ' %0.2f' %level[1], fontsize=8)
  #   fig.show()
     # Save figure to file
-    fig.savefig('test-mplfiance_support'+ticker+'.pdf')
+    fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.pdf')
+    fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.png')
   #ax.xaxis.set_major_formatter(date_format)
   #fig.autofmt_xdate()
   #fig.tight_layout()
