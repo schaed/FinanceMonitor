@@ -750,6 +750,7 @@ stock_list = [
         ['DUK',70.0,100.0,'NYSE','DUKE energy.'], # DUKE energy. good electric stock. 3.8% dividend
         ['PPL',30.0,80.0,'NYSE','good electric stock'], # PPL comp. good electric stock. 4% dividend
         ['XYL',40.0,75.0,'NYSE','water tech company'], # water tech company
+        ['GME',40.0,75.0,'NYSE','GameStop'], # water tech company
         #['DPS',85.0,105.0,'NYSE','dr pepper'], # dr pepper
         ['CINF',52.0,70.0,'NASDAQ','insurance. cincy'], # insurance. cincy. 3% dividend
         ['GILD',75.0,110.0,'NASDAQ','gilead biotech'], # gilead biotech
