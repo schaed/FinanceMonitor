@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import sys,os
 import datetime
+import pickle
 import base as b
 import time
 from scipy.stats.stats import pearsonr
@@ -16,6 +17,7 @@ from alpha_vantage.timeseries import TimeSeries
 from dateutil.parser import parse
 outdir = b.outdir
 doStocks=True
+loadFromPickle=False
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
@@ -193,7 +195,12 @@ ticker='X'
 ticker='TSLA'
 #stock_info = runTicker(api,ticker)
 #stock_info=runTickerAlpha(ts,ticker)
-spy=runTickerAlpha(ts,'SPY')
+spy=None
+if loadFromPickle and os.path.exists("SPY.p"):
+    spy = pickle.load( open( "SPY.p", "rb" ) )    
+else:
+    spy=runTickerAlpha(ts,'SPY')
+    pickle.dump( spy, open( "SPY.p", "wb" ) )
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 print(spy['close'][0])
 #spy['adj_close']/=spy['adj_close'][0]
@@ -250,14 +257,18 @@ for s in b.etfs:
     print(s[0])
     stock=None
     try:
-        stock=runTickerAlpha(ts,s[0])
+        if loadFromPickle and os.path.exists("%s.p" %s[0]):
+            stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
+        else:
+            stock=runTickerAlpha(ts,s[0])
+            pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
+            j+=1
     except ValueError:
         print('ERROR processing...ValueError %s' %s[0])
         j+=1
         continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
-    j+=1
-b.makeHTMLTable(outdir+'sectorinfo.html',columns=columns,entries=entries)
+b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries)
 
 if draw:
     #plt.plot(stock_info.index,stock_info['close'])

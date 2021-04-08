@@ -164,6 +164,9 @@ ALPHA_ID = os.getenv('ALPHA_ID')
 api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
 ts = TimeSeries(key=ALPHA_ID)
 spy = runTicker(api,'SPY')
+#spy=runTickerAlpha(ts,'SPY')
+#pickle.dump( spy, open( "SPY.p", "wb" ) )
+#sys.exit(0)
 ticker='TSLA'
 #ticker='TSLA'
 stock_info=None
