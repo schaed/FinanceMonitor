@@ -732,12 +732,12 @@ stock_list = [
         ['DB',8.0,20.0,'NYSE','deuchee bank'], # deuchee bank.
         ['EBAY',20.0,30.0,'NASDAQ','EBAY'], # ebay
     ['BAC',10.0,50.0,'NYSE','bank of america'], # bank of america. 1.2%
-    #['MS',10.0,80.0,'NYSE'], # morgan stanley 1.7% 
+    ['MS',10.0,80.0,'NYSE','Morgan Stanley'], # morgan stanley 1.7% 
         ['UNH',100.0,130.0,'NYSE','united health care'], # united health care
         ['CI',120.0,180.0,'NYSE','health care. cigna'], # health care. cigna
         ['PFE',25.0,38.0,'NYSE','pfizer'], # pfizer 4% dividend
         #['AET',75.0,120.0,'NYSE','aetna'], # aetna 1% dividend
-        #['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor
+        ['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor
         ['HUM',145.0,190.0,'NYSE','humara'], # humara 1% dividend
         ['TFX',120.0,160.0,'NYSE','teleflex medical device, Wayne, PA'], # teleflex 1% dividend. medical devices. wayne, PA
         ['FMS',10.0,160.0,'NYSE','Fresenius Medical supply, Germany'], # Fresenius 1% dividend. medical supply
@@ -773,7 +773,7 @@ stock_list = [
         ['BLK',200.0,500.0,'NYSE','black rock'], # black rock 2.9% dividend.
         ['CLGX',20.0,500.0,'NYSE','Corelogic. financial services'], # CoreLogic
         ['ADC',20.0,50.0,'NYSE','real estate'], # real estate 4.9% dividend.
-        ['NTRI',10.0,30.0,'NASDAQ','nutrisystem'], # nutrisystem 4.0% dividend.
+        #['NTRI',10.0,30.0,'NASDAQ','nutrisystem'], # nutrisystem 4.0% dividend.
         ['MET',30.0,60.0,'NYSE','insurance'], # insurance 3.8% dividend. 
         ['WY',20.0,35.0,'NYSE','timber'], # real estate 5.% dividend. 
         ['RYN',20.0,35.0,'NYSE','florida timber'], # timber 3% dividend
@@ -869,20 +869,20 @@ stock_list = [
         ['MTN',150.0,300.0,'NYSE','vail resorts'], # 
         ['BA',100.0,150.0,'NYSE','boeing'], # boeing
         ['NOC',170.0,250.0,'NYSE','northrop gruman'], # northrop gruman. 2.92
-        ['GBSN',3.0,8.0,'NASDAQ','genetics testing'], # genetics testing company
+        #['GBSN',3.0,8.0,'NASDAQ','genetics testing'], # genetics testing company
         ['AMAG',20.0,50.0,'NASDAQ','pharma in iron deficiency'], # pharma in iron deficiency
         ['MOH',60.0,80.0,'NYSE','Molina health'], # Molina health. zach's #1
         ['CRL',70.0,100.0,'NYSE','Charles river health'], # Charles river health. zach's #2
-        ['AIRM',30.0,50.0,'NASDAQ','air drop pharma'], # air drop pharma. zach's #2
-        ['PRXL',60.0,71.0,'NASDAQ','paralex medical supplies'], # paralex medical supplies        
+        #['AIRM',30.0,50.0,'NASDAQ','air drop pharma'], # air drop pharma. zach's #2
+        #['PRXL',60.0,71.0,'NASDAQ','paralex medical supplies'], # paralex medical supplies        
         ['FPRX',40.0,60.0,'NASDAQ','therapuetics'], # therapuetics - rated a buy.        
         ['EBS',30.0,50.0,'NYSE','emergent bio solutions'], # emergent bio solutions. high zacks rating
-        ['FCSC',1.0,3.0,'NASDAQ','fibrocell'], # fibrocell. random pharma
+        #['FCSC',1.0,3.0,'NASDAQ','fibrocell'], # fibrocell. random pharma
         ['GENE',2.0,3.0,'NASDAQ','genetics testing'], # genetics testing company
         ['OPK',8.0,13.0,'NYSE','genetics testing'], # genetics testing company. is subsidiary
          ['RGLS',6.0,10.0,'NASDAQ','bio pharma'], # bio pharma
          ['DGX',50.0,90.0,'NYSE','pharma testing company'], # pharma testing company
-         ['ORPN',2.0,5.0,'NASDAQ','bio pharma'], # bio pharma
+         #['ORPN',2.0,5.0,'NASDAQ','bio pharma'], # bio pharma
          ['VIVO',15.0,25.0,'NASDAQ','Meridian malaria'], # malaria indicator stock. Meridian
          ['XON',30.0,50.0,'NYSE','Intrexon Zika?'], # zika indicator stock. Intrexon
          ['INO',7.0,15.0,'NASDAQ','Inovio Zika?'], # zika indicator stock. Inovio

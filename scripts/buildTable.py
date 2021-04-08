@@ -251,7 +251,7 @@ for s in b.etfs:
     try:
         stock=runTickerAlpha(ts,s[0])
     except ValueError:
-        print('ERROR processing...ValueError %s' %ticker)
+        print('ERROR processing...ValueError %s' %s[0])
         j+=1
         continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
