@@ -18,6 +18,9 @@ draw=False
 from alpha_vantage.timeseries import TimeSeries
 from dateutil.parser import parse
 outdir = b.outdir
+doStocks=True
+loadFromPickle=True
+doETFs=True
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -69,89 +72,139 @@ def CandleStick(data, ticker):
     #     figscale=1.35
     #    )
     
+def LongTermPlot(my_stock_info,market,ticker,plttext=''):
+    date_diff = 5*365
+    my_stock_info5y = GetTimeSlot(my_stock_info, days=date_diff)
+    market5y = GetTimeSlot(market, days=date_diff)
+    min_length = min(len(my_stock_info5y),len(market5y))
+    max_length = max(len(my_stock_info5y),len(market5y))
+    if min_length<max_length:
+        my_stock_info5y = my_stock_info5y[-min_length:]
+        market5y = market5y[-min_length:]
+
+    my_stock_info5y['year5_return']=my_stock_info5y['adj_close']/my_stock_info5y['adj_close'][0]-1
+    market5y['year5_return']=market5y['adj_close']/market5y['adj_close'][0]-1
+    # comparison to the market
+    plt.plot(my_stock_info5y.index,my_stock_info5y['year5_return'],color='blue',label=ticker)    
+    plt.plot(market5y.index,     market5y['year5_return'],   color='red', label='SPY')    
+    # beautify the x-labels
+    plt.gcf().autofmt_xdate()
+    plt.ylabel('5 Year Return')
+    plt.xlabel('Date')
+    plt.legend(loc="upper left")
+    if draw: plt.show()
+    plt.savefig(outdir+'longmarket%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'longmarket%s_%s.png' %(plttext,ticker))
+    if not draw: plt.close()
+        
 def GetTimeSlot(stock, days=365):
     today=datetime.datetime.now()
     past_date = today + datetime.timedelta(days=-1*days)
     date=stock.truncate(before=past_date)
     #date = stock[nearest(stock.index,past_date)]
     return date
-def DrawPlots(stock_info,ticker):
+def DrawPlots(my_stock_info,ticker,market,plttext=''):
     #plt.plot(stock_info.index,stock_info['close'])
-    techindicators.supportLevels(stock_info)
+    techindicators.supportLevels(my_stock_info)
     if not draw:
         plt.ioff()
-    plt.plot(stock_info.index,stock_info['adj_close'])
+    plt.plot(my_stock_info.index,my_stock_info['adj_close'])
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Closing price')
     plt.xlabel('Date')
     if draw: plt.show()
-    plt.savefig(outdir+'price_support_%s.pdf' %ticker)
-    plt.savefig(outdir+'price_support_%s.png' %ticker)
+    plt.savefig(outdir+'price_support%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'price_support%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['copp'])    
+    plt.plot(my_stock_info.index,my_stock_info['copp'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Coppuck Curve')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'copp_%s.pdf' %ticker)
-    plt.savefig(outdir+'copp_%s.png' %ticker)
+    plt.savefig(outdir+'copp%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'copp%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['sharpe'])    
+    plt.plot(my_stock_info.index,my_stock_info['sharpe'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Sharpe Ratio')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'sharpe_%s.pdf' %ticker)
-    plt.savefig(outdir+'sharpe_%s.png' %ticker)
+    plt.savefig(outdir+'sharpe%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'sharpe%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['beta'])    
+    plt.plot(my_stock_info.index,my_stock_info['beta'])
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Beta')
     plt.xlabel('Date')
     if draw: plt.show()
-    plt.savefig(outdir+'beta_%s.pdf' %ticker)
-    plt.savefig(outdir+'beta_%s.png' %ticker)
+    plt.savefig(outdir+'beta%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'beta%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['alpha'])    
+    plt.plot(my_stock_info.index,my_stock_info['alpha'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Alpha')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
     plt.title(' Alpha')
     if draw: plt.show()
-    plt.savefig(outdir+'alpha_%s.pdf' %ticker)
-    plt.savefig(outdir+'alpha_%s.png' %ticker)
+    plt.savefig(outdir+'alpha%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'alpha%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['rsquare'])    
+    plt.plot(my_stock_info.index,my_stock_info['rsquare'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('R-squared')
     plt.xlabel('Date')
-    plt.hlines(0.7,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.7,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'rsquare_%s.pdf' %ticker)    
-    plt.savefig(outdir+'rsquare_%s.png' %ticker)
+    plt.savefig(outdir+'rsquare%s_%s.pdf' %(plttext,ticker)) 
+    plt.savefig(outdir+'rsquare%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    plt.plot(stock_info.index,stock_info['cmf'])    
+    # CMF
+    plt.plot(my_stock_info.index,my_stock_info['cmf'])    
     # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('CMF')
     plt.xlabel('Date')
-    plt.hlines(0.2,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
-    plt.hlines(0.0,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
-    plt.hlines(-0.2,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')    
+    plt.hlines(0.2,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='green',linestyle='dotted')
+    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
+    plt.hlines(-0.2,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='red',linestyle='dotted')    
     if draw: plt.show()
-    plt.savefig(outdir+'cmf_%s.pdf' %ticker)    
-    plt.savefig(outdir+'cmf_%s.png' %ticker)
+    plt.savefig(outdir+'cmf%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'cmf%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-    CandleStick(stock_info,ticker)
+    # comparison to the market
+    plt.plot(my_stock_info.index,my_stock_info['yearly_return'],color='blue',label=ticker)    
+    plt.plot(market.index,     market['yearly_return'],   color='red', label='SPY')    
+    # beautify the x-labels
+    plt.gcf().autofmt_xdate()
+    plt.ylabel('Yearly Return')
+    plt.xlabel('Date')
+    plt.legend(loc="upper left")
+    if draw: plt.show()
+    plt.savefig(outdir+'market%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'market%s_%s.png' %(plttext,ticker))
+    if not draw: plt.close()
+    # comparison to the market monthly returns
+    plt.bar(my_stock_info['monthly_return'].dropna().index,my_stock_info['monthly_return'].dropna(),color='blue',label=ticker,width = 5.25)    
+    plt.bar(market['monthly_return'].dropna().index,     market['monthly_return'].dropna(),   color='red', label='SPY', width = 5.25)
+    # beautify the x-labels
+    plt.gcf().autofmt_xdate()
+    plt.ylabel('Monthly Return')
+    plt.xlabel('Date')
+    plt.legend(loc="upper left")
+    if draw: plt.show()
+    plt.savefig(outdir+'monthlymarket%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'monthlymarket%s_%s.png' %(plttext,ticker))
+    if not draw: plt.close()
+    CandleStick(my_stock_info,ticker)
     
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
@@ -172,8 +225,13 @@ def AddInfo(stock,market):
     stock['daily_return_stddev14']=techindicators.rstd(stock['daily_return'],14)
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
     stock['alpha']=techindicators.rollingAlpha(stock,14,market)        
-    stock['rsquare']=techindicators.rollingRsquare(stock,14,spy)
+    stock['rsquare']=techindicators.rollingRsquare(stock,14,market)
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
+    #stock['adj_close_percent']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good    
+    stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
+    stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
+    stock_1y = GetTimeSlot(stock)
+    stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
     
 def is_date(string, fuzzy=False):
     """
@@ -245,49 +303,85 @@ ticker='TSLA'
 #ticker='TSLA'
 stock_info=None
 spy=None
-#if os.path.exists("%s.p" %ticker):
-#    stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
-#    spy = pickle.load( open( "SPY.p", "rb" ) )
-#else:
-#stock_info = runTicker(api,ticker)
-stock_info=runTickerAlpha(ts,ticker)
-spy=runTickerAlpha(ts,'SPY')
-#pickle.dump( spy, open( "SPY.p", "wb" ) )
-#pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
+if loadFromPickle and os.path.exists("%s.p" %ticker):
+    stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
+    spy = pickle.load( open( "SPY.p", "rb" ) )
+else:
+    #stock_info = runTicker(api,ticker)
+    stock_info=runTickerAlpha(ts,ticker)
+    spy=runTickerAlpha(ts,'SPY')
+    pickle.dump( spy, open( "SPY.p", "wb" ) )
+    pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
 # add info
 if len(stock_info)==0:
     print('ERROR - empy info %s' %ticker)
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
+AddInfo(spy, spy)
+spy_1year = GetTimeSlot(spy)
+DrawPlots(spy_1year,'SPY',spy_1year)
 
 j=0
 cdir = os.getcwd()
-for s in b.stock_list:
-    if s[0]=='SPY':
-        continue
-    if s[0].count('^'):
-        continue
-    if j%4==0 and j!=0:
-        time.sleep(56)
-    print(s[0])
-    sys.stdout.flush()
-    stock_info=None
-    #if j>2:
-    #    break
-    try:
-        stock_info=runTickerAlpha(ts,s[0])
-    except ValueError:
+if doStocks:
+    for s in b.stock_list:
+        if s[0]=='SPY':
+            continue
+        if s[0].count('^'):
+            continue
+        if j%4==0 and j!=0:
+            time.sleep(56)
+        print(s[0])
+        sys.stdout.flush()
+        tstock_info=None
+        #if j>2:
+        #    break
+        try:
+            tstock_info=runTickerAlpha(ts,s[0])
+        except ValueError:
+            j+=1
+            continue
+        try:
+            AddInfo(tstock_info, spy)
+        except ValueError:
+            print('Error processing %s' %s[0])
+            j+=1
+            continue
+        tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
+        DrawPlots(tstock_info,s[0],spy_1year)
+        os.chdir(outdir)
+        b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
+        os.chdir(cdir)    
         j+=1
-        continue
-    try:
-        AddInfo(stock_info, spy)
-    except ValueError:
-        print('Error processing %s' %s[0])
-        j+=1
-        continue
-    stock_info = GetTimeSlot(stock_info) # gets the one year timeframe
-    DrawPlots(stock_info,s[0])
-    os.chdir(outdir)
-    b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
-    os.chdir(cdir)    
-    j+=1
+if doETFs:
+    j=0
+    for s in b.etfs:
+        if s[0].count('^'):
+            continue
+        if j%4==0 and j!=0:
+            time.sleep(56)
+        print(s[0])
+        sys.stdout.flush()
+        estock_info=None
+        try:
+            if loadFromPickle and os.path.exists("%s.p" %s[0]):
+                estock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+            else:
+                estock_info=runTickerAlpha(ts,s[0])
+                pickle.dump( estock_info, open( "%s.p" %s[0], "wb" ) )
+                j+=1
+        except ValueError:
+            print('ERROR processing...ValueError %s' %s[0])
+            j+=1
+            continue
+        LongTermPlot(estock_info,spy,ticker=s[0])
 
+        try:
+            AddInfo(estock_info, spy)
+        except ValueError:
+            print('Error processing %s' %s[0])
+            continue
+        estock_info = GetTimeSlot(estock_info) # gets the one year timeframe 
+        DrawPlots(estock_info,s[0],spy_1year)
+        os.chdir(outdir)
+        b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4],linkIndex=0)
+        os.chdir(cdir)

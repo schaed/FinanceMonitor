@@ -255,6 +255,7 @@ for s in b.etfs:
     #if j>1:
     #    break
     print(s[0])
+    sys.stdout.flush()
     stock=None
     try:
         if loadFromPickle and os.path.exists("%s.p" %s[0]):
@@ -268,7 +269,7 @@ for s in b.etfs:
         j+=1
         continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
-b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries)
+b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries,linkIndex=1)
 
 if draw:
     #plt.plot(stock_info.index,stock_info['close'])

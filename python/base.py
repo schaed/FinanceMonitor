@@ -7,7 +7,7 @@ style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
-outdir = '/tmp/'
+#outdir = '/tmp/'
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
@@ -42,7 +42,7 @@ def makeHTMLIndex(outFileName,title, jetNames):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTML(outFileName,title,filterPattern='',describe=''):
+def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
 
     plots = glob.glob(filterPattern+'*.pdf')
 
@@ -83,7 +83,7 @@ def makeHTML(outFileName,title,filterPattern='',describe=''):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[]):
+def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[], linkIndex=0):
     
     with open(outFileName, 'w') as outFile:
         # write HTML header
@@ -158,7 +158,7 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[])
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
         line='    	<div class="container">\n'
         line+='    	<h3>\n'
-        line+='    	    <span>Stock Info Search</span>\n'
+        line+='    	    <span>Stock/ETF Info Search</span>\n'
         line+='    	    <input type="search" placeholder="Search..." class="form-control search-input" data-table="customers-list"/>\n'
         line+='    	</h3>\n'
         line+='    <table class="searchable sortable table table-striped mt32 customers-list">\n'
@@ -192,7 +192,7 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[])
                 try:
                     line+='    <td>%0.2f</td>\n' %(i)
                 except:
-                    if ij==0:
+                    if ij==linkIndex:
                         line+='    <td><a href="%s.html">%s</a></td>\n' %(i,i)
                     else:
                         line+='    <td>%s</td>\n' %(i)
@@ -596,7 +596,8 @@ def getParser():
 stock_lista = [
                   ['SPY',200.0,805.0,'NYSE','spy'], # spy
                   ['QQQ',200.0,805.0,'NYSE','qqq'], # nasdaq
-                  ['GOOGL',640.0,805.0,'NASDAQ','google'], # google                  
+                  ['GOOGL',640.0,805.0,'NASDAQ','google'], # google 
+                  ['MSCI',640.0,805.0,'NASDAQ','Stock market ETF provider'], #
         ['AMZN',450.0,700.0,'NASDAQ','amazon'], # amazon
         ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
         ['MAT',25.0,40.0,'NYSE','matel'], # matel
@@ -906,6 +907,7 @@ stock_list = [
          ['CGNX',30.0,80.0,'NASDAQ','machine vision'], # machine vision. 0.8%
          #['MBLY',30.0,80.0,'NYSE','mobileye vision based driving'], # mobileye vision based driving
          ['CFX',30.0,80.0,'NYSE','colfax, air gas, medical devices'], # colfax?
+         ['SCHN',30.0,80.0,'NYSE','Schnitzer Steel Industries, Inc.'], # colfax?
          ['BKNG',1000.0,1500.0,'NASDAQ','priceline'], # priceline
          ['TRIP',50.0,70.0,'NASDAQ','trip adviser'], # trip adviser
          ['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
@@ -915,6 +917,7 @@ stock_list = [
          ['BNED',7.0,15.0,'NYSE','barnes & nobles'], # barnes & nobles. 5% dividend
          ['DNKN',35.0,55.0,'NASDAQ','dunkin doughnuts'], # dunkin doughnuts. 2.7% dividend         
          ['SBUX',35.0,75.0,'NASDAQ','starbucks'], # starbucks. 1.5% dividend         
+         ['SCHW',35.0,75.0,'NASDAQ','Charles Schwab Corporation Common Stock'], # starbucks. 1.5% dividend         
     #['KKD',15.0,30.0,'NYSE','krispy kreme'], # krispy kreme 
          ['JVA',4.0,10.0,'NASDAQ','pure coffee holding'], # JAVA. pure coffee holding
     #['VIAB',30.0,80.0,'NASDAQ','viacom'], # viacom 3.7% dividend
@@ -984,4 +987,65 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['IBB',8.0,20.0,'NYSE','iShares Nasdaq Biotechnology ETF'],
             ['KBE',8.0,20.0,'NYSE','SPDR S&P Bank ETF'],
             ['KRE',8.0,20.0,'NYSE','SPDR S&P Regional Banking ETF'],
-            ['XTL',8.0,20.0,'NYSE','SPDR S&P Telecom ETF'],]
+            ['XTL',8.0,20.0,'NYSE','SPDR S&P Telecom ETF'],
+            ['TLT',8.0,20.0,'NYSE','20y US bonds'],
+            ['FNDX',8.0,20.0,'NYSE','Schwab Fundamental U.S. Large Company'],
+            ['FNDA',8.0,20.0,'NYSE','Schwab Fundamental U.S. Small Company'],
+            ['FNDC',8.0,20.0,'NYSE','Schwab Fundamental International Small Company'],
+            ['HAUZ',8.0,20.0,'NYSE','Xtrackers International Real Estate'],
+            ['HDEF',8.0,20.0,'NYSE','Xtrackers MSCI EAFE High Dividend Yield Equity ETF'],
+            ['FNDE',8.0,20.0,'NYSE','Schwab Fundamental Emerging Markets Large Company Index'],
+            ['SPIP',8.0,20.0,'NYSE','SPDR Portfolio TIPS U.S. Inflation Protected Bonds'],
+            ['IAU',8.0,20.0,'NYSE','iShares Gold Trust'],
+            ['RSP',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight ETF	Equity'],
+            ['CQQQ',8.0,20.0,'NYSE','Invesco China Technology ETF'],
+            ['RWO',8.0,20.0,'NYSE','SPDR DJ Wilshire Global Real Estate ETF'],
+            ['MDYG',8.0,20.0,'NYSE','SPDR S&P 400 Mid Cap Growth ETF'],
+            ['GNR',8.0,20.0,'NYSE','SPDR S&P Global Natural Resources ETF'],
+            ['GXC',8.0,20.0,'NYSE','SPDR S&P China ETF'],
+            ['RZV',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Value ETF'],
+            ['RYE',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Energy ETF'],
+            ['UGA',8.0,20.0,'NYSE','United States Gasoline Fund'],
+            ['RCD',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Consumer Discretionary ETF'],
+            ['SDOG',8.0,20.0,'NYSE','ALPS Sector Dividend Dogs ETF'],
+            ['RFV',8.0,20.0,'NYSE','Invesco S&P MidCap 400 Pure Value ETF'],
+            ['RZG',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Growth ETF'],
+            ['USDU',8.0,20.0,'NYSE','WisdomTree Bloomberg U.S. Dollar Bullish Fund'],
+            ['LOWC',8.0,20.0,'NYSE','SPDR MSCI ACWI Low Carbon Target ETF'],
+            ['DBA',8.0,20.0,'NYSE','Invesco DB Agriculture'],
+            ['GLTR',8.0,20.0,'NYSE','Aberdeen Standard Broad Precious Metals'],
+            ['GLDM',8.0,20.0,'NYSE','SPDR Gold MiniShares'],
+            ['DBO',8.0,20.0,'NYSE','Invesco DB Oil Optimum Yield Crude Oil TR USD'],
+            ['FREL',8.0,20.0,'NYSE','Fidelity MSCI Real Estate ETF'],
+            ['FSTA',8.0,20.0,'NYSE','Fidelity MSCI Consumer Staples ETF'],
+            ['FENY',8.0,20.0,'NYSE','Fidelity MSCI Energy ETF'],
+            ['FNCL',8.0,20.0,'NYSE','Fidelity MSCI Financials ETF'],
+            ['FHLC',8.0,20.0,'NYSE','Fidelity MSCI Health Care ETF'],
+            ['FIDU',8.0,20.0,'NYSE','Fidelity MSCI Industrials ETF'],
+            ['GII',8.0,20.0,'NYSE','SPDR S&P Global Infrastructure ETF'],
+            ['FMAT',8.0,20.0,'NYSE','Fidelity MSCI Materials ETF'],
+            ['FUTY',8.0,20.0,'NYSE','Fidelity MSCI Utilities ETF'],
+            ['FTEC',8.0,20.0,'NYSE','Fidelity MSCI Information Tech ETF'],
+            ['FDIS',8.0,20.0,'NYSE','Fidelity MSCI Consumer Discret ETF'],
+            ['FCOM',8.0,20.0,'NYSE','Fidelity MSCI Communication Services ETF'],
+            ['ICLN',8.0,20.0,'NYSE','iShares Global Clean Energy ETF'],
+            ['SIVR',8.0,20.0,'NYSE','Aberdeen Standard Phys Silver Shrs ETF'],
+            ['SCHX',8.0,20.0,'NYSE','Schwab US Large-Cap ETF'],
+            ['SCHA',8.0,20.0,'NYSE','Schwab US Small-Cap ETF'],
+            ['SCHB',8.0,20.0,'NYSE','Schwab US Broad Market ETF'],
+            ['SCHC',8.0,20.0,'NYSE','Schwab International Small-Cap Equity ETF'],
+            ['SCHD',8.0,20.0,'NYSE','Schwab US Dividend Equity ETF'],
+            ['SCHE',8.0,20.0,'NYSE','Schwab Emerging Markets Equity ETF'],
+            ['SCHF',8.0,20.0,'NYSE','Schwab International Equity ETF'],
+            ['SCHG',8.0,20.0,'NYSE','Schwab US Large-Cap Growth ETF'],
+            ['SCHH',8.0,20.0,'NYSE','Schwab US real estate'],            
+            ['SCHI',8.0,20.0,'NYSE','Schwab 5-10 Year Corporate Bond ETF'],
+            ['SCHJ',8.0,20.0,'NYSE','Schwab 1-5 Year Corporate Bond ETF'],
+            ['SCHK',8.0,20.0,'NYSE','Schwab 1000 Index ETF'],
+            ['SCHM',8.0,20.0,'NYSE','Schwab US Mid-Cap ETF'],
+            ['SCHP',8.0,20.0,'NYSE','Schwab U.S. TIPS U.S. Inflation Protected Bonds'],            
+            ['SCHO',8.0,20.0,'NYSE','Schwab Short Term US Treasury ETF'],            
+            ['SCHQ',8.0,20.0,'NYSE','Schwab Long-Term US Treasury ETF'],            
+            ['SCHR',8.0,20.0,'NYSE','Schwab Intermediate-Term U.S. Treasury'],            
+            ['SCHZ',8.0,20.0,'NYSE','Schwab US Aggregate Bond ETF'],
+            ['VTV',8.0,20.0,'NYSE','Vanguard Value ETF'],]
