@@ -7,7 +7,7 @@ style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
-outdir = '/tmp/'
+#outdir = '/tmp/'
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
@@ -673,13 +673,13 @@ stock_list = [
         ['SNA',30.0,558.0,'NYSE','snap on'],  # snap on. 1.6%
         ['MPC',30.0,98.0,'NYSE','marathon gas refinery'],  # marathon gas refinery
         ['OXY',30.0,98.0,'NYSE','occidental-fracing'],  # occidental petrol. 4.5%
-        ['CRZO',20.0,98.0,'NASDAQ','carrizo oil. drilling and wells'],  # carrizo oil & gass
+        #['CRZO',20.0,98.0,'NASDAQ','carrizo oil. drilling and wells'],  # carrizo oil & gass
         ['CCJ',20.0,98.0,'NASDAQ','sells uranium'],  # CCJ uranium    
         ['SGG',5.0,98.0,'NASDAQ','sugar ETF'],  # sugar SGG
         ['EOG',30.0,198.0,'NYSE','eog-fracing'],  # fracing faster growing 0.7%
         ['PXD',30.0,298.0,'NYSE','Pioneer-fracing'],  # fracing faster growing 0.07%    
         ['WES',30.0,98.0,'NYSE','western gas'],  # western gas. 5%    
-        ['WNR',25.0,80.0,'NYSE','western refinery'],  # western refinery 4.% dividend.
+        #['WNR',25.0,80.0,'NYSE','western refinery'],  # western refinery 4.% dividend.
         ['CHK',4.0,7.0,'NYSE','cheseapeak oil'],  # cheseapeak
         ['FSLR',10.0,500.0, 'NASDAQ','first solar'], #first solar, arizona based
     #['SUNEQ',10.0,500.0, 'NASDAQ'], #first solar, arizona based
@@ -750,16 +750,16 @@ stock_list = [
         ['DUK',70.0,100.0,'NYSE','DUKE energy.'], # DUKE energy. good electric stock. 3.8% dividend
         ['PPL',30.0,80.0,'NYSE','good electric stock'], # PPL comp. good electric stock. 4% dividend
         ['XYL',40.0,75.0,'NYSE','water tech company'], # water tech company
-        ['DPS',85.0,105.0,'NYSE','dr pepper'], # dr pepper
+        #['DPS',85.0,105.0,'NYSE','dr pepper'], # dr pepper
         ['CINF',52.0,70.0,'NASDAQ','insurance. cincy'], # insurance. cincy. 3% dividend
         ['GILD',75.0,110.0,'NASDAQ','gilead biotech'], # gilead biotech
         ['AMGN',130.0,170.0,'NASDAQ','biotech. california'], # biotech. california. 2.7% dividend
         ['BIIB',200.0,300.0,'NASDAQ','Biogen biotech'], # Biogen biotech. california. 0.0% dividend
         ['SLP',7.0,15.0,'NASDAQ','Simulations Plus'], # Simulations Plus. 1.8% dividend. biomedical
-        ['ADR',50.0,85.0,'NYSE','novartis'], # novartis    
+        #['ADR',50.0,85.0,'NYSE','novartis'], # novartis    
         ['GVP',2.0,3.0,'NYSEMKT','GSE nuclear, oil simulations'], # GSE nuclear, oil simulations company
         ['TAP',80.0,100.0,'NYSE','molson beer'], # molson beer. 1.8% dividend
-        ['RTN',115.0,160.0,'NYSE','ratheon'], # ratheon. defense. 2.1% dividend
+        ['RTX',115.0,160.0,'NYSE','ratheon'], # ratheon. defense. 2.1% dividend
         ['CXW',15.0,300.0,'NYSE','corecivics. jailing'], # corecivics. jailing. 5.8% dividend
         ['GEO',15.0,300.0,'NYSE','geo group. jailing service florid'], # geo group. jailing service florida. 6.4%   
         ['GD',115.0,260.0,'NYSE','general dynamics'], # general dynamics. 1.6%
@@ -821,11 +821,11 @@ stock_list = [
         ['CLOV',15.0,35.0,'NASDAQ','CLOV'], #  pharma       
         ['KMI',10.0,40.0,'NYSE','kinder morgan-oil gas pipelines'], # kinder morgan. Berkshire hathaway is investing in them. 2.9%
 
-        ['GNOW',0.1,2.0,'NASDAQ','urgent care nano cap'], # urgent care nano cap. check carefully
+        #['GNOW',0.1,2.0,'NASDAQ','urgent care nano cap'], # urgent care nano cap. check carefully
         ['ENSG',10.0,25.0,'NASDAQ','urgent care small cap'], # urgent care small cap. check carefully
         ['ADPT',45.0,70.0,'NYSE','urgent care small cap'], # urgent care small cap. check carefully. no dividend
-        ['EVHC',18.0,33.0,'NYSE','urgent care mid cap'], # urgent care mid cap. check carefully. no dividend
-        ['LPNT',60.0,80.0,'NASDAQ','urgent care mid cap'], # urgent care mid cap. check carefully. no dividend
+        #['EVHC',18.0,33.0,'NYSE','urgent care mid cap'], # urgent care mid cap. check carefully. no dividend
+        #['LPNT',60.0,80.0,'NASDAQ','urgent care mid cap'], # urgent care mid cap. check carefully. no dividend
         ['THC',23.0,30.0,'NYSE','urgent care/intensive care mid cap'], # urgent care/intensive care mid cap. check carefully. no dividend
 
         ['SHAK',33.0,60.0,'NYSE','shake shack.'], # shake shack.
@@ -835,14 +835,14 @@ stock_list = [
         ['VFINX',100.0,200.0,'MUTF','vanguard MUTF'], # vanguard MUTF
         ['VFIAX',100.0,200.0,'VFIAX','vanguard MUTF'], # vanguard MUTF
         ['VPU',75.0,125.0,'NYSE','vanguard utilities'], # vanguard utilities, 3.3% dividend
-        ['RYU',50.0,100.0,'NYSE','equal weight utilities'], # equal weight utilities,
+        #['RYU',50.0,100.0,'NYSE','equal weight utilities'], # equal weight utilities,
         ['VBK',50.0,170.0,'NYSE','vanguard small cap growth'], # vanguard small cap growth
         ['VYM',60.0,90.0,'NYSE','vanguard large cap'], # vanguard large cap mutual fund 3.1% dividend
         ['IVE',70.0,130.0,'NYSE','ishare mutual fund'], # ishare mutual fund 
         ['TSLA',200.0,300.0,'NASDAQ','tesla'], # tesla mototrs
         ['QS',200.0,300.0,'NASDAQ','QS'], #
         ['BBBY',40.0,70.0,'NASDAQ','bed bath and beyond'], # bed bath and beyond
-        ['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
+        #['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
         ['TWTR',10.0,20.0,'NYSE','twitter'], # twitter
         ['S',2.0,5.0,'NYSE','sprint'], # sprint
         ['TMUS',2.0,5.0,'NASDAQ','t-mobile'], # t-mobile
@@ -866,6 +866,7 @@ stock_list = [
         ['TXN',50.0,70.0,'NASDAQ','texas instraments. semi-conductor'], # texas instraments. semi-conductor manufacturer
         ['INFN',10.0,20.0,'NASDAQ','infera semi-conductor'], # infera semi-conductor manufacturer.
         ['LMT',150.0,300.0,'NYSE','lockheed martin'], # lockheed martin. 2.92
+        ['MTN',150.0,300.0,'NYSE','vail resorts'], # 
         ['BA',100.0,150.0,'NYSE','boeing'], # boeing
         ['NOC',170.0,250.0,'NYSE','northrop gruman'], # northrop gruman. 2.92
         ['GBSN',3.0,8.0,'NASDAQ','genetics testing'], # genetics testing company
@@ -888,29 +889,29 @@ stock_list = [
          ['NLNK',15.0,25.0,'NASDAQ','Newlink Zika?'], # zika indicator stock. Newlink        
          ['CERS',4.0,8.0,'NASDAQ','ceries Zika?'], # zika indicator stock. ceries        
          ['SNY',30.0,50.0,'NYSE','sanofi Zika?'], # zika indicator stock. sanofi. dividend 3.72%
-         ['MDVN',40.0,80.0,'NASDAQ','Medivation Zika?'], # zika indicator stock. Medivation. no dividend
-         ['JCP',5.0,15.0,'NYSE','JC pennies'], # JC pennies.
+         #['MDVN',40.0,80.0,'NASDAQ','Medivation Zika?'], # zika indicator stock. Medivation. no dividend
+         #['JCP',5.0,15.0,'NYSE','JC pennies'], # JC pennies.
          ['DQ',20.0,35.0,'NYSE','Daqo New Energy Corp'], # Daqo New Energy Corp. zacks rated high
          ['CAT',60.0,90.0,'NYSE','Catepillar'], # Catepillar, 3.8% dividend. most shorted
-         ['CBA',6.0,9.0,'NYSE','clearbridge. energy company'], # clearbridge. energy company, 10% dividend. 
-         ['UTX',80.0,120.0,'NYSE',' united  technolgy. airplane builder'], # united  technolgy. airplane builder most shorted, 2.4% dividend.
+         #['CBA',6.0,9.0,'NYSE','clearbridge. energy company'], # clearbridge. energy company, 10% dividend. 
+         #['UTX',80.0,120.0,'NYSE',' united  technolgy. airplane builder'], # united  technolgy. airplane builder most shorted, 2.4% dividend.
          ['HON',95.0,130.0,'NYSE','honeywell'], # honeywell. 2%
          ['V',65.0,100.0,'NYSE','visa'], # visa. 0.7%
          ['MO',50.0,70.0,'NYSE','tobacco Altria'], # tobacco company. Altria 3%
-         ['RAI',40.0,60.0,'NYSE','reynolds tobacco'], # reynolds stock. tobacco. 3%
+         #['RAI',40.0,60.0,'NYSE','reynolds tobacco'], # reynolds stock. tobacco. 3%
          ['STZ',140.0,180.0,'NYSE','constellation drinks'], # constellation drinks stock. 1%
-         ['BWLD',100.0,180.0,'NASDAQ','BW3s'], # BW3's
+         #['BWLD',100.0,180.0,'NASDAQ','BW3s'], # BW3's
          ['TXRH',35.0,80.0,'NASDAQ','texas road house'], # texas road house
          ['CGNX',30.0,80.0,'NASDAQ','machine vision'], # machine vision. 0.8%
-         ['MBLY',30.0,80.0,'NYSE','mobileye vision based driving'], # mobileye vision based driving
-         ['CFX',30.0,80.0,'NYSE','colfax'], # colfax?
-         ['PCLN',1000.0,1500.0,'NASDAQ','priceline'], # priceline
+         #['MBLY',30.0,80.0,'NYSE','mobileye vision based driving'], # mobileye vision based driving
+         ['CFX',30.0,80.0,'NYSE','colfax, air gas, medical devices'], # colfax?
+         ['BKNG',1000.0,1500.0,'NASDAQ','priceline'], # priceline
          ['TRIP',50.0,70.0,'NASDAQ','trip adviser'], # trip adviser
          ['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
          ['RGR',40.0,70.0,'NYSE','ruger'], # ruger 2.5% dividend
          ['OLN',10.0,30.0,'NYSE','winchester++'], # winchester++ 3% dividend
          #['TWLO',20.0,40.0,'NASDAQ'], # twilio
-         ['BKS',7.0,15.0,'NYSE','barnes & nobles'], # barnes & nobles. 5% dividend
+         ['BNED',7.0,15.0,'NYSE','barnes & nobles'], # barnes & nobles. 5% dividend
          ['DNKN',35.0,55.0,'NASDAQ','dunkin doughnuts'], # dunkin doughnuts. 2.7% dividend         
          ['SBUX',35.0,75.0,'NASDAQ','starbucks'], # starbucks. 1.5% dividend         
     #['KKD',15.0,30.0,'NYSE','krispy kreme'], # krispy kreme 
@@ -924,9 +925,9 @@ stock_list = [
          ['CSX',20.0,60.0,'NASDAQ','Train manufacture'], # Train manufacture. 1.6%
          ['SB',1.0,2.0,'NYSE','safe builder'], # safe builder. 2.0% 
          ['VIOO',60.0,150.0,'NYSE','small cap'], # small cap
-         ['MDY',200.0,300.0,'NYSE','mid cap'], # mid cap
+         ['MDY',200.0,300.0,'NYSE','mid cap 400'], # mid cap
          ['GS',150.0,300.0,'NYSE','Goldman saks'], # Goldman saks. 1% dividend
-            ['FAF',20.0,70.0,'NYSE','investment corp'], # investment. 3.5.% dividend        
+            #['FAF',20.0,70.0,'NYSE','investment corp'], # investment. 3.5.% dividend        
          ['JPM',65.0,120.0,'NYSE','JPM chase'], # JPM chase. 2% dividend
          ['PNC',90.0,150.0,'NYSE','PNC bank'], # PNC bank. 2% dividend
          ['ADS',90.0,350.0,'NYSE','alliance data systems'], # alliance data systems 0.9%

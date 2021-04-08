@@ -1,7 +1,7 @@
 from alpaca_trade_api.rest import TimeFrame
 from alpaca_trade_api.rest import REST
-import techindicators as techindicators
 from techindicators import techindicators # as techindicators
+#import techindicators as techindicators
 import alpaca_trade_api
 import pandas as pd
 import numpy as np
@@ -72,7 +72,11 @@ def GetPastPerformance(stock):
 
 def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     # Add Information
-    AddInfo(stock,spy)
+    try:
+        AddInfo(stock,spy)
+    except KeyError:
+        print('ERROR processing %s' %ticker)
+        return None
     past_perf = GetPastPerformance(stock)
 
     # compute the percentage changes
@@ -222,8 +226,9 @@ for s in b.stock_list:
     except ValueError:
         j+=1
         continue
-
-    entries+=[formatInput(stock, s[0],spy_info, spy=spy)]
+    stockInput = formatInput(stock, s[0],spy_info, spy=spy)
+    if stockInput!=None:
+        entries+=[stockInput]
     j+=1
 #entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
 
@@ -246,6 +251,7 @@ for s in b.etfs:
     try:
         stock=runTickerAlpha(ts,s[0])
     except ValueError:
+        print('ERROR processing...ValueError %s' %ticker)
         j+=1
         continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
