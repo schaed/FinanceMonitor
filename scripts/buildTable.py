@@ -15,7 +15,7 @@ draw=False
 from alpha_vantage.timeseries import TimeSeries
 from dateutil.parser import parse
 outdir = b.outdir
-
+doStocks=True
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
@@ -188,11 +188,11 @@ ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
 ALPHA_ID = os.getenv('ALPHA_ID')
 api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
 ts = TimeSeries(key=ALPHA_ID)
-spy = runTicker(api,'SPY')
+#spy = runTicker(api,'SPY')
 ticker='X'
 ticker='TSLA'
-stock_info = runTicker(api,ticker)
-stock_info=runTickerAlpha(ts,ticker)
+#stock_info = runTicker(api,ticker)
+#stock_info=runTickerAlpha(ts,ticker)
 spy=runTickerAlpha(ts,'SPY')
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 print(spy['close'][0])
@@ -200,7 +200,7 @@ print(spy['close'][0])
 print(spy)
 #stock_info['adj_close']/=stock_info['adj_close'][0]
 #stock_info['adj_close']/=spy['adj_close']
-print(stock_info)
+#print(stock_info)
 
 spy_info = GetPastPerformance(spy)
 # build html table
@@ -209,30 +209,31 @@ entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0
 #for s in b.stock_lista:
-for s in b.stock_list:
-    if s[0]=='SPY':
-        continue
-    if s[0].count('^'):
-        continue
-    if j%4==0 and j!=0:
-        time.sleep(56)
-    #if j>0:
-    #    break
-    print(s[0])
-    sys.stdout.flush()    
-    stock=None
-    try:
-        stock=runTickerAlpha(ts,s[0])
-    except ValueError:
+if doStocks:
+    for s in b.stock_list:
+        if s[0]=='SPY':
+            continue
+        if s[0].count('^'):
+            continue
+        if j%4==0 and j!=0:
+            time.sleep(56)
+        #if j>0:
+        #    break
+        print(s[0])
+        sys.stdout.flush()    
+        stock=None
+        try:
+            stock=runTickerAlpha(ts,s[0])
+        except ValueError:
+            j+=1
+            continue
+        stockInput = formatInput(stock, s[0],spy_info, spy=spy)
+        if stockInput!=None:
+            entries+=[stockInput]
         j+=1
-        continue
-    stockInput = formatInput(stock, s[0],spy_info, spy=spy)
-    if stockInput!=None:
-        entries+=[stockInput]
-    j+=1
-#entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
-
-b.makeHTMLTable(outdir+'stockinfo.html',columns=columns,entries=entries)
+    #entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
+    
+    b.makeHTMLTable(outdir+'stockinfo.html',columns=columns,entries=entries)
 
 # build the sector ETFs
 columns=['Description']+columns
@@ -242,16 +243,16 @@ entries+=[['SPY']+formatInput(spy, 'SPY',spy_info,spy=spy)]
 for s in b.etfs:
     if s[0]=='SPY':
         continue
-    if j%4==0 and j!=0:
+    if j%3==0 and j!=0:
         time.sleep(56)
-    if j>1:
-        break
+    #if j>1:
+    #    break
     print(s[0])
     stock=None
     try:
         stock=runTickerAlpha(ts,s[0])
     except ValueError:
-        print('ERROR processing...ValueError %s' %ticker)
+        print('ERROR processing...ValueError %s' %s[0])
         j+=1
         continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
