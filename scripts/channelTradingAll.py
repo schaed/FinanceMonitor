@@ -139,6 +139,18 @@ def DrawPlots(stock_info,ticker):
     plt.savefig(outdir+'rsquare_%s.pdf' %ticker)    
     plt.savefig(outdir+'rsquare_%s.png' %ticker)
     if not draw: plt.close()
+    plt.plot(stock_info.index,stock_info['cmf'])    
+    # beautify the x-labels
+    plt.gcf().autofmt_xdate()
+    plt.ylabel('CMF')
+    plt.xlabel('Date')
+    plt.hlines(0.8,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.5,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')
+    plt.hlines(0.2,xmin=min(stock_info.index), xmax=max(stock_info.index),colors='black')    
+    if draw: plt.show()
+    plt.savefig(outdir+'cmf_%s.pdf' %ticker)    
+    plt.savefig(outdir+'cmf_%s.png' %ticker)
+    if not draw: plt.close()
     CandleStick(stock_info,ticker)
     
 def AddInfo(stock,market):
@@ -161,7 +173,6 @@ def AddInfo(stock,market):
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
     stock['alpha']=techindicators.rollingAlpha(stock,14,market)        
     stock['rsquare']=techindicators.rollingRsquare(stock,14,spy)
-
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
     
 def is_date(string, fuzzy=False):

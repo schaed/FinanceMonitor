@@ -673,7 +673,7 @@ stock_list = [
         ['SNA',30.0,558.0,'NYSE','snap on'],  # snap on. 1.6%
         ['MPC',30.0,98.0,'NYSE','marathon gas refinery'],  # marathon gas refinery
         ['OXY',30.0,98.0,'NYSE','occidental-fracing'],  # occidental petrol. 4.5%
-        ['CRZO',20.0,98.0,'NASDAQ','carrizo oil. drilling and wells'],  # carrizo oil & gass
+        #['CRZO',20.0,98.0,'NASDAQ','carrizo oil. drilling and wells'],  # carrizo oil & gass
         ['CCJ',20.0,98.0,'NASDAQ','sells uranium'],  # CCJ uranium    
         ['SGG',5.0,98.0,'NASDAQ','sugar ETF'],  # sugar SGG
         ['EOG',30.0,198.0,'NYSE','eog-fracing'],  # fracing faster growing 0.7%
@@ -842,7 +842,7 @@ stock_list = [
         ['TSLA',200.0,300.0,'NASDAQ','tesla'], # tesla mototrs
         ['QS',200.0,300.0,'NASDAQ','QS'], #
         ['BBBY',40.0,70.0,'NASDAQ','bed bath and beyond'], # bed bath and beyond
-        ['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
+        #['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
         ['TWTR',10.0,20.0,'NYSE','twitter'], # twitter
         ['S',2.0,5.0,'NYSE','sprint'], # sprint
         ['TMUS',2.0,5.0,'NASDAQ','t-mobile'], # t-mobile
@@ -889,7 +889,7 @@ stock_list = [
          ['CERS',4.0,8.0,'NASDAQ','ceries Zika?'], # zika indicator stock. ceries        
          ['SNY',30.0,50.0,'NYSE','sanofi Zika?'], # zika indicator stock. sanofi. dividend 3.72%
          ['MDVN',40.0,80.0,'NASDAQ','Medivation Zika?'], # zika indicator stock. Medivation. no dividend
-         ['JCP',5.0,15.0,'NYSE','JC pennies'], # JC pennies.
+         #['JCP',5.0,15.0,'NYSE','JC pennies'], # JC pennies.
          ['DQ',20.0,35.0,'NYSE','Daqo New Energy Corp'], # Daqo New Energy Corp. zacks rated high
          ['CAT',60.0,90.0,'NYSE','Catepillar'], # Catepillar, 3.8% dividend. most shorted
          ['CBA',6.0,9.0,'NYSE','clearbridge. energy company'], # clearbridge. energy company, 10% dividend. 
