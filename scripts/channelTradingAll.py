@@ -278,7 +278,12 @@ for s in b.stock_list:
     except ValueError:
         j+=1
         continue
-    AddInfo(stock_info, spy)
+    try:
+        AddInfo(stock_info, spy)
+    except ValueError:
+        print('Error processing %s' %s[0])
+        j+=1
+        continue
     stock_info = GetTimeSlot(stock_info) # gets the one year timeframe
     DrawPlots(stock_info,s[0])
     os.chdir(outdir)
