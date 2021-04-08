@@ -184,6 +184,19 @@ spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 AddInfo(stock_info, spy)
 stock_info = GetTimeSlot(stock_info)
 
+ij=0
+for s in b.etfs:
+    print(s[0])
+    if not os.path.exists("%s.p" %s[0]):
+        stock_info=runTickerAlpha(ts,s[0])
+        pickle.dump( stock_info, open( "%s.p" %s[0], "wb" ) )
+        if ij%2==0 and ij!=0:
+            time.sleep(56)
+        ij+=1
+    else:
+        stock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+        #spy = pickle.load( open( "SPY.p", "rb" ) )
+
 if draw:
     #plt.plot(stock_info.index,stock_info['close'])
     techindicators.supportLevels(stock_info)

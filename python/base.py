@@ -7,7 +7,7 @@ style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
-#outdir = '/tmp/'
+outdir = '/tmp/'
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
