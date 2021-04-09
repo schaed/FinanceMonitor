@@ -20,7 +20,7 @@ from dateutil.parser import parse
 outdir = b.outdir
 doStocks=True
 loadFromPickle=True
-doETFs=True
+doETFs=False
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -324,6 +324,8 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
+        #if s[0]!='TSLA':
+        #    continue
         if s[0]=='SPY':
             continue
         if s[0].count('^'):

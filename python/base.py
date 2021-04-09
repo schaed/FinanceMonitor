@@ -841,7 +841,7 @@ stock_list = [
         ['VBK',50.0,170.0,'NYSE','vanguard small cap growth'], # vanguard small cap growth
         ['VYM',60.0,90.0,'NYSE','vanguard large cap'], # vanguard large cap mutual fund 3.1% dividend
         ['IVE',70.0,130.0,'NYSE','ishare mutual fund'], # ishare mutual fund 
-        ['TSLA',200.0,300.0,'NASDAQ','tesla'], # tesla mototrs
+        ['TSLA',200.0,300.0,'NASDAQ','Tesla'], # tesla mototrs
         ['QS',200.0,300.0,'NASDAQ','QS'], #
         ['BBBY',40.0,70.0,'NASDAQ','bed bath and beyond'], # bed bath and beyond
         #['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
