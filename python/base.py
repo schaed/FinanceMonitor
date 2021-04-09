@@ -598,6 +598,8 @@ stock_lista = [
                   ['QQQ',200.0,805.0,'NYSE','qqq'], # nasdaq
                   ['GOOGL',640.0,805.0,'NASDAQ','google'], # google 
                   ['MSCI',640.0,805.0,'NASDAQ','Stock market ETF provider'], #
+                  ['IVZ',640.0,805.0,'NASDAQ','Investco ETF provider'], #
+                  ['STT',640.0,805.0,'NASDAQ','State street spdr ETF provider'], #    
         ['AMZN',450.0,700.0,'NASDAQ','amazon'], # amazon
         ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
         ['MAT',25.0,40.0,'NYSE','matel'], # matel
@@ -639,6 +641,9 @@ stock_list = [
         ['AMZN',450.0,700.0,'NASDAQ','amazon'], # amazon
         ['QQQ',200.0,805.0,'NYSE','qqq'], # nasdaq
         ['SPY',200.0,805.0,'NYSE','spy'], # spy
+        ['MSCI',640.0,805.0,'NASDAQ','Stock market ETF provider'], #
+        ['IVZ',640.0,805.0,'NASDAQ','Investco ETF provider'], #
+        ['STT',640.0,805.0,'NASDAQ','State street spdr ETF provider'], #        
         ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
         ['PLTR',2.0,155.0,'NYSE','palantir'],  # 
         ['MAT',25.0,40.0,'NYSE','matel'], # matel
