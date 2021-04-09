@@ -44,7 +44,7 @@ def makeHTMLIndex(outFileName,title, jetNames):
 #-----------------------------------------------------
 def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
 
-    plots = glob.glob(filterPattern+'*.pdf')
+    plots = glob.glob(filterPattern+'*.png')
 
     with open(outFileName, 'w') as outFile:
         # write HTML header

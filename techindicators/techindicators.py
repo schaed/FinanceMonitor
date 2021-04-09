@@ -9,28 +9,23 @@ from numpy_ext import rolling_apply
 # Simple Moving Average
 # a is an array of prices, b is a period for averaging
 def sma(a,b, sameSize=True):
-    #
+    result = np.convolve(a, np.ones(b), 'valid') / b
     if sameSize:
-        result = np.zeros(len(a))
-        for i in range(b):
-            result[i] = None#a[0]
-    
-        for i in range(len(a)-b+1):
-            result[i+b-1] = np.sum(a[i:i+b])/b
-    else:
-        result = np.zeros(len(a)-b+1)
-        for i in range(len(a)-b+1):
-            result[i] = np.sum(a[i:i+b])/b
+        result = np.concatenate((np.zeros(b-1),result))
     return result
 #
 # Exponential Moving Average
 # a is an array of prices, b is a period for averaging
 def ema(a,b):
-    result = np.zeros(len(a)-b+1)
-    result[0] = np.sum(a[0:b])/b
-    for i in range(1,len(result)):
-        result[i] = result[i-1]+(a[i+b-1]-result[i-1])*(2/(b+1))
-    return result
+    ema_short = a.ewm(span=b, adjust=False).mean()
+    ema_short = ema_short[b-1:]
+    return ema_short
+    #result = np.zeros(len(a)-b+1)
+    #result[0] = np.sum(a[0:b])/b
+    #for i in range(1,len(result)):
+    #    result[i] = result[i-1]+(a[i+b-1]-result[i-1])*(2/(b+1))
+    #print(ema_short-result)
+    #return result
 #
 # Weighted Moving Average
 # a is an array of prices, b is a period for averaging
@@ -69,18 +64,25 @@ def kama(a,b,c,d):
 # a is array of high prices, b is array of low prices, 
 # c is array of closing prices, d is period for averaging
 def atr(a,b,c,d):
-    tr = np.zeros(len(a))
-    result = np.zeros(len(a)-d+1)
-    tr[0] = a[0]-b[0]
-    for i in range(1,len(a)):
-        hl = a[i]-b[i]
-        hpc = np.fabs(a[i]-c[i-1])
-        lpc = np.fabs(b[i]-c[i-1])
-        tr[i] = np.amax(np.array([hl,hpc,lpc]))
-    result[0] = np.sum(tr[0:d])/d
-    for i in range(1,len(a)-d+1):
-        result[i] = (result[i-1]*(d-1)+tr[i+d-1])/d
-    return result
+
+    df = pd.DataFrame(data={'tr0':a-b,'tr1':abs(a-c.shift()),'tr2':abs(b-c.shift())}, index=a.index)
+    tr = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+    matr = tr.ewm(alpha=1/d, adjust=False).mean()
+    matr = matr[d-1:]
+    return matr
+    #tr = np.zeros(len(a))
+    #result = np.zeros(len(a)-d+1)
+    #tr[0] = a[0]-b[0]
+    #for i in range(1,len(a)):
+    #    hl = a[i]-b[i]
+    #    hpc = np.fabs(a[i]-c[i-1])
+    #    lpc = np.fabs(b[i]-c[i-1])
+    #    tr[i] = np.amax(np.array([hl,hpc,lpc]))
+    #result[0] = np.sum(tr[0:d])/d
+    #for i in range(1,len(a)-d+1):
+    #    result[i] = (result[i-1]*(d-1)+tr[i+d-1])/d
+    #print(matr-result)
+    #return result
 #
 # Relative Strength Index
 # a is an array of prices, b is the period for averaging
@@ -115,20 +117,37 @@ def rsi(a,b,sameSize=True):
             result[i] = None #result[b]
         return result
     return result[b:]
-#
+# 
 # Commodity Channel Index
 # a is array of high prices, b is array of low prices,
 # c is array of closing prices, d is the number of periods
-def cci(a,b,c,d):
-    tp = (a+b+c)/3 # typical price
-    atp = np.zeros(len(a)) # average typical price
-    md = np.zeros(len(a)) # mean deviation
-    result = np.zeros(len(a))
-    for i in range(d-1,len(a)):
-        atp[i] = np.sum(tp[i-(d-1):i+1])/d
-        md[i] = np.sum(np.fabs(atp[i]-tp[i-(d-1):i+1]))/d
-        result[i] = (tp[i]-atp[i])/(0.015*md[i])
-    return result[d-1:]
+def cci(a,b,c,d,sameSize=True):
+
+    TP = (a+b+c) / 3.0
+    ma = TP.rolling(d).mean()
+    mdev = (abs(TP - ma)).rolling(d).std(ddof=0)
+    #print(abs(TP - ma))
+    CCI = pd.Series((TP - ma) / (0.015 * mdev), name = 'CCI')
+    return CCI
+    #print(CCI)
+    #data = data.join(CCI) 
+    #return data
+    # there is a difference in the typical price STDDEV. not sure which tpyical price to use
+    #tp = (a+b+c)/3 # typical price
+    #atp = np.zeros(len(a)) # average typical price
+    #md = np.zeros(len(a)) # mean deviation
+    #result = np.zeros(len(a))
+    #for i in range(d-1,len(a)):
+    #    atp[i] = np.sum(tp[i-(d-1):i+1])/d
+    #    md[i] = np.sum(np.fabs(atp[i]-tp[i-(d-1):i+1]))/d
+    #    result[i] = (tp[i]-atp[i])/(0.015*md[i])
+    ##print(result)
+    ##print(TP.rolling(d).mean() - atp)
+    #print(mdev - md)
+    #print(CCI - result)
+    #if sameSize:
+    #    return result
+    #return result[d-1:]
 #
 # Accumulation/Distribution Line
 # a is array of high prices, b is array of low prices,
@@ -136,10 +155,12 @@ def cci(a,b,c,d):
 def adl(a,b,c,d):
     mfm = ((c-b)-(a-c))/(a-b) # Money flow multiplier
     mfv = mfm*d # Money flow volume
-    result = np.zeros(len(a))
-    result[0] = mfv[0]
-    for i in range(1,len(a)):
-        result[i] = np.sum(mfv[0:i+1])
+    #result = np.zeros(len(a))
+    #result[0] = mfv[0]
+    #for i in range(1,len(a)):
+    #    result[i] = np.sum(mfv[0:i+1])
+    result = mfv.cumsum()
+    #print(mfv_new - result)
     return result
 #
 # Moving Average Convergence/Divergence
@@ -271,17 +292,9 @@ def sharpe(a,b,sameSize=True):
 # Rolling standard deviation
 # a is an array of prices, b is number of periods
 def rstd(a,b, sameSize=True):
-
-    if sameSize:
-        result = np.zeros(len(a))
-        for i in range(b):
-            result[i] = None # a[0]
-        for i in range(len(a)-b+1):
-            result[i+b-1] = np.std(a[i:i+b],ddof=0)
-    else:
-        result = np.zeros(len(a)-b+1)
-        for i in range(len(a)-b+1):
-            result[i] = np.std(a[i:i+b],ddof=0)
+    result = a.rolling(b).std(ddof=0)
+    if not sameSize:
+        result = result[b-1:]
     return result
 
 # Polynomial Regression for two numpy arrays
@@ -352,20 +365,37 @@ def trix(a,b,c):
         line[i-1] = ((triema[i]-triema[i-1])/triema[i-1])*100
     signal = ema(line,c)
     return line,signal
-#
+# 
 # Stochastic oscillator
 # a is an array of high prices, b is array of low prices,
 # c is an array of closing prices, d is the look back period
 # e is number of periods for %K SMA, f is the number of
 # periods for %D SMA
-def stoch(a,b,c,d,e,f):
-    t = np.zeros(len(a))
-    for i in range(d-1,len(a)):
-        t[i] = ((c[i]-np.amin(b[i-(d-1):i+1]))/(np.amax(a[i-(d-1):i+1])-\
-         np.amin(b[i-(d-1):i+1])))*100
-    t = t[d-1:]
-    pk = sma(t,e)
+def stoch(a,b,c,d,e,f,sameSize=True):
+    """
+    Fast stochastic calculation
+    %K = (Current Close - Lowest Low)/
+    (Highest High - Lowest Low) * 100
+    %D = 3-day SMA of %K
+
+    Slow stochastic calculation
+    %K = %D of fast stochastic
+    %D = 3-day SMA of %K
+
+    When %K crosses above %D, buy signal 
+    When the %K crosses below %D, sell signal
+    """
+    # Set minimum low and maximum high of the k stoch
+    low_min  = b.rolling( window = d ).min()
+    high_max = a.rolling( window = d ).max()
+    # Fast Stochastic    
+    k_fast = 100 * (c - low_min)/(high_max - low_min)
+    pk = sma(k_fast,e)
+    # Slow Stochastic
     pd = sma(pk,f)
+    if not sameSize:
+        pd = pd[d-1:]
+        pk = pk[d-1:]
     return pk,pd
 #
 # Vortex indicator
@@ -396,7 +426,7 @@ def vortex(a,b,c,d):
     vpn = vpd/trd
     vmn = vmd/trd
     return vpn,vmn
-#
+#TODO add
 # Average Directional Index (ADX)
 # a is array of high prices, b is array of low prices
 # c is array of close prices, d is number of periods
@@ -444,7 +474,7 @@ def adx(a,b,c,d):
         adx[l] = (adx[l-1]*(d-1)+dx[l])/d
     adx = adx[d-1:]
     return p,n,adx
-#
+# should add
 # Aroon Oscillator
 # a is array of high prices, b is array of low prices
 # c is number of periods for calculation
@@ -480,11 +510,17 @@ def chand(a,b,c,d,e,f):
 # Rate of change (ROC)
 # a is an array of prices, b is a number of periods
 def roc(a,b,sameSize=True):
+    #mroc = (a - a.shift(b))/a.shift(b)*100
+    #if sameSize:
+    #    return mroc
+    #mroc = mroc[b:]
+    #return mroc
     result = np.zeros(len(a)-b)
     for i in range(b,len(a)):
         result[i-b] = ((a[i]-a[i-b])/a[i-b])*100
     if sameSize:
         result = np.concatenate((np.zeros(b),result))
+    #print(mroc - result)
     return result
 #
 # Coppock Curve
@@ -500,10 +536,10 @@ def copp(a,b,c,d, sameSize=True):
 # a is closing price, b is volume
 # c is number of periods
 def force(a,b,c):
-    dif = np.zeros(len(a)-1)
-    for i in range(1,len(a)):
-        dif[i-1] = (a[i]-a[i-1])*b[i]
-    return ema(dif,c)
+    #FI = pd.Series(data['Close'].diff(ndays) * data['Volume'], name = 'ForceIndex')
+    ndays=1
+    FI = a.diff(ndays)*b
+    return ema(FI,c)
 #
 # Chaikin Money Flow (CMF)
 # a is high prices, b is low prices
@@ -511,13 +547,23 @@ def force(a,b,c):
 # e is number of periods
 def cmf(a,b,c,d,e,sameSize=True):
     mfv = (((c-b)-(a-c))/(a-b))*d
-    result = np.zeros(len(a)-e+1)
-    for i in range(len(a)-e+1):
-        result[i] = np.sum(mfv[i:i+e])/np.sum(d[i:i+e])
-    if sameSize:
-        result = np.concatenate((np.zeros(e-1),result))
-    return result
-#
+    resulta = mfv.rolling(e).sum()/d.rolling(e).sum()
+    if not sameSize:
+        resulta = resulta[e-1:]
+    return resulta
+    #result = np.zeros(len(a)-e+1)
+    #for i in range(len(a)-e+1):
+    #    result[i] = np.sum(mfv[i:i+e])/np.sum(d[i:i+e])
+    #if sameSize:
+    #    result = np.concatenate((np.zeros(e-1),result))
+    #print(result - resulta)
+    #return result
+
+# TODO add
+# https://www.investopedia.com/terms/v/vwap.asp
+# vwap - volume weighted trade. really only used during the day
+
+# 
 # Chaikin Oscillator
 # a is high prices, b is low prices
 # c is closing prices, d is volume
@@ -525,14 +571,18 @@ def cmf(a,b,c,d,e,sameSize=True):
 # f is number of periods for long EMA
 def chosc(a,b,c,d,e,f):
     ch_adl = adl(a,b,c,d)
-    ch_short = ema(ch_adl,e)
-    ch_long = ema(ch_adl,f)
+    ch_short = ema(pd.DataFrame(ch_adl),e)
+    ch_long = ema(pd.DataFrame(ch_adl),f)
     return (ch_short[(f-e):]-ch_long)
 #
 # Ease of Movement (EMV)
 # a is high prices, b is low prices
 # c is volume, d is number of periods
 def emv(a,b,c,d):
+    #dm = ((data['High'] + data['Low'])/2) - ((data['High'].shift(1) + data['Low'].shift(1))/2)
+    #br = (data['Volume'] / 100000000) / ((data['High'] - data['Low']))
+    #EVM = dm / br 
+    #EVM_MA = pd.Series(EVM.rolling(ndays).mean(), name = 'EVM') 
     dm = np.zeros(len(a)-1)
     for i in range(1,len(a)):
         dm[i-1] = (a[i]+b[i])/2 - (a[i-1]+b[i-1])/2
@@ -596,15 +646,18 @@ def nvi(a,b,c):
 # On Balance Volume (OBV)
 # a is closing prices, b is volume
 def obv(a,b):
-    result = np.zeros(len(a))
-    for i in range(1,len(a)):
-        if a[i]>a[i-1]:
-            result[i]=result[i-1]+b[i]
-        elif a[i]<a[i-1]:
-            result[i]=result[i-1]-b[i]
-        else:
-            result[i]=result[i-1]
-    return result
+    obv = (np.sign(a.diff()) * b).fillna(0).cumsum()
+    return obv
+    #result = np.zeros(len(a))
+    #for i in range(1,len(a)):
+    #    if a[i]>a[i-1]:
+    #        result[i]=result[i-1]+b[i]
+    #    elif a[i]<a[i-1]:
+    #        result[i]=result[i-1]-b[i]
+    #    else:
+    #        result[i]=result[i-1]
+    #print(obv-result)
+    #return result
 #
 # Percentage volume oscillator
 # a is an array of volume, b is the numer of periods for fast EMA
@@ -679,9 +732,9 @@ def supportLevels(data):
 def plot_support_levels(ticker,df,plots=[],outdir=''):
   
     levels = getMinLevels(df)
-    sline = []
-    for level in levels:
-        sline+=[level[1]]
+    #sline = []
+    #for level in levels:
+    #    sline+=[level[1]]
     #mpf.make_addplot(line80,panel='lower',color='r',secondary_y=False),
     fig,axes=mpf.plot(df, type='candle', style='charles',
             title=ticker,

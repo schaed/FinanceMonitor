@@ -13,6 +13,8 @@ import time
 import os
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use('Qt4Agg') 
 import mplfinance as mpf
 draw=False
 from alpha_vantage.timeseries import TimeSeries
@@ -20,7 +22,8 @@ from dateutil.parser import parse
 outdir = b.outdir
 doStocks=True
 loadFromPickle=True
-doETFs=False
+doETFs=True
+doPDFs=False
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -43,7 +46,6 @@ def CandleStick(data, ticker):
         mpf.make_addplot(df['KeltLower'],color='darkviolet'),  # uses panel 0 by default
         mpf.make_addplot(df['KeltUpper'],color='magenta'),  # uses panel 0 by default
       ]
-    #mpf.plot(df,type='candle',volume=True,addplot=ap0) 
     fig,axes=mpf.plot(df, type='candle', style='charles',
             title=ticker,
             ylabel='Price ($) %s' %ticker,
@@ -53,13 +55,16 @@ def CandleStick(data, ticker):
             addplot=ap0,
             returnfig=True,
             savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
+    
+
         # Configure chart legend and title
     axes[0].legend(['Price','Bolanger Up','Bolanger Down','SMA200','Kelt+','Kelt-'])
     #axes[0].set_title(ticker)
     # Save figure to file
-    fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
+    if doPDFs: fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
     fig.savefig(outdir+'test-mplfiance_'+ticker+'.png')
     techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ],outdir=outdir)
+
     # adds below as a sub-plot
     #ap2 = [ mpf.make_addplot(df['UpperB'],color='g',panel=2),  # panel 2 specified
     #        mpf.make_addplot(df['LowerB'],color='b',panel=2),  # panel 2 specified
@@ -96,7 +101,7 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     plt.xlabel('Date')
     plt.legend(loc="upper left")
     if draw: plt.show()
-    plt.savefig(outdir+'longmarket%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'longmarket%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'longmarket%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
         
@@ -109,65 +114,62 @@ def GetTimeSlot(stock, days=365):
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     #plt.plot(stock_info.index,stock_info['close'])
     techindicators.supportLevels(my_stock_info)
+    xmins = min(my_stock_info.index)
+    xmaxs = max(my_stock_info.index)
+    
     if not draw:
         plt.ioff()
     plt.plot(my_stock_info.index,my_stock_info['adj_close'])
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Closing price')
     plt.xlabel('Date')
     if draw: plt.show()
-    plt.savefig(outdir+'price_support%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'price_support%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'price_support%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     plt.plot(my_stock_info.index,my_stock_info['copp'])    
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Coppuck Curve')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'copp%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'copp%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'copp%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     plt.plot(my_stock_info.index,my_stock_info['sharpe'])    
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Sharpe Ratio')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'sharpe%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'sharpe%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'sharpe%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     plt.plot(my_stock_info.index,my_stock_info['beta'])
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Beta')
     plt.xlabel('Date')
     if draw: plt.show()
-    plt.savefig(outdir+'beta%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'beta%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'beta%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     plt.plot(my_stock_info.index,my_stock_info['alpha'])    
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('Alpha')
     plt.xlabel('Date')
-    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
+    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
     plt.title(' Alpha')
     if draw: plt.show()
-    plt.savefig(outdir+'alpha%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'alpha%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'alpha%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     plt.plot(my_stock_info.index,my_stock_info['rsquare'])    
-    # beautify the x-labels
     plt.gcf().autofmt_xdate()
     plt.ylabel('R-squared')
     plt.xlabel('Date')
-    plt.hlines(0.7,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
+    plt.hlines(0.7,xmin=xmins, xmax=xmaxs,colors='black')
     if draw: plt.show()
-    plt.savefig(outdir+'rsquare%s_%s.pdf' %(plttext,ticker)) 
+    if doPDFs: plt.savefig(outdir+'rsquare%s_%s.pdf' %(plttext,ticker)) 
     plt.savefig(outdir+'rsquare%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     # CMF
@@ -176,11 +178,11 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     plt.gcf().autofmt_xdate()
     plt.ylabel('CMF')
     plt.xlabel('Date')
-    plt.hlines(0.2,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='green',linestyle='dotted')
-    plt.hlines(0.0,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='black')
-    plt.hlines(-0.2,xmin=min(my_stock_info.index), xmax=max(my_stock_info.index),colors='red',linestyle='dotted')    
+    plt.hlines(0.2,xmin=xmins, xmax=xmaxs,colors='green',linestyle='dotted')
+    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
+    plt.hlines(-0.2,xmin=xmins, xmax=xmaxs,colors='red',linestyle='dotted')    
     if draw: plt.show()
-    plt.savefig(outdir+'cmf%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'cmf%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'cmf%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     # comparison to the market
@@ -192,7 +194,7 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     plt.xlabel('Date')
     plt.legend(loc="upper left")
     if draw: plt.show()
-    plt.savefig(outdir+'market%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'market%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'market%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
     # comparison to the market monthly returns
@@ -204,9 +206,10 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     plt.xlabel('Date')
     plt.legend(loc="upper left")
     if draw: plt.show()
-    plt.savefig(outdir+'monthlymarket%s_%s.pdf' %(plttext,ticker))
+    if doPDFs: plt.savefig(outdir+'monthlymarket%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'monthlymarket%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
+        
     CandleStick(my_stock_info,ticker)
     
 def AddInfo(stock,market):
@@ -215,22 +218,34 @@ def AddInfo(stock,market):
     if len(stock['adj_close'])>100:
         stock['sma100']=techindicators.sma(stock['adj_close'],100)
     else: stock['sma100']=np.zeros(len(stock['adj_close']))
-    if len(stock['adj_close'])>200:    
+    if len(stock['adj_close'])>200:
         stock['sma200']=techindicators.sma(stock['adj_close'],200)
     else: stock['sma200']=np.zeros(len(stock['adj_close']))
     stock['rstd10']=techindicators.rstd(stock['adj_close'],10)
     stock['rsi10']=techindicators.rsi(stock['adj_close'],10)
     stock['cmf']=techindicators.cmf(stock['high'],stock['low'],stock['close'],stock['volume'],10)
     stock['BolLower'],stock['BolCenter'],stock['BolUpper']=techindicators.boll(stock['adj_close'],20,2.0,5)
+    start = time.time()
     stock['KeltLower'],stock['KeltCenter'],stock['KeltUpper']=techindicators.kelt(stock['high'],stock['low'],stock['close'],20,2.0,20)
     stock['copp']=techindicators.copp(stock['close'],14,11,10)
     stock['daily_return']=stock['adj_close'].pct_change(periods=1)
     stock['daily_return_stddev14']=techindicators.rstd(stock['daily_return'],14)
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
-    stock['alpha']=techindicators.rollingAlpha(stock,14,market)        
+    stock['alpha']=techindicators.rollingAlpha(stock,14,market)
     stock['rsquare']=techindicators.rollingRsquare(stock,14,market)
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
-    #stock['adj_close_percent']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good    
+    start = time.time()
+    stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
+    stock['stochK'],stock['stochD']=techindicators.stoch(stock['high'],stock['low'],stock['close'],14,3,3)    
+    #stock['aroon']=techindicators.aroon(stock['high'],stock['low'],14)
+    stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
+    stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)    
+    #stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    #stock['vwap']=techindicators.vwap(stock['high'],stock['low'],stock['close'],14)
+    stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
+    end = time.time()
+    print('Process time to new: %s' %(end - start))
+    
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
     stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
     stock_1y = GetTimeSlot(stock)
@@ -350,13 +365,19 @@ if doStocks:
             j+=1
             continue
         try:
+            start = time.time()
             AddInfo(tstock_info, spy)
+            end = time.time()
+            print('Process time to add info: %s' %(end - start))
         except ValueError:
             print('Error processing %s' %s[0])
             j+=1
             continue
         tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
+        start = time.time()
         DrawPlots(tstock_info,s[0],spy_1year)
+        end = time.time()
+        print('Process time to add draw: %s' %(end - start))
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
         os.chdir(cdir)    
@@ -373,7 +394,10 @@ if doETFs:
         estock_info=None
         try:
             if loadFromPickle and os.path.exists("%s.p" %s[0]):
+                start = time.time()
                 estock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+                end = time.time()
+                print('Process time to load file: %s' %(end - start))
             else:
                 estock_info=runTickerAlpha(ts,s[0])
                 pickle.dump( estock_info, open( "%s.p" %s[0], "wb" ) )
@@ -385,12 +409,21 @@ if doETFs:
         LongTermPlot(estock_info,spy,ticker=s[0])
 
         try:
+            start = time.time()
             AddInfo(estock_info, spy)
+            end = time.time()
+            print('Process time to add info: %s' %(end - start))
         except ValueError:
             print('Error processing %s' %s[0])
             continue
-        estock_info = GetTimeSlot(estock_info) # gets the one year timeframe 
+        start = time.time()
+        estock_info = GetTimeSlot(estock_info) # gets the one year timeframe
+        end = time.time()
+        print('Process time to get time slot: %s' %(end - start))
+        start = time.time()
         DrawPlots(estock_info,s[0],spy_1year)
+        end = time.time()
+        print('Process time to draw plots: %s' %(end - start))
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4],linkIndex=0)
         os.chdir(cdir)
