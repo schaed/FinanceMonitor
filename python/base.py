@@ -739,6 +739,7 @@ stock_list = [
         ['PFE',25.0,38.0,'NYSE','pfizer'], # pfizer 4% dividend
     #['AET',75.0,120.0,'NYSE','aetna'], # aetna 1% dividend
     ['AEHR',75.0,120.0,'NYSE','AEHR'], # aetna 1% dividend
+    ['ATNF',75.0,120.0,'NYSE','180 life science group'], # aetna 1% dividend
         ['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor
         ['HUM',145.0,190.0,'NYSE','humara'], # humara 1% dividend
         ['TFX',120.0,160.0,'NYSE','teleflex medical device, Wayne, PA'], # teleflex 1% dividend. medical devices. wayne, PA
