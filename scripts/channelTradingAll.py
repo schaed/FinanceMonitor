@@ -82,6 +82,9 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
         my_stock_info5y = my_stock_info5y[-min_length:]
         market5y = market5y[-min_length:]
 
+    if len(market5y['adj_close'])<1 or len(my_stock_info5y['adj_close'])<1:
+        print('Ticker has no adjusted close info: %s' %ticker)
+        return
     my_stock_info5y['year5_return']=my_stock_info5y['adj_close']/my_stock_info5y['adj_close'][0]-1
     market5y['year5_return']=market5y['adj_close']/market5y['adj_close'][0]-1
     # comparison to the market
@@ -231,8 +234,12 @@ def AddInfo(stock,market):
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
     stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
     stock_1y = GetTimeSlot(stock)
-    stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
-    
+    if len(stock_1y['adj_close'])<1:
+        print('Ticker has no adjusted close info: %s' %ticker)
+        stock['yearly_return']=stock['adj_close']
+    else:
+        stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
+
 def is_date(string, fuzzy=False):
     """
     Return whether the string can be interpreted as a date.

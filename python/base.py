@@ -737,7 +737,9 @@ stock_list = [
         ['UNH',100.0,130.0,'NYSE','united health care'], # united health care
         ['CI',120.0,180.0,'NYSE','health care. cigna'], # health care. cigna
         ['PFE',25.0,38.0,'NYSE','pfizer'], # pfizer 4% dividend
-        #['AET',75.0,120.0,'NYSE','aetna'], # aetna 1% dividend
+    #['AET',75.0,120.0,'NYSE','aetna'], # aetna 1% dividend
+    ['AEHR',75.0,120.0,'NYSE','AEHR'], # aetna 1% dividend
+    ['ATNF',75.0,120.0,'NYSE','180 life science group'], # aetna 1% dividend
         ['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor
         ['HUM',145.0,190.0,'NYSE','humara'], # humara 1% dividend
         ['TFX',120.0,160.0,'NYSE','teleflex medical device, Wayne, PA'], # teleflex 1% dividend. medical devices. wayne, PA
@@ -804,7 +806,7 @@ stock_list = [
         ['BP',20.0,45.0,'NYSE','british patroleum'], # british patroleum.  8.2% dividends
         #['NEE',100.0,140.0,'florida electrical'], # florida electrical company.  2.7% dividends        
         ['ABX',8.0,20.0,'NYSE','Barrick Gold mining compan'], #Barrick Gold mining company 0.6% dividend
-        ['SLW',10.0,20.0,'NYSE','Silver Wheaton Corp'], # Silver Wheaton Corp 1.6% dividend
+        ['WPM',10.0,20.0,'NYSE','Silver Wheaton Corp'], # Silver Wheaton Corp 1.6% dividend
         ['EXK',1.0,4.0,'NYSE','Silver mine'], # Silver mine 22% dividend
         #['HCHDF',0.2,2.0], # Silver mine 22% dividend
         ['GG',10.0,20.0,'NYSE','Goldcorp mining'], # Goldcorp mining company 1.6% dividend
@@ -912,6 +914,8 @@ stock_list = [
          ['TRIP',50.0,70.0,'NASDAQ','trip adviser'], # trip adviser
          ['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
          ['RGR',40.0,70.0,'NYSE','ruger'], # ruger 2.5% dividend
+         ['SWBI',40.0,70.0,'NYSE','Smith and wessin'], # ruger 2.5% dividend
+         ['RETO',40.0,70.0,'NYSE','RETO'], # ruger 2.5% dividend
          ['OLN',10.0,30.0,'NYSE','winchester++'], # winchester++ 3% dividend
          #['TWLO',20.0,40.0,'NASDAQ'], # twilio
          ['BNED',7.0,15.0,'NYSE','barnes & nobles'], # barnes & nobles. 5% dividend
