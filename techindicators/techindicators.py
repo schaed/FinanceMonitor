@@ -110,7 +110,10 @@ def rsi(a,b,sameSize=True):
         ag[i] = (ag[i-1]*(b-1)+gain[i])/b
         al[i] = (al[i-1]*(b-1)+loss[i])/b
     for i in range(b,len(a)):
-        result[i] = 100-100/(1+ag[i]/al[i])
+        if al[i]!=0.0:
+            result[i] = 100-100/(1+ag[i]/al[i])
+        else:
+            result[i] = 0.0
 
     if sameSize:
         for i in range(b):
