@@ -242,8 +242,14 @@ if doStocks:
         sys.stdout.flush()    
         stock=None
         try:
-            stock=runTickerAlpha(ts,s[0])
+            if loadFromPickle and os.path.exists("%s.p" %s[0]):
+                stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
+            else:
+                stock=runTickerAlpha(ts,s[0])
+                pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
+                j+=1
         except ValueError:
+            print('ERROR processing stock...ValueError %s' %s[0])
             j+=1
             continue
         stockInput = formatInput(stock, s[0],spy_info, spy=spy)

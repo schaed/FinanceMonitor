@@ -348,8 +348,17 @@ if doStocks:
         #if j>2:
         #    break
         try:
-            tstock_info=runTickerAlpha(ts,s[0])
+            if loadFromPickle and os.path.exists("%s.p" %s[0]):
+                start = time.time()
+                tstock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+                end = time.time()
+                print('Process time to load file: %s' %(end - start))
+            else:
+                tstock_info=runTickerAlpha(ts,s[0])
+                pickle.dump( tstock_info, open( "%s.p" %s[0], "wb" ) )
+                j+=1
         except ValueError:
+            print('ERROR processing...ValueError %s' %s[0])
             j+=1
             continue
         try:
