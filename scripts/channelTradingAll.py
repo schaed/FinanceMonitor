@@ -352,7 +352,7 @@ if doStocks:
                 start = time.time()
                 tstock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
                 end = time.time()
-                print('Process time to load file: %s' %(end - start))
+                if debug: print('Process time to load file: %s' %(end - start))
             else:
                 tstock_info=runTickerAlpha(ts,s[0])
                 pickle.dump( tstock_info, open( "%s.p" %s[0], "wb" ) )
@@ -394,7 +394,7 @@ if doETFs:
                 start = time.time()
                 estock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
                 end = time.time()
-                print('Process time to load file: %s' %(end - start))
+                if debug: print('Process time to load file: %s' %(end - start))
             else:
                 estock_info=runTickerAlpha(ts,s[0])
                 pickle.dump( estock_info, open( "%s.p" %s[0], "wb" ) )

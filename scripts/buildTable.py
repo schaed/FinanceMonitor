@@ -255,8 +255,6 @@ if doStocks:
         stockInput = formatInput(stock, s[0],spy_info, spy=spy)
         if stockInput!=None:
             entries+=[stockInput]
-        j+=1
-    #entries+=[formatInput(stock_info, ticker,spy_info,spy=spy)]
     
     b.makeHTMLTable(outdir+'stockinfo.html',columns=columns,entries=entries)
 
