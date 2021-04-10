@@ -24,6 +24,45 @@ doStocks=True
 loadFromPickle=True
 doETFs=True
 doPDFs=False
+debug=False
+
+def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
+    # plotting
+    plt.clf()
+    plt.plot(xaxis,yaxis)
+    plt.gcf().autofmt_xdate()
+    plt.ylabel(yname)
+    plt.xlabel(xname)
+    if title!="":
+        plt.title(title)
+    for h in hlines:
+        plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
+    if doSupport:
+        techindicators.supportLevels(my_stock_info)
+    if draw: plt.show()
+    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
+    plt.savefig(outdir+'%s.png' %(saveName))
+    if not draw: plt.close()
+
+def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title=''):
+    # plotting
+    j=0
+    for y in yaxis:
+        plt.plot(xaxis,y,color=colors[j],label=labels[j])
+        j+=1
+    plt.gcf().autofmt_xdate()
+    plt.ylabel(yname)
+    plt.xlabel(xname)
+    if title!="":
+        plt.title(title)
+    for h in hlines:
+        plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
+    plt.legend(loc="upper left")
+    if draw: plt.show()
+    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
+    plt.savefig(outdir+'%s.png' %(saveName))
+    if not draw: plt.close()
+    
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -53,8 +92,8 @@ def CandleStick(data, ticker):
             volume=True, 
             mav=(200),
             addplot=ap0,
-            returnfig=True,
-            savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
+            returnfig=True) #,
+            #savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
     
 
         # Configure chart legend and title
@@ -63,7 +102,7 @@ def CandleStick(data, ticker):
     # Save figure to file
     if doPDFs: fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
     fig.savefig(outdir+'test-mplfiance_'+ticker+'.png')
-    techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ],outdir=outdir)
+    techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ],outdir=outdir,doPDF=doPDFs)
 
     # adds below as a sub-plot
     #ap2 = [ mpf.make_addplot(df['UpperB'],color='g',panel=2),  # panel 2 specified
@@ -93,6 +132,7 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     my_stock_info5y['year5_return']=my_stock_info5y['adj_close']/my_stock_info5y['adj_close'][0]-1
     market5y['year5_return']=market5y['adj_close']/market5y['adj_close'][0]-1
     # comparison to the market
+    plt.clf()
     plt.plot(my_stock_info5y.index,my_stock_info5y['year5_return'],color='blue',label=ticker)    
     plt.plot(market5y.index,     market5y['year5_return'],   color='red', label='SPY')    
     # beautify the x-labels
@@ -113,78 +153,28 @@ def GetTimeSlot(stock, days=365):
     return date
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     #plt.plot(stock_info.index,stock_info['close'])
-    techindicators.supportLevels(my_stock_info)
-    xmins = min(my_stock_info.index)
-    xmaxs = max(my_stock_info.index)
+    
     
     if not draw:
         plt.ioff()
-    plt.plot(my_stock_info.index,my_stock_info['adj_close'])
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Closing price')
-    plt.xlabel('Date')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'price_support%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'price_support%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    plt.plot(my_stock_info.index,my_stock_info['copp'])    
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Coppuck Curve')
-    plt.xlabel('Date')
-    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'copp%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'copp%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    plt.plot(my_stock_info.index,my_stock_info['sharpe'])    
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Sharpe Ratio')
-    plt.xlabel('Date')
-    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'sharpe%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'sharpe%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    plt.plot(my_stock_info.index,my_stock_info['beta'])
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Beta')
-    plt.xlabel('Date')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'beta%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'beta%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    plt.plot(my_stock_info.index,my_stock_info['alpha'])    
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Alpha')
-    plt.xlabel('Date')
-    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
-    plt.title(' Alpha')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'alpha%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'alpha%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    plt.plot(my_stock_info.index,my_stock_info['rsquare'])    
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('R-squared')
-    plt.xlabel('Date')
-    plt.hlines(0.7,xmin=xmins, xmax=xmaxs,colors='black')
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'rsquare%s_%s.pdf' %(plttext,ticker)) 
-    plt.savefig(outdir+'rsquare%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
-    # CMF
-    plt.plot(my_stock_info.index,my_stock_info['cmf'])    
-    # beautify the x-labels
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('CMF')
-    plt.xlabel('Date')
-    plt.hlines(0.2,xmin=xmins, xmax=xmaxs,colors='green',linestyle='dotted')
-    plt.hlines(0.0,xmin=xmins, xmax=xmaxs,colors='black')
-    plt.hlines(-0.2,xmin=xmins, xmax=xmaxs,colors='red',linestyle='dotted')    
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'cmf%s_%s.pdf' %(plttext,ticker))
-    plt.savefig(outdir+'cmf%s_%s.png' %(plttext,ticker))
-    if not draw: plt.close()
+    MakePlot(my_stock_info.index, my_stock_info['adj_close'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info)
+    MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')])
+    MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='beta%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title=' Alpha')
+    MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')])
+    MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')])
+    MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker))    
+    MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker))
+
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker))
+    if 'aroon' in my_stock_info:
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VMAP10','VMAP14','VMAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))     
+
     # comparison to the market
     plt.plot(my_stock_info.index,my_stock_info['yearly_return'],color='blue',label=ticker)    
     plt.plot(market.index,     market['yearly_return'],   color='red', label='SPY')    
@@ -237,15 +227,17 @@ def AddInfo(stock,market):
     start = time.time()
     stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
     stock['stochK'],stock['stochD']=techindicators.stoch(stock['high'],stock['low'],stock['close'],14,3,3)    
-    #stock['aroon']=techindicators.aroon(stock['high'],stock['low'],14)
     stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
-    stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)    
-    #stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
-    #stock['vwap']=techindicators.vwap(stock['high'],stock['low'],stock['close'],14)
+    stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
+    stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
+    #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
+    stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
+    stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
+    stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     end = time.time()
-    print('Process time to new: %s' %(end - start))
-    
+    if debug: print('Process time to new: %s' %(end - start))
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
     stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
     stock_1y = GetTimeSlot(stock)
@@ -271,9 +263,7 @@ def is_date(string, fuzzy=False):
     
 def runTickerAlpha(ts, ticker):
     
-    #a=ts.get_daily(ticker,'full')
     a=ts.get_daily_adjusted(ticker,'full')
-    #print(a)
     a_new={}
     cols = ['Date','open','high','low','close','volume']
     cols = ['Date','open','high','low','close','adj_close','volume','dividendamt','splitcoef']
@@ -303,7 +293,6 @@ def runTickerAlpha(ts, ticker):
     output['volume'] = output['volume'].astype(np.int64)
     output = output.set_index('Date')
     output = output.sort_index()
-    #print(output)
     return output
     
 def runTicker(api, ticker):
@@ -313,8 +302,7 @@ def runTicker(api, ticker):
     fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")  
     trade_days = api.get_bars(ticker, TimeFrame.Day, fouryao, d1, 'raw').df
     return trade_days
-    #print(ticker)
-    #print(trade_days)
+
 ALPACA_ID = os.getenv('ALPACA_ID')
 ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
 ALPHA_ID = os.getenv('ALPHA_ID')
@@ -368,7 +356,7 @@ if doStocks:
             start = time.time()
             AddInfo(tstock_info, spy)
             end = time.time()
-            print('Process time to add info: %s' %(end - start))
+            if debug: print('Process time to add info: %s' %(end - start))
         except ValueError:
             print('Error processing %s' %s[0])
             j+=1
@@ -412,18 +400,18 @@ if doETFs:
             start = time.time()
             AddInfo(estock_info, spy)
             end = time.time()
-            print('Process time to add info: %s' %(end - start))
+            if debug: print('Process time to add info: %s' %(end - start))
         except ValueError:
             print('Error processing %s' %s[0])
             continue
         start = time.time()
         estock_info = GetTimeSlot(estock_info) # gets the one year timeframe
         end = time.time()
-        print('Process time to get time slot: %s' %(end - start))
+        if debug: print('Process time to get time slot: %s' %(end - start))
         start = time.time()
         DrawPlots(estock_info,s[0],spy_1year)
         end = time.time()
-        print('Process time to draw plots: %s' %(end - start))
+        if debug: print('Process time to draw plots: %s' %(end - start))
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4],linkIndex=0)
         os.chdir(cdir)

@@ -39,6 +39,18 @@ def AddInfo(stock,market):
     #stock['rsquare']=techindicators.rollingRsquare(stock,14)
     stock['rsquare']=techindicators.rollingRsquare(stock,14,spy)
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
+    stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
+    stock['stochK'],stock['stochD']=techindicators.stoch(stock['high'],stock['low'],stock['close'],14,3,3)    
+    stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
+    stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
+    stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
+    #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    #stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
+    stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
+    stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
+    stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
+    stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
+    stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']
     
 def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
@@ -101,7 +113,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     
     # label the price as green if above the 200 day moving average
     entry=-1
-    input_list = ['sma10','sma20','sma100','sma200','rstd10']
+    input_list = ['sma10','sma20','sma100','sma200','rstd10','cci','chosc','force']
     color='red'
     if stock['close'][entry]>stock['sma200'][entry]:
         color='green'
@@ -121,7 +133,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     
     for j in input_list:
         info_list += [stock[j][entry]]
-    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare']:
+    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff']:
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
     return info_list
     
@@ -211,7 +223,7 @@ print(spy)
 
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','alpha','beta','sharpe','daily_return_stddev14','rsquare']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0

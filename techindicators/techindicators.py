@@ -430,7 +430,7 @@ def vortex(a,b,c,d):
 # Average Directional Index (ADX)
 # a is array of high prices, b is array of low prices
 # c is array of close prices, d is number of periods
-def adx(a,b,c,d):
+def adx(a,b,c,d, sameSize=True):
     tr = np.zeros(len(a))
     hph = np.zeros(len(a))
     pll = np.zeros(len(a))
@@ -473,20 +473,35 @@ def adx(a,b,c,d):
     for l in range(d,len(dx)):
         adx[l] = (adx[l-1]*(d-1)+dx[l])/d
     adx = adx[d-1:]
+    
     return p,n,adx
-# should add
+
+def getmaxposition(j):
+    return len(j) - np.argmax(j) -1
+def getminposition(j):
+    return len(j) - np.argmin(j) -1
+# 
 # Aroon Oscillator
 # a is array of high prices, b is array of low prices
 # c is number of periods for calculation
-def aroon(a,b,c):
-    up = np.zeros(len(a))
-    down = np.zeros(len(a))
-    for i in range(c,len(a)):
-        up[i] = 100*(1-(i-np.amax(np.where(a[0:i+1]==np.amax(a[i-c:i+1]))))/c)
-        down[i] = 100*(1-(i-np.amax(np.where(b[0:i+1]==np.amin(b[i-c:i+1]))))/c)
-    up = up[c:]
-    down = down[c:]
+def aroon(a,b,c, sameSize=True):
+    up   = 100.0*(1.0 - (a.rolling(c).apply(getmaxposition))/c)
+    down = 100.0*(1.0 - (a.rolling(c).apply(getminposition))/c)
+    if not sameSize:
+        up = up[c:]
+        down = down[c:]
     return up,down,(up-down)
+    #up = np.zeros(len(a))
+    #down = np.zeros(len(a))
+    #for i in range(c,len(a)):
+    #    up[i] = 100*(1-(i-np.amax(np.where(a[0:i+1]==np.amax(a[i-c:i+1]))))/c)
+    #    down[i] = 100*(1-(i-np.amax(np.where(b[0:i+1]==np.amin(b[i-c:i+1]))))/c)
+    #up = up[c:]
+    #down = down[c:]
+    #print(up - upA)
+    #print(down - downA)
+    #return up,down,(up-down)
+    
 #
 # Chandelier Exits
 # a is array of high prices, b is array of low prices, 
@@ -559,9 +574,17 @@ def cmf(a,b,c,d,e,sameSize=True):
     #print(result - resulta)
     #return result
 
-# TODO add
+# 
 # https://www.investopedia.com/terms/v/vwap.asp
 # vwap - volume weighted trade. really only used during the day
+# a is the price
+# b is the high
+# c is the low
+# d is the volume
+# e is the period to average over
+def vwap(a,b,c,d,e):
+    PV = d*(a+b+c)/3.0
+    return PV.rolling(e).sum()/d.rolling(e).sum();
 
 # 
 # Chaikin Oscillator
@@ -729,7 +752,7 @@ def supportLevels(data):
     return levels
 
 # plot the support levels
-def plot_support_levels(ticker,df,plots=[],outdir=''):
+def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
   
     levels = getMinLevels(df)
     #sline = []
@@ -744,8 +767,8 @@ def plot_support_levels(ticker,df,plots=[],outdir=''):
             volume=True,
             mav=(200),
             returnfig=True,
-            addplot=plots,
-            savefig=outdir+'test-mplfiance_support_'+ticker+'.pdf')
+            addplot=plots)
+            #savefig=outdir+'test-mplfiance_support_'+ticker+'.pdf')
     
     axes[0].legend(['SMA200'])
     for level in levels:
@@ -754,8 +777,8 @@ def plot_support_levels(ticker,df,plots=[],outdir=''):
         axes[0].text(mylim[0]+5, level[1], ' %0.2f' %level[1], fontsize=8)
  #   fig.show()
     # Save figure to file
-    fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.pdf')
     fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.png')
+    if doPDF: fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.pdf')
   #ax.xaxis.set_major_formatter(date_format)
   #fig.autofmt_xdate()
   #fig.tight_layout()
