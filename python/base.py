@@ -42,9 +42,9 @@ def makeHTMLIndex(outFileName,title, jetNames):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
+def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0):
 
-    plots = glob.glob(filterPattern+'*.png')
+    plots = glob.glob(filterPattern+'.png')
 
     with open(outFileName, 'w') as outFile:
         # write HTML header
@@ -65,7 +65,7 @@ def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
 
-        plots = glob.glob(filterPattern+'*.png')
+        plots = glob.glob(filterPattern+'.png')
         outFile.write("<h2> %s - %s </h2>" %(title,describe))
         outFile.write('<table style="width:100%">')
         outFile.write("<tr>\n")
@@ -732,7 +732,7 @@ stock_list = [
         ['TU',1.0,55.0,'NASDAQ','tuesday morning corp'], # tuesday morning corp
         ['SXI',1.0,155.0,'NYSE','standex'], # standex
         ['MMM',132.0,170.0,'NYSE','3M'], # 3M
-        ['TSO',50.0,105.0,'NYSE','Tesoro'], # Tesoro
+        #['TSO',50.0,105.0,'NYSE','Tesoro'], # Tesoro
     #['NTI',20.0,30.0], # northern tier refinery. pays 15 % dividend
         ['INTC',25.0,34.0,'NASDAQ','intel'], # intel 3.55% dividend
         ['NVDA',25.0,234.0,'NASDAQ','nvidia-graphics processing chips'], # nvidia 0.55% dividend    
@@ -818,7 +818,7 @@ stock_list = [
         ['WPM',10.0,20.0,'NYSE','Silver Wheaton Corp'], # Silver Wheaton Corp 1.6% dividend
         ['EXK',1.0,4.0,'NYSE','Silver mine'], # Silver mine 22% dividend
         #['HCHDF',0.2,2.0], # Silver mine 22% dividend
-        ['GG',10.0,20.0,'NYSE','Goldcorp mining'], # Goldcorp mining company 1.6% dividend
+        #['GG',10.0,20.0,'NYSE','Goldcorp mining'], # Goldcorp mining company 1.6% dividend
         ['NEM',16.0,35.0,'NYSE','Newmont Mining gold mining'], # Newmont Mining gold mining company 0.4% dividend
         ['AUY',1.3,3.4,'NYSE','Yamana Gold mining'], # Yamana Gold mining company 2.5% dividend Canada
         ['NOA',1.3,4.0,'NYSE','Mining US.'], # Mining US. 2% dividend.
@@ -857,10 +857,10 @@ stock_list = [
         ['BBBY',40.0,70.0,'NASDAQ','bed bath and beyond'], # bed bath and beyond
         #['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
         ['TWTR',10.0,20.0,'NYSE','twitter'], # twitter
-        ['S',2.0,5.0,'NYSE','sprint'], # sprint
+        #['S',2.0,5.0,'NYSE','sprint'], # sprint
         ['TMUS',2.0,5.0,'NASDAQ','t-mobile'], # t-mobile
         ['HOG',40.0,55.0,'NYSE','harley davidson'], # 3% dividend harley davidson
-        ['PIR',5.0,10.0,'NYSE','pier 1'], # 3% dividend pier 1 imports
+        #['PIR',5.0,10.0,'NYSE','pier 1'], # 3% dividend pier 1 imports
         ['DDD',15.0,25.0,'NYSE','3D printing'], # 3D printing manufacturer
         ['XONE',10.0,15.0,'NASDAQ','3D printing exone'], # 3D printing manufacturer exone
         ['SSYS',20.0,40.0,'NASDAQ','3D printing'], # 3D printing manufacturer exone
@@ -869,8 +869,8 @@ stock_list = [
         ['DKNG',10.0,19.0,'NASDAQ','draft kings'], #        
         ['GPRO',10.0,19.0,'NASDAQ','go pro'], # go pro stock        
         ['QCOM',40.0,65.0,'NASDAQ','qualcomm'], # qualcomm - starting in drone market. 4% dividend
-        ['IXYS',10.0,15.0,'NASDAQ','parts manufacturer for drones'], # parts manufacturer for drones
-        ['INVN',4.0,10.0,'NASDAQ','motion control US'], # parts manufacturer for drones. motion control
+        #['IXYS',10.0,15.0,'NASDAQ','parts manufacturer for drones'], # parts manufacturer for drones
+        #['INVN',4.0,10.0,'NASDAQ','motion control US'], # parts manufacturer for drones. motion control
         ['STM',4.0,8.0,'NYSE','Geneva Semiconductor'], # parts manufacturer for drones. motion control. geneva based. won apple smart watch bid. 7.4% dividend
         ['MXL',16.0,30.0,'NYSE','maxlinear semiconductor'], # semiconductor manu.
         ['NBIX',40.0,60.0,'NASDAQ','bio pharma company'], # random bio pharma company. 0- dividend

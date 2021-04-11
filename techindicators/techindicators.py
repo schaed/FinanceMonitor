@@ -756,6 +756,10 @@ def supportLevels(data):
 
 # plot the support levels
 def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
+
+    # check that there are entries
+    if len(df['Open'])<1:
+        return
   
     levels = getMinLevels(df)
     #sline = []
