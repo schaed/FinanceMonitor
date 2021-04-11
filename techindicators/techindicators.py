@@ -774,8 +774,8 @@ def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
             volume=True,
             mav=(200),
             returnfig=True,
-            addplot=plots)
-            #savefig=outdir+'test-mplfiance_support_'+ticker+'.pdf')
+            addplot=plots) #,
+            #savefig=outdir+'test-mplfiance_support_'+ticker+'.png')
     
     axes[0].legend(['SMA200'])
     for level in levels:
@@ -786,6 +786,8 @@ def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
     # Save figure to file
     fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.png')
     if doPDF: fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.pdf')
+    del fig
+    del axes
   #ax.xaxis.set_major_formatter(date_format)
   #fig.autofmt_xdate()
   #fig.tight_layout()

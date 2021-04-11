@@ -11,8 +11,8 @@ import time
 import os
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
-#import matplotlib
-#matplotlib.use('Qt4Agg') 
+import matplotlib
+matplotlib.use('Agg') 
 import mplfinance as mpf
 draw=False
 outdir = b.outdir
@@ -40,6 +40,7 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
     plt.savefig(outdir+'%s.png' %(saveName))
     if not draw: plt.close()
+    plt.close()
 
 def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title=''):
     # plotting
@@ -92,7 +93,7 @@ def CandleStick(data, ticker):
             mav=(200),
             addplot=ap0,
             returnfig=True) #,
-            #savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
+            #savefig=outdir+'test-mplfiance_'+ticker+'.png')
     
 
         # Configure chart legend and title
@@ -102,7 +103,8 @@ def CandleStick(data, ticker):
     if doPDFs: fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
     fig.savefig(outdir+'test-mplfiance_'+ticker+'.png')
     techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ],outdir=outdir,doPDF=doPDFs)
-
+    del fig
+    del axes
     # adds below as a sub-plot
     #ap2 = [ mpf.make_addplot(df['UpperB'],color='g',panel=2),  # panel 2 specified
     #        mpf.make_addplot(df['LowerB'],color='b',panel=2),  # panel 2 specified
@@ -322,7 +324,7 @@ if doStocks:
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
         os.chdir(cdir)    
-
+        del tstock_info;
 if doETFs:
     j=0
     for s in b.etfs:
@@ -373,3 +375,4 @@ if doETFs:
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4],linkIndex=0)
         os.chdir(cdir)
+        del estock_info

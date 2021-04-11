@@ -22,6 +22,7 @@ def UpdateTable(stock, ticker, sqlcursor):
 
 # try to read back info. if not, then update the SQL database
 def ConfigTable(ticker, sqlcursor, ts, readType, j=0):
+
     stock = None
     try:
         stock = pd.read_sql('SELECT * FROM %s' %ticker, sqlcursor) #,index_col='Date')
@@ -53,6 +54,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0):
             print('%s could not load....' %ticker)
             return [],j
         UpdateTable(stock, ticker, sqlcursor)
+
     return stock,j
 
 def ALPACA_REST():

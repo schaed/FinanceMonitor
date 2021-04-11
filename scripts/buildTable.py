@@ -183,7 +183,7 @@ if doStocks:
         stockInput = formatInput(stock, s[0],spy_info, spy=spy)
         if stockInput!=None:
             entries+=[stockInput]
-    
+        del stock
     b.makeHTMLTable(outdir+'stockinfo.html',columns=columns,entries=entries)
 
 # build the sector ETFs
@@ -216,4 +216,5 @@ for s in b.etfs:
     #    j+=1
     #    continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
+    del stock;
 b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries,linkIndex=1)
