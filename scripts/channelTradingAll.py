@@ -175,7 +175,7 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if 'aroon' in my_stock_info:
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VMAP10','VMAP14','VMAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))     
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))     
 
     # comparison to the market
     plt.plot(my_stock_info.index,my_stock_info['yearly_return'],color='blue',label=ticker)    
