@@ -1,8 +1,6 @@
-from alpaca_trade_api.rest import TimeFrame
-from alpaca_trade_api.rest import REST
 from techindicators import techindicators # as techindicators
 #import techindicators as techindicators
-import alpaca_trade_api
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot
 import pandas as pd
 import numpy as np
 import sys,os
@@ -13,11 +11,11 @@ import time
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
 draw=False
-from alpha_vantage.timeseries import TimeSeries
-from dateutil.parser import parse
 outdir = b.outdir
 doStocks=True
 loadFromPickle=False
+loadSQL = True
+readType='full'
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
@@ -54,13 +52,6 @@ def AddInfo(stock,market):
     
 def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
-
-def GetTimeSlot(stock, days=180):
-    today=datetime.datetime.now()
-    past_date = today + datetime.timedelta(days=-1*days)
-    date=stock.truncate(before=past_date)
-    #date = stock[nearest(stock.index,past_date)]
-    return date[:1]
 
 def PercentageChange(percent_change):
     color='red'
@@ -137,77 +128,14 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
     return info_list
     
-def is_date(string, fuzzy=False):
-    """
-    Return whether the string can be interpreted as a date.
-
-    :param string: str, string to check for date
-    :param fuzzy: bool, ignore unknown tokens in string if True
-    """
-    try: 
-        parse(string, fuzzy=fuzzy)
-        return True
-
-    except ValueError:
-        return False
-    
-def runTickerAlpha(ts, ticker):
-    
-    #a=ts.get_daily(ticker,'full')
-    a=ts.get_daily_adjusted(ticker,'full')
-    #print(a)
-    a_new={}
-    cols = ['Date','open','high','low','close','volume']
-    cols = ['Date','open','high','low','close','adj_close','volume','dividendamt','splitcoef']
-    my_floats = ['open','high','low','close']
-    my_floats = ['open','high','low','close','adj_close','volume','dividendamt','splitcoef']
-    
-    #'5. adjusted close', '6. volume', '7. dividend amount', '8. split coefficient'
-    for ki in cols:
-        a_new[ki]=[]
-    
-    for entry in a:
-        for key,i in entry.items():
-            if not is_date(key):
-                continue
-            #print(key)
-            a_new['Date']+=[key]
-            ij=0
-            todays_values = list(i.values())
-            for j in ['open','high','low','close','adj_close','volume','dividendamt','splitcoef']:
-                a_new[j]+=[todays_values[ij]]
-                ij+=1
-    # format
-    output = pd.DataFrame(a_new)
-    output['Date']=pd.to_datetime(output['Date'].astype(str), format='%Y-%m-%d')
-    output['Date']=pd.to_datetime(output['Date'])
-    output[my_floats]=output[my_floats].astype(float)
-    output['volume'] = output['volume'].astype(np.int64)
-    output = output.set_index('Date')
-    output = output.sort_index()
-    #print(output)
-    return output
-    
-def runTicker(api, ticker):
-    today=datetime.datetime.now()
-    yesterday = today + datetime.timedelta(days=-1)
-    d1 = yesterday.strftime("%Y-%m-%d")
-    fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")  
-    trade_days = api.get_bars(ticker, TimeFrame.Day, fouryao, d1, 'raw').df
-    return trade_days
-    #print(ticker)
-    #print(trade_days)
-ALPACA_ID = os.getenv('ALPACA_ID')
-ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
-ALPHA_ID = os.getenv('ALPHA_ID')
-api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
-ts = TimeSeries(key=ALPHA_ID)
-#spy = runTicker(api,'SPY')
+api = ALPACA_REST()
+ts = ALPHA_TIMESERIES()
 ticker='X'
 ticker='TSLA'
 #stock_info = runTicker(api,ticker)
 #stock_info=runTickerAlpha(ts,ticker)
 spy=None
+sqlcursor = SQL_CURSOR()
 if loadFromPickle and os.path.exists("SPY.p"):
     spy = pickle.load( open( "SPY.p", "rb" ) )    
 else:
@@ -215,11 +143,8 @@ else:
     pickle.dump( spy, open( "SPY.p", "wb" ) )
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 print(spy['close'][0])
-#spy['adj_close']/=spy['adj_close'][0]
 print(spy)
-#stock_info['adj_close']/=stock_info['adj_close'][0]
-#stock_info['adj_close']/=spy['adj_close']
-#print(stock_info)
+
 
 spy_info = GetPastPerformance(spy)
 # build html table
@@ -241,17 +166,20 @@ if doStocks:
         print(s[0])
         sys.stdout.flush()    
         stock=None
-        try:
-            if loadFromPickle and os.path.exists("%s.p" %s[0]):
-                stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
-            else:
-                stock=runTickerAlpha(ts,s[0])
-                pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
-                j+=1
-        except ValueError:
-            print('ERROR processing stock...ValueError %s' %s[0])
-            j+=1
+        stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+        if len(stock)==0:
             continue
+        #try:
+        #    if loadFromPickle and os.path.exists("%s.p" %s[0]):
+        #        stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
+        #    else:
+        #        stock=runTickerAlpha(ts,s[0])
+        #        pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
+        #        j+=1
+        #except ValueError:
+        #    print('ERROR processing stock...ValueError %s' %s[0])
+        #    j+=1
+        #    continue
         stockInput = formatInput(stock, s[0],spy_info, spy=spy)
         if stockInput!=None:
             entries+=[stockInput]
@@ -273,25 +201,19 @@ for s in b.etfs:
     print(s[0])
     sys.stdout.flush()
     stock=None
-    try:
-        if loadFromPickle and os.path.exists("%s.p" %s[0]):
-            stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
-        else:
-            stock=runTickerAlpha(ts,s[0])
-            pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
-            j+=1
-    except ValueError:
-        print('ERROR processing...ValueError %s' %s[0])
-        j+=1
+    stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+    if len(stock)==0:
         continue
+    #try:
+    #    if loadFromPickle and os.path.exists("%s.p" %s[0]):
+    #        stock = pickle.load( open( "%s.p" %s[0], "rb" ) )
+    #    else:
+    #        stock=runTickerAlpha(ts,s[0])
+    #        pickle.dump( stock, open( "%s.p" %s[0], "wb" ) )
+    #        j+=1
+    #except ValueError:
+    #    print('ERROR processing...ValueError %s' %s[0])
+    #    j+=1
+    #    continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
 b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries,linkIndex=1)
-
-if draw:
-    #plt.plot(stock_info.index,stock_info['close'])
-    plt.plot(stock_info.index,stock_info['adj_close'])    
-    # beautify the x-labels
-    plt.gcf().autofmt_xdate()
-    plt.ylabel('Closing price')
-    plt.xlabel('Date')
-    plt.show()
