@@ -378,7 +378,7 @@ if doStocks:
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
         os.chdir(cdir)    
-        j+=1
+
 if doETFs:
     j=0
     for s in b.etfs:
