@@ -75,6 +75,8 @@ def CandleStick(data, ticker):
     df['KeltUpper'] = data['KeltUpper']
     df['sma200'] = data['sma200']
 
+    if len(df['Open'])<1:
+        return
     # Plot candlestick.
     # Add volume.
     # Add moving averages: 3,6,9.
@@ -334,7 +336,7 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        #if s[0]!='TSLA':
+        #if s[0]!='S':
         #    continue
         if s[0]=='SPY':
             continue

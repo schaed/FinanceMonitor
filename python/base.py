@@ -42,9 +42,9 @@ def makeHTMLIndex(outFileName,title, jetNames):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
+def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0):
 
-    plots = glob.glob(filterPattern+'*.png')
+    plots = glob.glob(filterPattern+'.png')
 
     with open(outFileName, 'w') as outFile:
         # write HTML header
@@ -65,7 +65,7 @@ def makeHTML(outFileName,title,filterPattern='',describe='',linkIndex=0):
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
 
-        plots = glob.glob(filterPattern+'*.png')
+        plots = glob.glob(filterPattern+'.png')
         outFile.write("<h2> %s - %s </h2>" %(title,describe))
         outFile.write('<table style="width:100%">')
         outFile.write("<tr>\n")
@@ -818,7 +818,7 @@ stock_list = [
         ['WPM',10.0,20.0,'NYSE','Silver Wheaton Corp'], # Silver Wheaton Corp 1.6% dividend
         ['EXK',1.0,4.0,'NYSE','Silver mine'], # Silver mine 22% dividend
         #['HCHDF',0.2,2.0], # Silver mine 22% dividend
-        ['GG',10.0,20.0,'NYSE','Goldcorp mining'], # Goldcorp mining company 1.6% dividend
+        #['GG',10.0,20.0,'NYSE','Goldcorp mining'], # Goldcorp mining company 1.6% dividend
         ['NEM',16.0,35.0,'NYSE','Newmont Mining gold mining'], # Newmont Mining gold mining company 0.4% dividend
         ['AUY',1.3,3.4,'NYSE','Yamana Gold mining'], # Yamana Gold mining company 2.5% dividend Canada
         ['NOA',1.3,4.0,'NYSE','Mining US.'], # Mining US. 2% dividend.
@@ -857,7 +857,7 @@ stock_list = [
         ['BBBY',40.0,70.0,'NASDAQ','bed bath and beyond'], # bed bath and beyond
         #['VA',30.0,70.0,'NASDAQ','virgin atlantic'], # virgin atlantic
         ['TWTR',10.0,20.0,'NYSE','twitter'], # twitter
-        ['S',2.0,5.0,'NYSE','sprint'], # sprint
+        #['S',2.0,5.0,'NYSE','sprint'], # sprint
         ['TMUS',2.0,5.0,'NASDAQ','t-mobile'], # t-mobile
         ['HOG',40.0,55.0,'NYSE','harley davidson'], # 3% dividend harley davidson
         #['PIR',5.0,10.0,'NYSE','pier 1'], # 3% dividend pier 1 imports
