@@ -13,8 +13,8 @@ import time
 import os
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
-#import matplotlib
-#matplotlib.use('Qt4Agg') 
+import matplotlib
+matplotlib.use('Agg') 
 import mplfinance as mpf
 draw=False
 from alpha_vantage.timeseries import TimeSeries
