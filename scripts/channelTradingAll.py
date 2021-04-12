@@ -1,8 +1,6 @@
-from alpaca_trade_api.rest import TimeFrame
-from alpaca_trade_api.rest import REST
 from techindicators import techindicators
 #import techindicators as techindicators
-import alpaca_trade_api
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot
 import pandas as pd
 import numpy as np
 import sys
@@ -17,15 +15,14 @@ import matplotlib
 matplotlib.use('Agg') 
 import mplfinance as mpf
 draw=False
-from alpha_vantage.timeseries import TimeSeries
-from dateutil.parser import parse
 outdir = b.outdir
 doStocks=True
 loadFromPickle=True
 doETFs=True
 doPDFs=False
 debug=False
-
+loadSQL=True
+readType='full'
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
     # plotting
     plt.clf()
@@ -43,6 +40,7 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
     plt.savefig(outdir+'%s.png' %(saveName))
     if not draw: plt.close()
+    plt.close()
 
 def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title=''):
     # plotting
@@ -95,7 +93,7 @@ def CandleStick(data, ticker):
             mav=(200),
             addplot=ap0,
             returnfig=True) #,
-            #savefig=outdir+'test-mplfiance_'+ticker+'.pdf')
+            #savefig=outdir+'test-mplfiance_'+ticker+'.png')
     
 
         # Configure chart legend and title
@@ -105,7 +103,8 @@ def CandleStick(data, ticker):
     if doPDFs: fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
     fig.savefig(outdir+'test-mplfiance_'+ticker+'.png')
     techindicators.plot_support_levels(ticker,df,[mpf.make_addplot(df['sma200'],color='r') ],outdir=outdir,doPDF=doPDFs)
-
+    del fig
+    del axes
     # adds below as a sub-plot
     #ap2 = [ mpf.make_addplot(df['UpperB'],color='g',panel=2),  # panel 2 specified
     #        mpf.make_addplot(df['LowerB'],color='b',panel=2),  # panel 2 specified
@@ -146,17 +145,10 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     if doPDFs: plt.savefig(outdir+'longmarket%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'longmarket%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-        
-def GetTimeSlot(stock, days=365):
-    today=datetime.datetime.now()
-    past_date = today + datetime.timedelta(days=-1*days)
-    date=stock.truncate(before=past_date)
-    #date = stock[nearest(stock.index,past_date)]
-    return date
+
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     #plt.plot(stock_info.index,stock_info['close'])
-    
-    
+
     if not draw:
         plt.ioff()
     MakePlot(my_stock_info.index, my_stock_info['adj_close'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info)
@@ -169,7 +161,9 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
     MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker))    
     MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')])
     MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')])
 
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker))
     if 'aroon' in my_stock_info:
@@ -232,12 +226,15 @@ def AddInfo(stock,market):
     stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
     stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
+    stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
     stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
+    stock['market'] = market['adj_close']
+    stock['corr14']=stock['adj_close'].rolling(14).corr(spy['market'])
     end = time.time()
     if debug: print('Process time to new: %s' %(end - start))
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
@@ -249,79 +246,25 @@ def AddInfo(stock,market):
     else:
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
 
-def is_date(string, fuzzy=False):
-    """
-    Return whether the string can be interpreted as a date.
-
-    :param string: str, string to check for date
-    :param fuzzy: bool, ignore unknown tokens in string if True
-    """
-    try: 
-        parse(string, fuzzy=fuzzy)
-        return True
-
-    except ValueError:
-        return False
-    
-def runTickerAlpha(ts, ticker):
-    
-    a=ts.get_daily_adjusted(ticker,'full')
-    a_new={}
-    cols = ['Date','open','high','low','close','volume']
-    cols = ['Date','open','high','low','close','adj_close','volume','dividendamt','splitcoef']
-    my_floats = ['open','high','low','close']
-    my_floats = ['open','high','low','close','adj_close','volume','dividendamt','splitcoef']
-    
-    #'5. adjusted close', '6. volume', '7. dividend amount', '8. split coefficient'
-    for ki in cols:
-        a_new[ki]=[]
-    
-    for entry in a:
-        for key,i in entry.items():
-            if not is_date(key):
-                continue
-            #print(key)
-            a_new['Date']+=[key]
-            ij=0
-            todays_values = list(i.values())
-            for j in ['open','high','low','close','adj_close','volume','dividendamt','splitcoef']:
-                a_new[j]+=[todays_values[ij]]
-                ij+=1
-    # format
-    output = pd.DataFrame(a_new)
-    output['Date']=pd.to_datetime(output['Date'].astype(str), format='%Y-%m-%d')
-    output['Date']=pd.to_datetime(output['Date'])
-    output[my_floats]=output[my_floats].astype(float)
-    output['volume'] = output['volume'].astype(np.int64)
-    output = output.set_index('Date')
-    output = output.sort_index()
-    return output
-    
-def runTicker(api, ticker):
-    today=datetime.datetime.now()
-    yesterday = today + datetime.timedelta(days=-1)
-    d1 = yesterday.strftime("%Y-%m-%d")
-    fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")  
-    trade_days = api.get_bars(ticker, TimeFrame.Day, fouryao, d1, 'raw').df
-    return trade_days
-
-ALPACA_ID = os.getenv('ALPACA_ID')
-ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
-ALPHA_ID = os.getenv('ALPHA_ID')
-api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
-ts = TimeSeries(key=ALPHA_ID)
+api = ALPACA_REST()
+ts = ALPHA_TIMESERIES()
 spy = runTicker(api,'SPY')
 ticker='TSLA'
 #ticker='TSLA'
 stock_info=None
 spy=None
+sqlcursor = SQL_CURSOR()
+spy,j = ConfigTable('SPY', sqlcursor,ts,readType)
+print('spy')
+print(spy)
 if loadFromPickle and os.path.exists("%s.p" %ticker):
     stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
-    spy = pickle.load( open( "SPY.p", "rb" ) )
+    #spy = pickle.load( open( "SPY.p", "rb" ) )
+    #spy.to_sql('SPY',sqlcursor,if_exists='append',index=True)
 else:
     #stock_info = runTicker(api,ticker)
-    stock_info=runTickerAlpha(ts,ticker)
-    spy=runTickerAlpha(ts,'SPY')
+    stock_info=runTickerAlpha(ts,ticker,readType)
+    spy=runTickerAlpha(ts,'SPY',readType)
     pickle.dump( spy, open( "SPY.p", "wb" ) )
     pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
 # add info
@@ -336,7 +279,7 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        #if s[0]!='S':
+        #if s[0]!='FUBO':
         #    continue
         if s[0]=='SPY':
             continue
@@ -346,23 +289,29 @@ if doStocks:
             time.sleep(56)
         print(s[0])
         sys.stdout.flush()
-        tstock_info=None
+        
+        tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+
+        if len(tstock_info)==0:
+            continue
         #if j>2:
         #    break
-        try:
-            if loadFromPickle and os.path.exists("%s.p" %s[0]):
-                start = time.time()
-                tstock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
-                end = time.time()
-                if debug: print('Process time to load file: %s' %(end - start))
-            else:
-                tstock_info=runTickerAlpha(ts,s[0])
-                pickle.dump( tstock_info, open( "%s.p" %s[0], "wb" ) )
-                j+=1
-        except ValueError:
-            print('ERROR processing...ValueError %s' %s[0])
-            j+=1
-            continue
+        #try:
+        #    if loadFromPickle and os.path.exists("%s.p" %s[0]):
+        #        start = time.time()
+        #        tstock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+        #        tstock_info.to_sql(s[0],sqlcursor,if_exists='append',index=True)
+        #        end = time.time()
+        #        if debug: print('Process time to load file: %s' %(end - start))
+        #    else:
+        #        tstock_info=runTickerAlpha(ts,s[0],readType)
+        #        pickle.dump( tstock_info, open( "%s.p" %s[0], "wb" ) )
+        #        tstock_info.to_sql(s[0],sqlcursor,if_exists='append',index=True)
+        #        j+=1
+        #except ValueError:
+        #    print('ERROR processing...ValueError %s' %s[0])
+        #    j+=1
+        #    continue
         try:
             start = time.time()
             AddInfo(tstock_info, spy)
@@ -375,12 +324,13 @@ if doStocks:
         tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
         start = time.time()
         DrawPlots(tstock_info,s[0],spy_1year)
+        LongTermPlot(tstock_info,spy,ticker=s[0])
         end = time.time()
         print('Process time to add draw: %s' %(end - start))
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
         os.chdir(cdir)    
-
+        del tstock_info;
 if doETFs:
     j=0
     for s in b.etfs:
@@ -391,20 +341,25 @@ if doETFs:
         print(s[0])
         sys.stdout.flush()
         estock_info=None
-        try:
-            if loadFromPickle and os.path.exists("%s.p" %s[0]):
-                start = time.time()
-                estock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
-                end = time.time()
-                if debug: print('Process time to load file: %s' %(end - start))
-            else:
-                estock_info=runTickerAlpha(ts,s[0])
-                pickle.dump( estock_info, open( "%s.p" %s[0], "wb" ) )
-                j+=1
-        except ValueError:
-            print('ERROR processing...ValueError %s' %s[0])
-            j+=1
+        estock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+        if len(estock_info)==0:
             continue
+        #try:
+        #    if loadFromPickle and os.path.exists("%s.p" %s[0]):
+        #        start = time.time()
+        #        estock_info = pickle.load( open( "%s.p" %s[0], "rb" ) )
+        #        estock_info.to_sql(s[0],sqlcursor,if_exists='append',index=True)
+        #        end = time.time()
+        #        if debug: print('Process time to load file: %s' %(end - start))
+        #    else:
+        #        estock_info=runTickerAlpha(ts,s[0],readType)
+        #        pickle.dump( estock_info, open( "%s.p" %s[0], "wb" ) )
+        #        estock_info.to_sql(s[0],sqlcursor,if_exists='append',index=True)
+        #        j+=1
+        #except ValueError:
+        #    print('ERROR processing...ValueError %s' %s[0])
+        #    j+=1
+        #    continue
         LongTermPlot(estock_info,spy,ticker=s[0])
 
         try:
@@ -426,3 +381,4 @@ if doETFs:
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4],linkIndex=0)
         os.chdir(cdir)
+        del estock_info

@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 import matplotlib.dates as mpl_dates
 from numpy_ext import rolling_apply
+import scipy as sp
+import scipy.fftpack
 #
 # Simple Moving Average
 # a is an array of prices, b is a period for averaging
@@ -348,6 +350,14 @@ def boll(a,b,c,d,sameSize=True):
         upper = np.concatenate((np.zeros(len(a)-len(upper)),upper))
         center = np.concatenate((np.zeros(len(a)-len(center)),center))
     return lower,center,upper
+
+#
+# Balance of Power 
+# a is an array of high, b is array of low, c close, d open
+# for the SMA calculation, e is the period. typically 14 days
+def bop(a,b,c,d,e):
+    BOP = (c-d)/(a-b)
+    return sma(BOP,e)
 #
 # Percentage price oscillator
 # a is an array of prices, b is the numer of periods for fast EMA
@@ -774,8 +784,8 @@ def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
             volume=True,
             mav=(200),
             returnfig=True,
-            addplot=plots)
-            #savefig=outdir+'test-mplfiance_support_'+ticker+'.pdf')
+            addplot=plots) #,
+            #savefig=outdir+'test-mplfiance_support_'+ticker+'.png')
     
     axes[0].legend(['SMA200'])
     for level in levels:
@@ -786,6 +796,8 @@ def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
     # Save figure to file
     fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.png')
     if doPDF: fig.savefig(outdir+'test-mplfiance_support_'+ticker+'.pdf')
+    del fig
+    del axes
   #ax.xaxis.set_major_formatter(date_format)
   #fig.autofmt_xdate()
   #fig.tight_layout()
