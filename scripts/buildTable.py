@@ -42,6 +42,8 @@ def AddInfo(stock,market):
     stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
     stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
+    stock['market'] = market['adj_close']
+    stock['corr14']=stock['adj_close'].rolling(14).corr(spy['market'])
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
     #stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
@@ -124,7 +126,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     
     for j in input_list:
         info_list += [stock[j][entry]]
-    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff']:
+    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff','corr14']:
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
     return info_list
     
@@ -145,10 +147,9 @@ spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 print(spy['close'][0])
 print(spy)
 
-
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0

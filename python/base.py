@@ -722,6 +722,7 @@ stock_list = [
         ['DIN',60.0,120.0,'NYSE','IHOP'], # IHOP 3.7%
         ['DENN',7.0,15.0,'NASDAQ','dennys'], # dennys - None
         ['F',10.0,15.0,'NYSE','ford'], # ford
+        ['BWA',10.0,15.0,'NYSE','automotive supply company based in michigan'], # BorgWarner
         ['GM',25.0,40.0,'NYSE','GM'], # GM
         ['TM',25.0,200.0,'NYSE','toyota'], # toyota 3.3%
         ['HMC',25.0,200.0,'NYSE','honda'], # honda 2%
@@ -752,6 +753,9 @@ stock_list = [
         ['TDOC',75.0,120.0,'NYSE','teladoc'], # online doctor
         ['HUM',145.0,190.0,'NYSE','humara'], # humara 1% dividend
         ['TFX',120.0,160.0,'NYSE','teleflex medical device, Wayne, PA'], # teleflex 1% dividend. medical devices. wayne, PA
+        ['FUBO',120.0,160.0,'NYSE','FUBO telecom company'],
+        ['IIVI',120.0,160.0,'NYSE','optical and semiconductor company in PA'],
+        ['PYPL',120.0,160.0,'NYSE','Paypal'],        
         ['FMS',10.0,160.0,'NYSE','Fresenius Medical supply, Germany'], # Fresenius 1% dividend. medical supply
         ['LMAT',10.0,16.0,'NASDAQ','le maitre'], # le maitre 1% dividend. medical devices.
         ['MSEX',23.0,35.0,'NASDAQ','NJ water company'], # NJ water company. 2.7% dividend
@@ -782,6 +786,8 @@ stock_list = [
         ['ABBV',50.0,70.0,'NYSE','pharma'], # pharma 4.0% dividend
         ['GLBS',5.0,70.0,'NASDAQ','globus maritime'], # globus maritime
         ['WDC',35.0,80.0,'NYSE','western digital'], # western digital 4.2% dividend
+        ['DELL',35.0,80.0,'NYSE','DELL'], # 
+        ['HPQ',35.0,80.0,'NYSE','HP inc'], # 
         ['STX',30.0,50.0,'NYSE','seagate'], # seagate 7% dividend
         ['BLK',200.0,500.0,'NYSE','black rock'], # black rock 2.9% dividend.
         ['CLGX',20.0,500.0,'NYSE','Corelogic. financial services'], # CoreLogic

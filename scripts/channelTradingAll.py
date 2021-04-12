@@ -161,7 +161,9 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
     MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker))    
     MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')])
     MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker))
+    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')])
 
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker))
     if 'aroon' in my_stock_info:
@@ -224,12 +226,15 @@ def AddInfo(stock,market):
     stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
     stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
+    stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
     stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
+    stock['market'] = market['adj_close']
+    stock['corr14']=stock['adj_close'].rolling(14).corr(spy['market'])
     end = time.time()
     if debug: print('Process time to new: %s' %(end - start))
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
@@ -274,7 +279,7 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        #if s[0]!='S':
+        #if s[0]!='FUBO':
         #    continue
         if s[0]=='SPY':
             continue
@@ -286,6 +291,7 @@ if doStocks:
         sys.stdout.flush()
         
         tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+
         if len(tstock_info)==0:
             continue
         #if j>2:
