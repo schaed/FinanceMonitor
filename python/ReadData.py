@@ -34,7 +34,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0):
         StartLoading = True
         if stock.index[-1].weekday()==4 and (today - stock.index[-1])<datetime.timedelta(days=4):
             StartLoading=False
-        if (today - stock.index[-1])>datetime.timedelta(days=1) and (StartLoading):
+        if (today - stock.index[-1])>datetime.timedelta(days=1,hours=12) and (StartLoading):
             try:
                 stockCompact=runTickerAlpha(ts,ticker,'compact')
                 j+=1
