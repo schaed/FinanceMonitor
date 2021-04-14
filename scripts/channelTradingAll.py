@@ -257,18 +257,18 @@ sqlcursor = SQL_CURSOR()
 spy,j = ConfigTable('SPY', sqlcursor,ts,readType)
 print('spy')
 print(spy)
-if loadFromPickle and os.path.exists("%s.p" %ticker):
-    stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
-    #spy = pickle.load( open( "SPY.p", "rb" ) )
-    #spy.to_sql('SPY',sqlcursor,if_exists='append',index=True)
-else:
-    #stock_info = runTicker(api,ticker)
-    stock_info=runTickerAlpha(ts,ticker,readType)
-    spy=runTickerAlpha(ts,'SPY',readType)
-    pickle.dump( spy, open( "SPY.p", "wb" ) )
-    pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
+#if loadFromPickle and os.path.exists("%s.p" %ticker):
+#    stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
+#    #spy = pickle.load( open( "SPY.p", "rb" ) )
+#    #spy.to_sql('SPY',sqlcursor,if_exists='append',index=True)
+#else:
+#    #stock_info = runTicker(api,ticker)
+#    stock_info=runTickerAlpha(ts,ticker,readType)
+#    spy=runTickerAlpha(ts,'SPY',readType)
+#    pickle.dump( spy, open( "SPY.p", "wb" ) )
+#    pickle.dump( stock_info, open( "%s.p" %ticker, "wb" ) )
 # add info
-if len(stock_info)==0:
+if len(spy)==0:
     print('ERROR - empy info %s' %ticker)
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 AddInfo(spy, spy)

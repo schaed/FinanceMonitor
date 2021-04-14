@@ -66,15 +66,17 @@ def GetPastPerformance(stock):
     day30 = GetTimeSlot(stock,30)
     day365 = GetTimeSlot(stock,365)
     entry=-1
+    entry_old=0
     input_list = ['sma10','sma20','sma100','sma200','rstd10']
     percent_change30=0.0; percent_change180=0.0;percent_change365=0.0
     percent_change = 100*(stock['close'][entry]-stock['open'][entry])/stock['open'][entry]
     if len(day30)>0:
-        percent_change30 = 100*(stock['adj_close'][entry]-day30['adj_close'][entry])/day30['adj_close'][entry]
+        percent_change30 = 100*(stock['adj_close'][entry]-day30['adj_close'][entry_old])/day30['adj_close'][entry]
     if len(day180)>0:
-        percent_change180 = 100*(stock['adj_close'][entry]-day180['adj_close'][entry])/day180['adj_close'][entry]
+        percent_change180 = 100*(stock['adj_close'][entry]-day180['adj_close'][entry_old])/day180['adj_close'][entry]
     if len(day365)>0:
-        percent_change365 = 100*(stock['adj_close'][entry]-day365['adj_close'][entry])/day365['adj_close'][entry]
+        percent_change365 = 100*(stock['adj_close'][entry]-day365['adj_close'][entry_old])/day365['adj_close'][entry]
+    #print([percent_change,percent_change30,percent_change180,percent_change365])
     return [percent_change,percent_change30,percent_change180,percent_change365]
 
 def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
@@ -162,8 +164,8 @@ if doStocks:
             continue
         if j%4==0 and j!=0:
             time.sleep(56)
-        #if j>0:
-        #    break
+        if j>0:
+            break
         print(s[0])
         sys.stdout.flush()    
         stock=None
