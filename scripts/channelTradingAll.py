@@ -286,8 +286,8 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        if s[0]!='TSLA':
-            continue
+        #if s[0]!='TSLA':
+        #    continue
         if s[0]=='SPY':
             continue
         if s[0].count('^'):
