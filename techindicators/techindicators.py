@@ -514,7 +514,34 @@ def aroon(a,b,c, sameSize=True):
     #print(up - upA)
     #print(down - downA)
     #return up,down,(up-down)
-    
+
+#The Ichimoku Cloud, also known as Ichimoku Kino Hyo consists of five plots and a cloud.
+#The default parameters of Ichimoku Cloud are 9, 26, 52, 26.
+#    Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2
+#    Kijun-sen (Base Line): (26-period high + 26-period low)/2
+#    Senkou Span A (Leading Span A): (Tenkan-sen + Kijun-sen)/2
+#    Senkou Span B (Leading Span B): (52-period high + 52-period low)/2
+#    Chikou Span (Lagging Span): Close plotted 26 days in the past
+# a high, b low, c=close, d = 9 rolling period, e = 26 day baseline averaging, f=52  low leading period
+def IchimokuCloud(a,b,c,d,e,f):
+    # Calculate Tenkan-sen
+    high_9 = a.rolling(d).max()
+    low_9 = b.rolling(d).min()
+    tenkan_sen_line = (high_9 + low_9) /2.0
+    # Calculate Kijun-sen
+    high_26 = a.rolling(e).max()
+    low_26 = b.rolling(e).min()
+    kijun_sen_line = (high_26 + low_26) / 2.0
+    # Calculate Senkou Span A
+    senkou_spna_A = ((tenkan_sen_line + kijun_sen_line) / 2).shift(26)
+    # Calculate Senkou Span B
+    high_52 = a.rolling(f).max()
+    low_52 = b.rolling(f).min()
+    senkou_spna_B = ((high_52 + low_52) / 2.0).shift(26)
+    # Calculate Chikou Span B
+    chikou_span = c.shift(-e)
+    return senkou_spna_A,senkou_spna_B,chikou_span
+
 #
 # Chandelier Exits
 # a is array of high prices, b is array of low prices, 
