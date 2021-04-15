@@ -1,4 +1,5 @@
 from techindicators import techindicators
+import talib
 #import techindicators as techindicators
 from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot
 import pandas as pd
@@ -72,7 +73,7 @@ def CandleStick(data, ticker):
     df.columns = ['Open', 'High', 'Low', 'Close','Volume']
     df['UpperB'] = data['BolUpper']        
     df['LowerB'] = data['BolLower']
-    df['KeltLower'] = data['KeltLower']        
+    df['KeltLower'] = data['KeltLower']
     df['KeltUpper'] = data['KeltUpper']
     df['sma200'] = data['sma200']
 
@@ -160,6 +161,9 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker))
     MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker))
     MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title=' Alpha')
+    MakePlot(my_stock_info.index, my_stock_info['adx'], xname='Date',yname='ADX',saveName='adx%s_%s' %(plttext,ticker), hlines=[(25.0,'black','dotted')],title=' ADX')
+    MakePlot(my_stock_info.index, my_stock_info['willr'], xname='Date',yname='Will %R',saveName='willr%s_%s' %(plttext,ticker), hlines=[(-20.0,'red','dotted'),(-80.0,'green','dotted')],title=' Will %R')
+    MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title=' Ultimate Oscillator')
     MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')])
     MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')])
     MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
@@ -173,8 +177,25 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if 'aroon' in my_stock_info:
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))     
-
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))
+    
+    # plot Ichimoku Cloud
+    plt.cla()
+    # Plot closing price and parabolic SAR
+    komu_cloud = my_stock_info[['adj_close','SAR']].plot()
+    plt.ylabel('Price')
+    plt.xlabel('Date')
+    komu_cloud.fill_between(my_stock_info.index, my_stock_info.senkou_spna_A, my_stock_info.senkou_spna_B,
+    where=my_stock_info.senkou_spna_A >= my_stock_info.senkou_spna_B, color='lightgreen')
+    komu_cloud.fill_between(my_stock_info.index, my_stock_info.senkou_spna_A, my_stock_info.senkou_spna_B,
+    where=my_stock_info.senkou_spna_A < my_stock_info.senkou_spna_B, color='lightcoral')
+    plt.grid(True)
+    plt.legend()
+    if draw: plt.show()
+    if doPDFs: plt.savefig(outdir+'komu%s_%s.pdf' %(plttext,ticker))
+    plt.savefig(outdir+'komu%s_%s.png' %(plttext,ticker))
+    if not draw: plt.close()
+    
     # comparison to the market
     plt.plot(my_stock_info.index,my_stock_info['yearly_return'],color='blue',label=ticker)    
     plt.plot(market.index,     market['yearly_return'],   color='red', label='SPY')    
@@ -201,6 +222,11 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if not draw: plt.close()
         
     CandleStick(my_stock_info,ticker)
+    if len(my_stock_info)>0:
+        if my_stock_info['CDLHAMMER'][-1]>0:
+            print('CDLABANDONEDBABY signal buy: %s' %ticker)
+        if my_stock_info['CDLHAMMER'][-1]>0:
+            print('Abandoned baby signal buy: %s' %ticker)
     
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
@@ -235,15 +261,20 @@ def AddInfo(stock,market):
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
     stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
+    stock['willr']=talib.WILLR(stock['high'],stock['low'],stock['close'],14) 
+    stock['ultosc']=talib.ULTOSC(stock['high'],stock['low'],stock['close'],timeperiod1=7, timeperiod2=14, timeperiod3=28) 
+    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
     stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
+    stock['senkou_spna_A'],stock['senkou_spna_B'],stock['chikou_span']=techindicators.IchimokuCloud(stock['high'],stock['low'],stock['adj_close'],9,26,52)
+    stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     stock['market'] = market['adj_close']
     stock['corr14']=stock['adj_close'].rolling(14).corr(spy['market'])
-    end = time.time()
-    if debug: print('Process time to new: %s' %(end - start))
+    
     stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
     stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
     stock_1y = GetTimeSlot(stock)
@@ -252,7 +283,31 @@ def AddInfo(stock,market):
         stock['yearly_return']=stock['adj_close']
     else:
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
+    stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
+    stock['CDLHAMMER']=talib.CDLHAMMER(stock['open'],stock['high'],stock['low'],stock['close'])
+    end = time.time() 
+    
+    if debug: print('Process time to new: %s' %(end - start))
+    
+def SARTradingStategy(stock):
 
+    # Trade strategy from SAR
+    stock['signal'] = 0
+    stock.loc[(stock.close > stock.senkou_spna_A) & (stock.close >stock.senkou_spna_B) & (stock.close > stock.SAR), 'signal'] = 1
+    stock.loc[(stock.close < stock.senkou_spna_A) & (stock.close < stock.senkou_spna_B) & (stock.close < stock.SAR), 'signal'] = -1
+    stock['signal'].value_counts()
+    # Calculate daily returns
+    daily_returns = stock.Close.pct_change()
+    # Calculate strategy returns
+    strategy_returns = daily_returns *stock['signal'].shift(1)
+    # Calculate cumulative returns
+    (strategy_returns+1).cumprod().plot(figsize=(10,5))
+    # Plot the strategy returns
+    plt.xlabel('Date')
+    plt.ylabel('Strategy Returns (%)')
+    plt.grid()
+    plt.show()
+        
 api = ALPACA_REST()
 ts = ALPHA_TIMESERIES()
 spy = runTicker(api,'SPY')
