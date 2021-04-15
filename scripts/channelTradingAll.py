@@ -301,6 +301,8 @@ if doStocks:
 
         if len(tstock_info)==0:
             continue
+        # draw before we shorten this to 1 year
+        LongTermPlot(tstock_info,spy,ticker=s[0])
         #if j>2:
         #    break
         #try:
@@ -328,10 +330,10 @@ if doStocks:
             print('Error processing %s' %s[0])
             j+=1
             continue
+                
         tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
         start = time.time()
         DrawPlots(tstock_info,s[0],spy_1year)
-        LongTermPlot(tstock_info,spy,ticker=s[0])
         end = time.time()
         print('Process time to add draw: %s' %(end - start))
         os.chdir(outdir)
