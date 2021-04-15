@@ -42,9 +42,10 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     if not draw: plt.close()
     plt.close()
 
-def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title=''):
+def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
     # plotting
     j=0
+    plt.clf()
     for y in yaxis:
         plt.plot(xaxis,y,color=colors[j],label=labels[j])
         j+=1
@@ -56,6 +57,8 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
     for h in hlines:
         plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
     plt.legend(loc="upper left")
+    if doSupport:
+        techindicators.supportLevels(my_stock_info)
     if draw: plt.show()
     if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
     plt.savefig(outdir+'%s.png' %(saveName))
@@ -151,11 +154,12 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
 
     if not draw:
         plt.ioff()
-    MakePlot(my_stock_info.index, my_stock_info['adj_close'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info)
+
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info)
     MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')])
     MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker))
     MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='beta%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title=' Alpha')
+    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title=' Alpha')
     MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')])
     MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')])
     MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
@@ -168,7 +172,7 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker))
     if 'aroon' in my_stock_info:
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VMAP10','VMAP14','VMAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))     
 
     # comparison to the market
@@ -201,9 +205,12 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
+    if len(stock['adj_close'])>50:
+        stock['sma50']=techindicators.sma(stock['adj_close'],50)
+    else: stock['sma50']=np.zeros(len(stock['adj_close']))
     if len(stock['adj_close'])>100:
         stock['sma100']=techindicators.sma(stock['adj_close'],100)
-    else: stock['sma100']=np.zeros(len(stock['adj_close']))
+    else: stock['sma100']=np.zeros(len(stock['adj_close']))        
     if len(stock['adj_close'])>200:
         stock['sma200']=techindicators.sma(stock['adj_close'],200)
     else: stock['sma200']=np.zeros(len(stock['adj_close']))
@@ -279,8 +286,8 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        #if s[0]!='FUBO':
-        #    continue
+        if s[0]!='TSLA':
+            continue
         if s[0]=='SPY':
             continue
         if s[0].count('^'):
