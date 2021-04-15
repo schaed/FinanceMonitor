@@ -164,8 +164,8 @@ if doStocks:
             continue
         if j%4==0 and j!=0:
             time.sleep(56)
-        if j>0:
-            break
+        #if j>0:
+        #    break
         print(s[0])
         sys.stdout.flush()    
         stock=None
