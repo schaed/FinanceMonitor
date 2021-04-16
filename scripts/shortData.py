@@ -31,7 +31,7 @@ for iin in all_stocks:
         stock = stock.set_index('LogDate')
         stock = stock.sort_index()
 
-        if len(stock)>0 and (stock.index[0]-todayDateTime)<datetime.timedelta(days=0,hours=12):
+        if len(stock)>0 and (stock.index[-1]-todayDateTime)<datetime.timedelta(days=0,hours=12):
             print('already loaded!')
             Load=False
     except pd.io.sql.DatabaseError:

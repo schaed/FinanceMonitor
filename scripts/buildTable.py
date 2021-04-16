@@ -29,7 +29,7 @@ def readShortInfo(ticker):
         stock = stock.sort_index()
         entryShort=0
         if len(stock)>0:
-            return stock.iloc[0][['Insider Own','Inst Own','Short Float','Rel Volume']].values
+            return stock.iloc[-1][['Insider Own','Inst Own','Short Float','Rel Volume']].values
     except pd.io.sql.DatabaseError:
         #return [0,0,0,0]
         return ['N/A','N/A','N/A','N/A']
