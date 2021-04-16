@@ -152,24 +152,26 @@ if False:
 
     sys.exit(0)
 
-bars = GetBars(ticker, TimeFrame.Minute, "2021-04-12", "2021-04-14",limit=None)
-print(bars)
-bars['vwap14']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],14)
-bars['vwap10']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],10)
-bars['vwap20']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],60)
-# comparison to the market
-plt.clf()
-plt.plot(bars.index,bars['close'],color='black',label='Close')
-plt.plot(bars.index,bars['vwap10'],color='blue',label='vwap10')    
-plt.plot(bars.index,     bars['vwap14'],   color='red', label='vwap14')    
-plt.plot(bars.index,     bars['vwap20'],   color='green', label='vwap20')    
-# beautify the x-labels
-plt.gcf().autofmt_xdate()
-plt.ylabel('Price')
-plt.xlabel('Date')
-plt.legend(loc="upper left")
-plt.show()
-sys.exit(0)
+def GetMinuteInfo(ticker):
+    bars = GetBars(ticker, TimeFrame.Minute, "2021-04-12", "2021-04-14",limit=None)
+    print(bars)
+    bars['vwap14']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],14)
+    bars['vwap10']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],10)
+    bars['vwap20']=techindicators.vwap(bars['high'],bars['low'],bars['close'],bars['volume'],60)
+    # comparison to the market
+    plt.clf()
+    plt.plot(bars.index,bars['close'],color='black',label='Close')
+    plt.plot(bars.index,bars['vwap10'],color='blue',label='vwap10')    
+    plt.plot(bars.index,     bars['vwap14'],   color='red', label='vwap14')    
+    plt.plot(bars.index,     bars['vwap20'],   color='green', label='vwap20')    
+    # beautify the x-labels
+    plt.gcf().autofmt_xdate()
+    plt.ylabel('Price')
+    plt.xlabel('Date')
+    plt.legend(loc="upper left")
+    plt.show()
+
+#GetMinuteInfo(ticker)
     
 month=4
 day=14

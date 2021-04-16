@@ -16,6 +16,25 @@ doStocks=True
 loadFromPickle=False
 loadSQL = True
 readType='full'
+
+sqlcursorShort = SQL_CURSOR(db_name='stocksShort.db')
+sqlcursorExtra = SQL_CURSOR(db_name='stocksShortExtra.db')
+def readShortInfo(ticker):
+    stock=None
+    try:
+        stock = pd.read_sql('SELECT * FROM %s' %ticker, sqlcursorExtra) #,index_col='Date')
+        stock['LogDate']=pd.to_datetime(stock.LogDate.astype(str), format='%Y-%m-%d')
+        stock['LogDate']=pd.to_datetime(stock['LogDate'])
+        stock = stock.set_index('LogDate')
+        stock = stock.sort_index()
+        entryShort=0
+        if len(stock)>0:
+            return stock.iloc[0][['Insider Own','Inst Own','Short Float','Rel Volume']].values
+    except pd.io.sql.DatabaseError:
+        #return [0,0,0,0]
+        return ['N/A','N/A','N/A','N/A']
+    return ['N/A','N/A','N/A','N/A']
+
 def AddInfo(stock,market):
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
@@ -130,6 +149,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
         info_list += [stock[j][entry]]
     for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff','corr14']:
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
+    info_list+=list(readShortInfo(ticker))
     return info_list
     
 api = ALPACA_REST()
@@ -151,7 +171,7 @@ print(spy)
 
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0
@@ -160,6 +180,7 @@ if doStocks:
     for s in b.stock_list:
         if s[0]=='SPY':
             continue
+        readShortInfo(s[0])
         if s[0].count('^'):
             continue
         if j%4==0 and j!=0:

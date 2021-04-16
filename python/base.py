@@ -650,8 +650,8 @@ stock_list = [
         ['STT',640.0,805.0,'NASDAQ','State street spdr ETF provider'], #        
         ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
         ['PLTR',2.0,155.0,'NYSE','palantir'],  # 
-        ['MAT',25.0,40.0,'NYSE','matel'], # matel
-        ['CLPS',25.0,40.0,'NYSE','CLPS'], # CLPS
+        ['MAT',25.0,40.0,'NASDAQ','matel'], # matel
+        ['CLPS',25.0,40.0,'NASDAQ','CLPS'], # CLPS
         ['JFU',25.0,40.0,'NYSE','JFU'], # JFU
         ['HAS',25.0,120.0,'NYSE','hasbro'], # hasbro
         ['TLRY',25.0,120.0,'NYSE','Tilray'], # Tilray
@@ -774,7 +774,7 @@ stock_list = [
         ['BIIB',200.0,300.0,'NASDAQ','Biogen biotech'], # Biogen biotech. california. 0.0% dividend
         ['SLP',7.0,15.0,'NASDAQ','Simulations Plus'], # Simulations Plus. 1.8% dividend. biomedical
         #['ADR',50.0,85.0,'NYSE','novartis'], # novartis    
-        ['GVP',2.0,3.0,'NYSEMKT','GSE nuclear, oil simulations'], # GSE nuclear, oil simulations company
+        ['GVP',2.0,3.0,'NASDAQ','GSE nuclear, oil simulations'], # GSE nuclear, oil simulations company
         ['TAP',80.0,100.0,'NYSE','molson beer'], # molson beer. 1.8% dividend
         ['RTX',115.0,160.0,'NYSE','ratheon'], # ratheon. defense. 2.1% dividend
         ['CXW',15.0,300.0,'NYSE','corecivics. jailing'], # corecivics. jailing. 5.8% dividend
@@ -803,7 +803,7 @@ stock_list = [
     #['SHNY',10.0,125.,'NYSE','silver miners 2X ETF'], # silver
         ['USO',5.0,25.,'NYSE','crude oil'], # crude oil    
         ['GDX',11.0,125.,'NYSEARCA','gold miners'], # gold miners
-        ['NUGT',1.0,125.0,'NYSEMKT','goldx5'], # gold    
+        ['NUGT',1.0,125.0,'NYSEARCA','goldx5'], # gold    
         ['DIA',120.0,200.0,'NYSE','Dow jones'], # Dow jones 
         ['NDAQ',40.0,70.0,'NASDAQ','nasdaq trader'], # nasdaq trader. 1.7% dividend
         ['TSN',40.0,70.0,'NYSE','tyson foods'], # tyson foods. 1.% dividend
@@ -832,7 +832,7 @@ stock_list = [
         ['HMY',2.3,5.0,'NYSE','Harmony gold Mining US'], # Harmony gold Mining US.
         ['GFI',3.3,6.0,'NYSE','Gold fields unlimited. south african gold'], # Gold fields unlimited. south african gold
         ['EGO',3.3,6.0,'NYSE','eldarado gold'], # eldarado gold.
-        ['BTG',1.3,4.0,'NYSEMKT','b2gold'], # b2gold
+        ['BTG',1.3,4.0,'NYSEARCA','b2gold'], # b2gold
         ['VALE',3.3,6.0,'NYSE','mineral miner in brazil'], # mineral miner in brazil 2.dividend
         ['KGC',1.3,3.8,'NYSE','KinCross Gold mining'], # KinCross Gold mining company 0.0% dividend Canada
         ['CSCO',15.0,35.0,'NASDAQ','cisco'], # cisco. 3.7%
