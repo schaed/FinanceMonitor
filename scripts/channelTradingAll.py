@@ -68,7 +68,8 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
 
 # Draw the timing indices
 def PlotTiming(data, ticker):
-
+    if len(data)<1:
+        return
     plt.clf()
     fig8 = plt.figure(constrained_layout=False)
     gs1 = fig8.add_gridspec(nrows=3, ncols=1, left=0.07, right=0.95, wspace=0.05)
@@ -112,7 +113,8 @@ def PlotTiming(data, ticker):
         
 # Draw the volume and the price by volume with various inputs
 def PlotVolume(data, ticker):
-
+    if len(data)<1:
+        return
     # group the volume by closing price by the set division
     bucket_size = 0.025 * (max(data['adj_close']) - min(data['adj_close']))    
     volprofile  = data['volume'].groupby(data['adj_close'].apply(lambda x: bucket_size*round(x/bucket_size,0))).sum()/1.0e6
