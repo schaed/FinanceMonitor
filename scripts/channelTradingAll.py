@@ -64,7 +64,52 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
     if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
     plt.savefig(outdir+'%s.png' %(saveName))
     if not draw: plt.close()
+
+def PlotVolume(data, ticker):
+
+    # group the volume by closing price by the set division
+    bucket_size = 0.025 * (max(data['adj_close']) - min(data['adj_close']))    
+    volprofile  = data['volume'].groupby(data['adj_close'].apply(lambda x: bucket_size*round(x/bucket_size,0))).sum()/1.0e6
+    posvolprofile  = data['pos_volume'].groupby(data['adj_close'].apply(lambda x: bucket_size*round(x/bucket_size,0))).sum()/1.0e6
+    negvolprofile  = data['neg_volume'].groupby(data['adj_close'].apply(lambda x: bucket_size*round(x/bucket_size,0))).sum()/1.0e6
     
+    plt.clf()
+    fig8 = plt.figure(constrained_layout=False)
+    gs1 = fig8.add_gridspec(nrows=3, ncols=1, left=0.07, right=0.95, wspace=0.05)
+    top_plt = fig8.add_subplot(gs1[:-1, :])
+    top_plt.plot(data.index, data["adj_close"],color='black',label='Adj Close')
+    top_plt.plot(data.index, data["sma200"],color='magenta',label='SMA200')
+    top_plt.plot(data.index, data["sma100"],color='cyan',label='SMA100')
+    top_plt.plot(data.index, data["sma50"],color='yellow',label='SMA50')
+    plt.legend(loc="upper center")
+    techindicators.supportLevels(data)
+    # normalize this bar chart to have half of the width. Need to get this because matplotlib doesn't use
+    # timestamps. It converts them to an internal float.
+    # Then we stack the negative and positive values
+    xmin, xmax, ymin, ymax = top_plt.axis()
+    normalize_vol=1.0
+    try:
+        normalize_vol = 0.5*(xmax - xmin)/max(volprofile.values)
+    except:
+        pass
+    volprofile*=normalize_vol;   posvolprofile*=normalize_vol;     negvolprofile*=normalize_vol;
+    plt.barh(posvolprofile.index.values, posvolprofile.values, height=0.9*bucket_size, align='center', color='green', alpha=0.45,left=xmin+(xmax-xmin)*0.001)
+    leftStart = np.full(len(posvolprofile), xmin+(xmax-xmin)*0.001) + posvolprofile.values
+    plt.barh(negvolprofile.index.values, negvolprofile.values, height=0.9*bucket_size, align='center', color='red', alpha=0.45,left=leftStart)
+    top_plt.grid(1)
+    top_plt.set_ylabel('Closing Price')
+    bottom_plt = fig8.add_subplot(gs1[-1, :])
+    bottom_plt.bar(data.index, data['neg_volume'],color='red')
+    bottom_plt.bar(data.index, data['pos_volume'],color='green')
+    bottom_plt.set_xlabel('%s Trading Volume' %ticker)
+    bottom_plt.set_ylabel('Volume')
+    bottom_plt.grid(1)
+
+    plt.gcf().set_size_inches(11,8)
+    if doPDFs: plt.savefig(outdir+'vol_'+ticker+'.pdf')
+    plt.savefig(outdir+'vol_'+ticker+'.png')
+    if not draw: plt.close()
+
 def CandleStick(data, ticker):
 
     # Extracting Data for plotting
@@ -178,6 +223,9 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))
+
+    # plot volume
+    PlotVolume(my_stock_info, ticker)
     
     # plot Ichimoku Cloud
     plt.cla()
@@ -229,6 +277,14 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
             print('Abandoned baby signal buy: %s' %ticker)
     
 def AddInfo(stock,market):
+
+    # Label Volume as positive or negative
+    stock['pos_volume'] = 0
+    #stock.loc[stock.open>=stock.close,'pos_volume'] = stock.volume
+    #stock.loc[stock.open<stock.close,'neg_volume'] = stock.volume
+    stock.loc[stock.adj_close>=stock.adj_close.shift(1),'pos_volume'] = stock.volume
+    stock.loc[stock.adj_close<stock.adj_close.shift(1),'neg_volume'] = stock.volume
+    # SMA
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
     if len(stock['adj_close'])>50:
