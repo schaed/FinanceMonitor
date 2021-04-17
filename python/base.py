@@ -42,7 +42,7 @@ def makeHTMLIndex(outFileName,title, jetNames):
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0):
+def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0, chartSignals=[]):
 
     plots = glob.glob(filterPattern+'.png')
 
@@ -54,17 +54,25 @@ def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0):
         <head>
         <meta charset="utf-8">
         <title> Validation Plots </title>
-        <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
-        <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+         <script src="https://www.kryogenix.org/code/browser/sorttable/sorttable.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+        <style type="text/css">
+        h3 span { font-size: 22px;}
+        h3 input.search-input { width: 300px; margin-left: auto; float: right; }
+        .mt32 {
+            margin-top: 32px;
+        }
+        </style>
         </head>
         <body>
         <div class="container">
-        <h1> Validation Plots </h1> 
-        <p>Last updated: {date}</p> 
+        <h1> Validation Plots </h1> """)
+        outFile.write("""<p>Last updated: {date}</p> 
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
-
+        if len(chartSignals)>0:
+            outFile.write(chartSignals.to_html(index=False,classes="searchable sortable table table-striped mt32 customers-list"))
         plots = glob.glob(filterPattern+'.png')
         outFile.write("<h2> %s - %s </h2>" %(title,describe))
         outFile.write('<table style="width:100%">')
@@ -137,13 +145,11 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
     <style type="text/css">
-        h3 span {
-            font-size: 22px;
-        }
+        h3 span {font-size: 22px;}
         h3 input.search-input {
             width: 300px;
             margin-left: auto;
-            float: right
+            float: right;
         }
         .mt32 {
             margin-top: 32px;
@@ -152,8 +158,8 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         </head>
         <body>
         <div class="container">
-        <h1> """+title+""" </h1> 
-        <p>Last updated: {date}</p>
+        <h1> """+title+""" </h1>\n""") 
+        outFile.write("""<p>Last updated: {date}</p>
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
         line='    	<div class="container">\n'

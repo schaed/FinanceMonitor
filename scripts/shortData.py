@@ -58,7 +58,6 @@ for iin in all_stocks:
                         if j[2*y][e] in expectedKeys:
                             dataFMap[j[2*y][e]] = j[2*y+1][e].strip().replace('%','').strip()
         
-        
         if len(dataFMap.values())>0:
             dataFMap['LogDate']=today
             df = pd.DataFrame.from_dict([dataFMap],orient='columns')

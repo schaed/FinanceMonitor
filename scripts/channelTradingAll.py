@@ -24,6 +24,7 @@ doPDFs=False
 debug=False
 loadSQL=True
 readType='full'
+
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
     # plotting
     plt.clf()
@@ -32,7 +33,7 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     plt.ylabel(yname)
     plt.xlabel(xname)
     if title!="":
-        plt.title(title)
+        plt.title(title, fontsize=30)
     for h in hlines:
         plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
     if doSupport:
@@ -54,7 +55,7 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
     plt.ylabel(yname)
     plt.xlabel(xname)
     if title!="":
-        plt.title(title)
+        plt.title(title, fontsize=30)
     for h in hlines:
         plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
     plt.legend(loc="upper left")
@@ -65,6 +66,51 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
     plt.savefig(outdir+'%s.png' %(saveName))
     if not draw: plt.close()
 
+# Draw the timing indices
+def PlotTiming(data, ticker):
+
+    plt.clf()
+    fig8 = plt.figure(constrained_layout=False)
+    gs1 = fig8.add_gridspec(nrows=3, ncols=1, left=0.07, right=0.95, wspace=0.05)
+    top_plt = fig8.add_subplot(gs1[:-1, :])
+    top_plt.plot(data.index, data["adj_close"],color='black',label='Adj Close')
+    top_plt.plot(data.index, data["sma200"],color='magenta',label='SMA200')
+    top_plt.plot(data.index, data["sma100"],color='cyan',label='SMA100')
+    top_plt.plot(data.index, data["sma50"],color='yellow',label='SMA50')
+    plt.legend(loc="upper center")
+    techindicators.supportLevels(data)
+    top_plt.grid(1)
+    top_plt.set_ylabel('Closing Price')
+    bottom_plt = fig8.add_subplot(gs1[-1, :])
+    maxHT_DCPERIOD = max(max(data['HT_DCPERIOD']),1.0)/3.0
+    maxHT_DCPHASE = max(max(data['HT_DCPHASE']),1.0)/3.0
+    bottom_plt.plot(data.index, data['HT_DCPERIOD']/maxHT_DCPERIOD,color='red',label='Dominant Cycle Period')
+    bottom_plt.plot(data.index, data['HT_DCPHASE']/maxHT_DCPHASE,color='green',label='Dominant Cycle Phase')
+    bottom_plt.bar(data.index, data['HT_TRENDMODE'],color='blue',label='Trend vs Cycle Mode')
+    bottom_plt.set_xlabel('%s Date' %ticker)
+    bottom_plt.set_ylabel('Timing')
+    plt.legend(loc="upper left")
+    bottom_plt.grid(1)
+    top_plt.set_title('HT Dominant cycle', fontsize=40)
+    plt.gcf().set_size_inches(11,8)
+    if doPDFs: plt.savefig(outdir+'timing_'+ticker+'.pdf')
+    plt.savefig(outdir+'timing_'+ticker+'.png')
+
+    top_plt.set_title('HTSine', fontsize=40)
+    bottom_plt.clear()
+    bottom_plt.plot(data.index, data['HT_SINE'],color='red',label='HTSine Slow')
+    bottom_plt.plot(data.index, data['HT_SINElead'],color='green',label='HTSine Lead')
+    bottom_plt.set_xlabel('%s Date' %ticker)
+    bottom_plt.set_ylabel('HTSine')
+    plt.legend(loc="upper left")
+    bottom_plt.grid(1)
+
+    plt.gcf().set_size_inches(11,8)
+    if doPDFs: plt.savefig(outdir+'HTSine_'+ticker+'.pdf')
+    plt.savefig(outdir+'HTSine_'+ticker+'.png')
+    if not draw: plt.close()
+        
+# Draw the volume and the price by volume with various inputs
 def PlotVolume(data, ticker):
 
     # group the volume by closing price by the set division
@@ -77,6 +123,7 @@ def PlotVolume(data, ticker):
     fig8 = plt.figure(constrained_layout=False)
     gs1 = fig8.add_gridspec(nrows=3, ncols=1, left=0.07, right=0.95, wspace=0.05)
     top_plt = fig8.add_subplot(gs1[:-1, :])
+    top_plt.set_title('Price by Volume',fontsize=40)    
     top_plt.plot(data.index, data["adj_close"],color='black',label='Adj Close')
     top_plt.plot(data.index, data["sma200"],color='magenta',label='SMA200')
     top_plt.plot(data.index, data["sma100"],color='cyan',label='SMA100')
@@ -183,6 +230,7 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     market5y['year5_return']=market5y['adj_close']/market5y['adj_close'][0]-1
     # comparison to the market
     plt.clf()
+    plt.title('5y Return', fontsize=30)
     plt.plot(my_stock_info5y.index,my_stock_info5y['year5_return'],color='blue',label=ticker)    
     plt.plot(market5y.index,     market5y['year5_return'],   color='red', label='SPY')    
     # beautify the x-labels
@@ -201,31 +249,33 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if not draw:
         plt.ioff()
 
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info)
-    MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')])
-    MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title=' Alpha')
-    MakePlot(my_stock_info.index, my_stock_info['adx'], xname='Date',yname='ADX',saveName='adx%s_%s' %(plttext,ticker), hlines=[(25.0,'black','dotted')],title=' ADX')
-    MakePlot(my_stock_info.index, my_stock_info['willr'], xname='Date',yname='Will %R',saveName='willr%s_%s' %(plttext,ticker), hlines=[(-20.0,'red','dotted'),(-80.0,'green','dotted')],title=' Will %R')
-    MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title=' Ultimate Oscillator')
-    MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')])
-    MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')])
-    MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker))    
-    MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')])
-    MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker))
-    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')])
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info,title='Support Lines')
+    MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve')
+    MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker),title='Sharpe Ratio')
+    MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker),title='Beta')
+    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title='Alpha')
+    MakePlot(my_stock_info.index, my_stock_info['adx'], xname='Date',yname='ADX',saveName='adx%s_%s' %(plttext,ticker), hlines=[(25.0,'black','dotted')],title='ADX')
+    MakePlot(my_stock_info.index, my_stock_info['willr'], xname='Date',yname='Will %R',saveName='willr%s_%s' %(plttext,ticker), hlines=[(-20.0,'red','dotted'),(-80.0,'green','dotted')],title='Will %R')
+    MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title='Ultimate Oscillator')
+    MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')],title='R-squared')
+    MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')],title='Chaikin Money Flow')
+    MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker),title='Commodity Channel Index')
+    MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker),title='On Balanced Volume')    
+    MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker),title='Force Index')
+    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')],title='Balance of Power')
+    MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker),title='Chaikin Oscillator')
+    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')],title='14d Correlation with SPY')
 
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker))
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker),title='MACD')
     if 'aroon' in my_stock_info:
-        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker))        
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker))
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker))
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker),title='AROON')
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic')
 
     # plot volume
     PlotVolume(my_stock_info, ticker)
+    # Plot timing indicators
+    PlotTiming(my_stock_info, ticker)
     
     # plot Ichimoku Cloud
     plt.cla()
@@ -270,11 +320,24 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if not draw: plt.close()
         
     CandleStick(my_stock_info,ticker)
+    # collect all of the chart signals
+    chartSignals = []
     if len(my_stock_info)>0:
-        if my_stock_info['CDLHAMMER'][-1]>0:
-            print('CDLABANDONEDBABY signal buy: %s' %ticker)
-        if my_stock_info['CDLHAMMER'][-1]>0:
-            print('Abandoned baby signal buy: %s' %ticker)
+        for col in my_stock_info.columns:
+            if 'CDL' in col:
+                if my_stock_info[col][-1]>0:
+                    chartSignals+=[[col[3:],1,0,0]]
+                    if debug: print('%s signal buy: %s' %(col,ticker))
+                    if col.count('CDLABANDONEDBABY'):  print('%s Abandoned Baby by signal: %s' %(col,ticker))
+                if my_stock_info[col][-2]>0:
+                    if debug: print('%s signal buy 2days ago: %s' %(col,ticker))
+                    chartSignals+=[[col[3:],0,1,0]]
+                if my_stock_info[col][-5:].sum()>0:
+                    if debug: print('%s signal buy in last 5 days: %s' %(col,ticker))
+                    chartSignals+=[[col[3:],0,0,1]]
+    return chartSignals
+        #if my_stock_info['CDLHAMMER'][-1]>0:
+        #    print('Abandoned baby signal buy: %s' %ticker)
     
 def AddInfo(stock,market):
 
@@ -317,6 +380,11 @@ def AddInfo(stock,market):
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
     stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    stock['HT_DCPERIOD']=talib.HT_DCPERIOD(stock['adj_close']) 
+    stock['HT_DCPHASE']=talib.HT_DCPHASE(stock['adj_close']) 
+    stock['HT_TRENDMODE']=talib.HT_TRENDMODE(stock['adj_close']) 
+    stock['HT_SINE'],stock['HT_SINElead']=talib.HT_SINE(stock['adj_close'])
+    stock['HT_PHASORphase'],stock['HT_PHASORquad']=talib.HT_PHASOR(stock['adj_close'])     
     stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
     stock['willr']=talib.WILLR(stock['high'],stock['low'],stock['close'],14) 
     stock['ultosc']=talib.ULTOSC(stock['high'],stock['low'],stock['close'],timeperiod1=7, timeperiod2=14, timeperiod3=28) 
@@ -340,7 +408,10 @@ def AddInfo(stock,market):
     else:
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
     stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
-    stock['CDLHAMMER']=talib.CDLHAMMER(stock['open'],stock['high'],stock['low'],stock['close'])
+    if len(stock)>2:
+        for ky in talib.__dict__.keys():
+            if 'CDL' in ky and not 'stream' in ky:
+                stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
     end = time.time() 
     
     if debug: print('Process time to new: %s' %(end - start))
@@ -444,11 +515,15 @@ if doStocks:
                 
         tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
         start = time.time()
-        DrawPlots(tstock_info,s[0],spy_1year)
+        chartSignals =DrawPlots(tstock_info,s[0],spy_1year)
+        if len(chartSignals)>0.0:
+            chartSignals = pd.DataFrame(chartSignals,columns=['Chart Signal', 'Yesterday','Two Days Ago','In Last 5 days'])
+            chartSignals = chartSignals.groupby(chartSignals['Chart Signal']).sum().reset_index()
+
         end = time.time()
         print('Process time to add draw: %s' %(end - start))
         os.chdir(outdir)
-        b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4])
+        b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4], chartSignals=chartSignals)
         os.chdir(cdir)    
         del tstock_info;
 if doETFs:
