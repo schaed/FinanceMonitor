@@ -855,6 +855,7 @@ stock_list = [
 
         ['SHAK',33.0,60.0,'NYSE','shake shack.'], # shake shack.
         ['UAL',45.0,90.0,'NYSE','united airlines'], # united airlines
+        ['AA',45.0,90.0,'NYSE','Alcoa'], # alcoa
 
         ['VOO',100.0,200.0,'NYSE','vanguard MUTF'], # vanguard MUTF
         ['VFINX',100.0,200.0,'MUTF','vanguard MUTF'], # vanguard MUTF

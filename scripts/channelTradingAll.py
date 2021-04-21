@@ -15,6 +15,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg') 
 import mplfinance as mpf
+import argparse
+
+my_parser = argparse.ArgumentParser()
+#my_parser.add_argument('--input', default='', type=str, required=True)
+my_parser.add_argument('--filter', default='', type=str) # filter by ticker
+args = my_parser.parse_args()
+
 draw=False
 outdir = b.outdir
 doStocks=True
@@ -304,6 +311,7 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     plt.ylabel('Yearly Return')
     plt.xlabel('Date')
     plt.legend(loc="upper left")
+    plt.title('Yearly Return',fontsize=30)
     if draw: plt.show()
     if doPDFs: plt.savefig(outdir+'market%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'market%s_%s.png' %(plttext,ticker))
@@ -470,8 +478,9 @@ j=0
 cdir = os.getcwd()
 if doStocks:
     for s in b.stock_list:
-        #if s[0]!='TSLA':
-        #    continue
+        if args.filter!='':
+            if s[0]!=args.filter:
+                continue
         if s[0]=='SPY':
             continue
         if s[0].count('^'):
