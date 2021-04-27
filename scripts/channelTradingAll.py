@@ -1,7 +1,6 @@
 from techindicators import techindicators
-import talib
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo
 import pandas as pd
 import numpy as np
 import sys
@@ -349,83 +348,6 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     return chartSignals
         #if my_stock_info['CDLHAMMER'][-1]>0:
         #    print('Abandoned baby signal buy: %s' %ticker)
-    
-def AddInfo(stock,market):
-
-    # Label Volume as positive or negative
-    stock['pos_volume'] = 0
-    #stock.loc[stock.open>=stock.close,'pos_volume'] = stock.volume
-    #stock.loc[stock.open<stock.close,'neg_volume'] = stock.volume
-    stock.loc[stock.adj_close>=stock.adj_close.shift(1),'pos_volume'] = stock.volume
-    stock.loc[stock.adj_close<stock.adj_close.shift(1),'neg_volume'] = stock.volume
-    # SMA
-    stock['sma10']=techindicators.sma(stock['adj_close'],10)
-    stock['sma20']=techindicators.sma(stock['adj_close'],20)
-    if len(stock['adj_close'])>50:
-        stock['sma50']=techindicators.sma(stock['adj_close'],50)
-    else: stock['sma50']=np.zeros(len(stock['adj_close']))
-    if len(stock['adj_close'])>100:
-        stock['sma100']=techindicators.sma(stock['adj_close'],100)
-    else: stock['sma100']=np.zeros(len(stock['adj_close']))        
-    if len(stock['adj_close'])>200:
-        stock['sma200']=techindicators.sma(stock['adj_close'],200)
-    else: stock['sma200']=np.zeros(len(stock['adj_close']))
-    stock['rstd10']=techindicators.rstd(stock['adj_close'],10)
-    stock['rsi10']=techindicators.rsi(stock['adj_close'],10)
-    stock['cmf']=techindicators.cmf(stock['high'],stock['low'],stock['close'],stock['volume'],10)
-    stock['BolLower'],stock['BolCenter'],stock['BolUpper']=techindicators.boll(stock['adj_close'],20,2.0,5)
-    start = time.time()
-    stock['KeltLower'],stock['KeltCenter'],stock['KeltUpper']=techindicators.kelt(stock['high'],stock['low'],stock['close'],20,2.0,20)
-    stock['copp']=techindicators.copp(stock['close'],14,11,10)
-    stock['daily_return']=stock['adj_close'].pct_change(periods=1)
-    stock['daily_return_stddev14']=techindicators.rstd(stock['daily_return'],14)
-    stock['beta']=techindicators.rollingBetav2(stock,14,market)
-    stock['alpha']=techindicators.rollingAlpha(stock,14,market)
-    stock['rsquare']=techindicators.rollingRsquare(stock,14,market)
-    stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
-    start = time.time()
-    stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
-    stock['stochK'],stock['stochD']=techindicators.stoch(stock['high'],stock['low'],stock['close'],14,3,3)    
-    stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
-    stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
-    stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
-    stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
-    #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
-    stock['HT_DCPERIOD']=talib.HT_DCPERIOD(stock['adj_close']) 
-    stock['HT_DCPHASE']=talib.HT_DCPHASE(stock['adj_close']) 
-    stock['HT_TRENDMODE']=talib.HT_TRENDMODE(stock['adj_close']) 
-    stock['HT_SINE'],stock['HT_SINElead']=talib.HT_SINE(stock['adj_close'])
-    stock['HT_PHASORphase'],stock['HT_PHASORquad']=talib.HT_PHASOR(stock['adj_close'])     
-    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
-    stock['willr']=talib.WILLR(stock['high'],stock['low'],stock['close'],14) 
-    stock['ultosc']=talib.ULTOSC(stock['high'],stock['low'],stock['close'],timeperiod1=7, timeperiod2=14, timeperiod3=28) 
-    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
-    stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
-    stock['senkou_spna_A'],stock['senkou_spna_B'],stock['chikou_span']=techindicators.IchimokuCloud(stock['high'],stock['low'],stock['adj_close'],9,26,52)
-    stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)
-    stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
-    stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
-    stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
-    stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
-    stock['market'] = market['adj_close']
-    stock['corr14']=stock['adj_close'].rolling(14).corr(spy['market'])
-    
-    stock['weekly_return']=stock['adj_close'].pct_change(freq='W')
-    stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
-    stock_1y = GetTimeSlot(stock)
-    if len(stock_1y['adj_close'])<1:
-        print('Ticker has no adjusted close info: %s' %ticker)
-        stock['yearly_return']=stock['adj_close']
-    else:
-        stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
-    stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
-    if len(stock)>2:
-        for ky in talib.__dict__.keys():
-            if 'CDL' in ky and not 'stream' in ky:
-                stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
-    end = time.time() 
-    
-    if debug: print('Process time to new: %s' %(end - start))
     
 def SARTradingStategy(stock):
 

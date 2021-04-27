@@ -1,62 +1,116 @@
-import os,sys,time
-from ReadData import SQL_CURSOR,ALPHA_TIMESERIES,ALPHA_FundamentalData,ConfigTableFromPandas
+import os,sys,time,datetime
+from ReadData import SQL_CURSOR,ALPHA_TIMESERIES,ALPHA_FundamentalData,ConfigTableFromPandas,GetUpcomingEarnings
 import pandas  as pd
 import numpy as np
 import base as b
 ReDownload = False
 debug=False
 
+# Read and process the overview info
+def GetOverview(fd, ticker, connectionCal):
+    # should load this once per quarter
+    #https://www.alphavantage.co/query?function=OVERVIEW&symbol=IBM&apikey=demo
+    overview = fd.get_company_overview(ticker) # has P/E, etc
+    if len(overview)>0: # and type(overview) is tuple:
+        overview=overview[0]
+    # clean
+    for dat in ['ExDividendDate','DividendDate','LatestQuarter','LastSplitDate']:
+        if dat in overview:
+            overview[dat] = pd.to_datetime(overview[dat],errors='coerce')
+    for dat in ['Beta', 'RevenueTTM','ForwardPE', 'ForwardAnnualDividendYield', 'RevenuePerShareTTM', 'MarketCapitalization', 'OperatingMarginTTM', 'ShortRatio', 'EPS', 'PayoutRatio', 'PriceToBookRatio', 'CIK', 'GrossProfitTTM', 'PERatio', 'ShortPercentOutstanding', 'ProfitMargin', 'QuarterlyEarningsGrowthYOY', 'TrailingPE', 'SharesShortPriorMonth', 'PEGRatio', '52WeekLow', 'EVToEBITDA',  'PercentInstitutions', 'FullTimeEmployees', 'SharesShort', 'LastSplitFactor', 'ReturnOnAssetsTTM', 'DilutedEPSTTM', 'PriceToSalesRatioTTM', 'SharesFloat', 'EBITDA', '200DayMovingAverage', 'BookValue', 'FiscalYearEnd', 'SharesOutstanding', 'DividendPerShare', 'QuarterlyRevenueGrowthYOY', '52WeekHigh', 'AnalystTargetPrice', 'ShortPercentFloat', '50DayMovingAverage', 'ForwardAnnualDividendRate', 'DividendYield', 'PercentInsiders', 'EVToRevenue', 'ReturnOnEquityTTM']:
+        if dat in overview:
+            overview[dat] = pd.to_numeric(overview[dat],errors='coerce')
+
+    # Fill the output
+    overview['Date']=today=datetime.datetime.now().strftime("%Y-%m-%d")
+    overview=overview.set_index('Date')
+    if debug: print(overview)
+
+    oEDF = ConfigTableFromPandas('overview',ticker,connectionCal,overview,index_label='Date',tickerName='Symbol')
+
 connectionCal = SQL_CURSOR('earningsCalendar.db')
 fd = ALPHA_FundamentalData()
-if os.path.exists('stockEarnings.csv') and not ReDownload:
-    my_3month_calendar = pd.read_csv('stockEarnings.csv')
-else:
-    my_3month_calendar = fd.get_earnings_calendar('3month')
-    if len(my_3month_calendar)>0:
-        my_3month_calendar = my_3month_calendar[0]
-        my_3month_calendar.to_csv('stockEarnings.csv')
-#print(fd.get_company_earnings_calendar('IBM','3month'))
-#my_3month_calendar
+
+my_3month_calendar=GetUpcomingEarnings(fd,ReDownload)
+
 if debug: print(my_3month_calendar.columns)
-# clean up
-my_3month_calendar['reportDate']=pd.to_datetime(my_3month_calendar['reportDate'])
-my_3month_calendar['fiscalDateEnding']=pd.to_datetime(my_3month_calendar['fiscalDateEnding'])
-my_3month_calendar['estimate']=pd.to_numeric(my_3month_calendar['estimate'])
-my_3month_calendar=my_3month_calendar.set_index('reportDate')
-my_3month_calendar=my_3month_calendar.sort_index()
 if debug: print(my_3month_calendar)
 if debug: print(my_3month_calendar['symbol'])
-#print(fd.get_company_overview('IBM'))
+
 #print(fd.get_company_earnings('IBM'))
 #print(fd.get_earnings_calendar('3month'))
 #print(fd.get_company_earnings_calendar('IBM','3month'))
+# should load this
+#https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=IBM&apikey=demo
 #print(fd.get_income_statement_quarterly('IBM'))
+#ov = fd.get_company_overview('IBM')
+#if len(ov)>0 and type(ov) is tuple:
+#        ov=ov[0]
+#print(ov)
 #cursorCal = connectionCal.cursor()
-
+#sys.exit(0)
 j=0
 tickers=['IBM']
-#tickers = my_3month_calendar['symbol'].values
+tickers = my_3month_calendar['symbol'].values.tolist()
 for t in b.stock_list:
     if t[0].count('^'):
             continue
     if t[0] not in tickers:
         tickers+=[t[0]]
 print('Processing %s tickers' %(len(tickers)))
+#sys.exit(0)
 for ticker in tickers:
     print(ticker)
     sys.stdout.flush()
     if j%4==0 and j!=0:
-        time.sleep(59)
-    try:
-        pastEarnings = fd.get_company_earnings(ticker)
-    except:
+        time.sleep(60)
+
+    # download the overview
+    DownloadOverview=False
+    if ReDownload: DownloadOverview=True
+    if not ReDownload:
+        try:
+            stockOver = pd.read_sql('SELECT * FROM overview WHERE Symbol="%s"' %(ticker), connectionCal)
+            if len(stockOver)==0: DownloadOverview=True
+        except:
+            DownloadOverview=True
+    if DownloadOverview:
         j+=1
-        print('Could not collect: %s' %ticker)
-        continue
-    if debug:
-        if len(pastEarnings)>0: print(pastEarnings[0].keys())
+        try:
+            GetOverview(fd, ticker, connectionCal)
+        except:
+            print('failed download for %s' %ticker)
+            pass
+
+    # try downloading updated info:
+    DownloadInfo=False
+    if ReDownload:
+        DownloadInfo=True
+    if not ReDownload:
+        try:
+            stockInfo = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
+            if debug: print(stockInfo)
+            if len(stockInfo)==0: DownloadInfo=True
+        except:
+            DownloadInfo=True
+    pastEarnings=[]
+    if DownloadInfo:
+        j+=1
+        try:
+            pastEarnings = fd.get_company_earnings(ticker)
+        except:
+            print('Could not collect: %s' %ticker)
+            continue
     else:
-        j+=1
+        continue
+
+
+    # Loading the previous earnings!
+    try:
+        pastEarnings[0]
+        if debug: print(pastEarnings[0].keys())
+    except:
+        print('pastEarnings are empty for %s' %ticker)
         continue
     if len(pastEarnings)>0 and 'annualEarnings' in pastEarnings[0]:
         annualEarnings = pd.DataFrame(pastEarnings[0]['annualEarnings'])
@@ -87,7 +141,6 @@ for ticker in tickers:
             print(quarterlyEarnings.dtypes)
         qEDF = ConfigTableFromPandas('quarterlyEarnings',ticker,connectionCal,quarterlyEarnings,index_label='reportedDate')
         if debug: print(qEDF)
-    j+=1
         
 #print(fd.get_balance_sheet_annual(ticker))
 #get_company_overview
