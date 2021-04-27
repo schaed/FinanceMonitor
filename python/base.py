@@ -293,7 +293,7 @@ def GenerateToys(fsec, hbg, ntoys, m_rand, root):
         params+=[fsec.GetParameter(par)]
         initial_params+=[fsec.GetParameter(par)]
     hbg_central=[]
-    hbg_error=[]    
+    hbg_error=[]
     hbg_bin_edge=[]
     for ibin in range(0,hbg.GetNbinsX()):
         hbg_central+=[hbg.GetBinContent(ibin)]
@@ -908,12 +908,15 @@ stock_list = [
         ['OPK',8.0,13.0,'NYSE','genetics testing'], # genetics testing company. is subsidiary
          ['RGLS',6.0,10.0,'NASDAQ','bio pharma'], # bio pharma
          ['DGX',50.0,90.0,'NYSE','pharma testing company'], # pharma testing company
+         ['TSCO',50.0,90.0,'NASDAQ','Tractor supply company'], 
          #['ORPN',2.0,5.0,'NASDAQ','bio pharma'], # bio pharma
          ['VIVO',15.0,25.0,'NASDAQ','Meridian malaria'], # malaria indicator stock. Meridian
          ['XON',30.0,50.0,'NYSE','Intrexon Zika?'], # zika indicator stock. Intrexon
          ['INO',7.0,15.0,'NASDAQ','Inovio Zika?'], # zika indicator stock. Inovio
          ['NLNK',15.0,25.0,'NASDAQ','Newlink Zika?'], # zika indicator stock. Newlink        
          ['CERS',4.0,8.0,'NASDAQ','ceries Zika?'], # zika indicator stock. ceries        
+         ['INTT',4.0,8.0,'NYSE','silicon?'], #
+         ['PACW',4.0,8.0,'NASDAQ','pacwest bank in LA'], #2.3% dividend
          ['SNY',30.0,50.0,'NYSE','sanofi Zika?'], # zika indicator stock. sanofi. dividend 3.72%
          #['MDVN',40.0,80.0,'NASDAQ','Medivation Zika?'], # zika indicator stock. Medivation. no dividend
          #['JCP',5.0,15.0,'NYSE','JC pennies'], # JC pennies.
@@ -924,6 +927,7 @@ stock_list = [
          ['HON',95.0,130.0,'NYSE','honeywell'], # honeywell. 2%
          ['V',65.0,100.0,'NYSE','visa'], # visa. 0.7%
          ['MO',50.0,70.0,'NYSE','tobacco Altria'], # tobacco company. Altria 3%
+         ['TIPT',50.0,70.0,'NYSE','Tip tree'], 
          #['RAI',40.0,60.0,'NYSE','reynolds tobacco'], # reynolds stock. tobacco. 3%
          ['STZ',140.0,180.0,'NYSE','constellation drinks'], # constellation drinks stock. 1%
          #['BWLD',100.0,180.0,'NASDAQ','BW3s'], # BW3's
@@ -934,6 +938,9 @@ stock_list = [
          ['SCHN',30.0,80.0,'NYSE','Schnitzer Steel Industries, Inc.'], # colfax?
          ['BKNG',1000.0,1500.0,'NASDAQ','priceline'], # priceline
          ['TRIP',50.0,70.0,'NASDAQ','trip adviser'], # trip adviser
+         ['XM',50.0,70.0,'NASDAQ','qualtrics international software'],
+         ['HZO',50.0,70.0,'NYSE','Marine Max florida provider of boat parts'],
+         ['SKLZ',50.0,70.0,'NYSE','Skillz is an online mobile multiplayer competition platform'],
          ['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
          ['RGR',40.0,70.0,'NYSE','ruger'], # ruger 2.5% dividend
          ['SWBI',40.0,70.0,'NYSE','Smith and wessin'], # ruger 2.5% dividend

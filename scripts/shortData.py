@@ -70,7 +70,7 @@ for iin in all_stocks:
 
     URL = 'https://www.marketbeat.com/stocks/%s/%s/short-interest/' %(iin[3],i)
     filename = '%sv2.html' %i
-    os.system('wget -O %s %s' %(filename,URL))
+    os.system('wget -q -O %s %s' %(filename,URL))
     table_MN=None
     try:
         table_MN = pd.read_html(filename)
@@ -84,7 +84,7 @@ for iin in all_stocks:
             newVal='NASDAQ'
         try:
             URL = 'https://www.marketbeat.com/stocks/%s/%s/short-interest/' %(newVal,i)
-            os.system('wget -O %s %s' %(filename,URL))
+            os.system('wget -q -O %s %s' %(filename,URL))
             table_MN = pd.read_html(filename)
             os.system('rm %s' %filename )
         except:

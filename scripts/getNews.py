@@ -5,13 +5,21 @@ from bs4 import SoupStrainer
 import datetime,time
 import wget,pickle
 from dataclasses import dataclass
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker
+debug=False
+
+# Add spacy word analyzer
 import spacy
 from spacy.tokens import Token
 nlp = spacy.load('en_core_web_sm')
-debug=False
+
+# create sentiment analyzer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sid = SentimentIntensityAnalyzer()
+
+# Import the alpaca setup to read in data
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker
+from alpaca_trade_api.rest import TimeFrame
+api = ALPACA_REST()
 
 def ReturnSpacyDoc(inputTxt):
     Token.set_extension("is_rating", default=False)
@@ -54,7 +62,7 @@ def FilterResult(filter_list, my_list):
 class Sentiment:
     """"Store the decision, the type as well as other info
     """
-    message:           str   = None # 'options' for put or call, target for a price target, position for announcing position, recom = recommendation, 'stake'=has stock, 'news' just trying to say positive or negative
+    message:           str   = None # 'options' for put or call, target for a price target, position for announcing position, recom = recommendation, 'stake'=has stock, 'news' just trying to say positive or negative, 'clinicaltrial': is report on clinical trial
     sentiment:         float = None # -1 downgrade, 0 neutral, 1 is upgrade.
     assessment_result: int   = None # 0 underweight, 2 neutral, 3 is overweight.
     assessment_change: int   = None # Delta or change. Positive is an upgrade and negative is downgrade
@@ -71,6 +79,8 @@ class Sentiment:
     vader_compound:    float  = None
     vader_neg:         float  = None
     vader_neu:         float  = None
+    phase:             str    = None # clinical trial phase
+    status:            str    = None # clinical status
 
     # check the combo.
     def CheckCombo(self, describ, inputTxtLower):
@@ -179,18 +189,22 @@ class Sentiment:
                 self.price_before = money[1]
                 if 'rais'  in inputTxtLower:                       self.sentiment=1
                 if 'lower' in inputTxtLower:                       self.sentiment=-1                    
-                if 'rais'  in inputTxtLower and money[0]<money[1]: self.assessment_consistent = False
-                if 'lower' in inputTxtLower and money[0]>money[1]: self.assessment_consistent = False
+                if 'rais'  in inputTxtLower and self.price_after<self.price_before: self.assessment_consistent = False
+                if 'lower' in inputTxtLower and self.price_after>self.price_before: self.assessment_consistent = False
 
         # special case for passive stake
         # Senvest Management reports 5.54% passive stake in GameStop 
         # Peter Thiel reports 6.6% passive stake in Palantir »
         # Soros takes stake in Palantir, exits TransDigm position
-        if re.search('passive stake',   inputTxtLower, re.IGNORECASE) or re.search('takes stake',   inputTxtLower, re.IGNORECASE) or re.search('buys stake',   inputTxtLower, re.IGNORECASE):
+        if re.search('passive stake',   inputTxtLower, re.IGNORECASE) or re.search('takes stake',   inputTxtLower, re.IGNORECASE) or re.search('buys stake',   inputTxtLower, re.IGNORECASE) or re.search('a buyer of',   inputTxtLower, re.IGNORECASE):
             self.message = 'stake'
             money = [tok for tok in doc if tok.pos_ == "NUM"];
             if len(money)>0:
                 self.assessment_stake = money[0]
+            #Piper Sandler a buyer of Align Technology ahead of Q1 results
+            if re.search('a buyer of',   inputTxtLower, re.IGNORECASE):
+                self.sentiment = 1
+                
         # special case for shorting example.
         # Citron shorting Palantir, sees $20 stock by end of 2020 »
         if re.search('shorting',   inputTxtLower, re.IGNORECASE):
@@ -233,20 +247,25 @@ class Sentiment:
         #Alcoa initiated with a Sell at Goldman Sachs »
         #Palantir initiated with a Market Perform at William Blair »
         # I don't know whether positive for negative, but this is a refresh of the statement.
+        # TODO: Grainger elevated to bullish Fresh Pick at Baird
+        # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
+        # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
         for init in ['reiterate','restate','re-iterate','re-state']:
             if re.search(init, inputTxt, re.IGNORECASE): self.sentiment=0; self.message='recom'
         # not sure of the message, but checking for the following for a hint: 
         for init in [' initiat',' re-initiat',' reinitiat',' assum',' re-assum',' reassum']:
             if re.search(init,  inputTxt, re.IGNORECASE): self.first_rev=True; self.message='recom'
         if re.search('upgrade',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'
+        if re.search(' elevate',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'        
+        #if re.search(' rating',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'        
         if re.search('downgrade', inputTxt, re.IGNORECASE): self.sentiment=-1; self.message='recom'
         if re.search('lower',     inputTxt, re.IGNORECASE): self.sentiment=-1; #self.message='recom'
-        if re.search(' rais',      inputTxt, re.IGNORECASE): self.sentiment=-1; #self.message='recom'
+        if re.search(' rais',      inputTxt, re.IGNORECASE): self.sentiment=1; #self.message='recom'
 
         # Review levels. Search for each review level
-        describ1 = ['underperform','sell','underweight']
-        describ2 = ['equal weight','market perform','neutral','hold']
-        describ3 = ['outperform','overweight','buy']
+        describ1 = ['underperform','sell','underweight','negative','reduce','bearish']
+        describ2 = ['equal weight','market perform','neutral','hold','mixed','peer perform']
+        describ3 = ['outperform','overweight','buy','positive','add','bullish']
         if self.sentiment==None:
             if re.search('bullish', inputTxt, re.IGNORECASE):   self.sentiment=1
             if re.search('bearish', inputTxt, re.IGNORECASE):   self.sentiment=-1
@@ -271,6 +290,28 @@ class Sentiment:
                 if re.search('upgrade',     inputTxt, re.IGNORECASE): self.assessment_change = 1
                 if re.search('downgrade',   inputTxt, re.IGNORECASE): self.assessment_change = -1
 
+        # UNDER clinicaltrial could add reading for clinical trials...maybe own category
+        # TODO::; CohBar completes last subject visit in Phase 1b clinical trial for CB4211
+        if self.message==None and re.search('clinical trial',     inputTxt, re.IGNORECASE):
+            self.message='clinicaltrial'
+            # status
+            if re.search('complete',     inputTxt, re.IGNORECASE):
+                self.status = 'complete'
+                self.sentiment = 1
+            for stat in ['start','launch','begin','initiate']:
+                if re.search('start',     inputTxt, re.IGNORECASE):
+                    self.status = 'start'
+                    self.sentiment = 0.5
+            # phase
+            if re.search('Phase 1b',     inputTxt, re.IGNORECASE): self.phase = '1b'
+
+        #TODO Capital Bancorp reports Q1 EPS 65c, consensus 56c
+        #TODO BankUnited reports Q1 EPS $1.06, consensus 74c
+        #TODO MarineMax raises FY21 EPS view to $5.50-$5.65 from $4.00-$4.20, consensus $4.35
+        #TODO Sandy Spring Bancorp reports Q1 EPS $1.58, consensus $1.0
+        #TODO Cleveland-Cliffs sees FY21 adjusted EBITDA $4B
+        if self.message==None and (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and re.search('consensus',     inputTxt, re.IGNORECASE)):
+            self.message='earnings'
         # extra options. Just trying to understand positive versus negative
         # GameStop believes it has sufficient liquidity to fund operations
         # GameStop says 'Reboot' is delivering lower costs, reduced debt
@@ -295,8 +336,8 @@ class Sentiment:
             elif polscore['neg'] == max(allpolscores): self.sentiment = -1*polscore['neg']
             elif polscore['neu'] == max(allpolscores): self.sentiment = 0
             # Run some corrections by looking for groups of words
-            neg_groups = [['sees risk','flag','flagged','slow','sell','bad sign','dark sign'],['risk','concern','debt','flaw','deceleration']]
-            pos_groups = [['reaffirm','signs',' sign','award',' grant',' order','begin','deliver','has','acceleration','receives'],['partner','deal','contract','deploy','low cost','lower cost','low debt','lower debt','sufficient liquidity']]
+            neg_groups = [['sees risk','flag','flagged','slow','sell','bad sign','dark sign','falls'],['risk','concern','debt','flaw','deceleration']]
+            pos_groups = [['reaffirm','signs',' sign','award',' grant',' order','begin','rises','deliver','has','acceleration','receives'],['partner','deal','contract','deploy','low cost','lower cost','low debt','lower debt','sufficient liquidity']]
             neg_count=0
             pos_count=0
             for negg in neg_groups:
@@ -337,7 +378,7 @@ class Sentiment:
 
         # special corrections for reviewers. trying to decipher the reviewer in more complicated cases. Some are hardcoded
         if self.assessment_by=='unknown':
-            for except_fund in ['hedgeye','jefferies','citron','airforce','navy ','army ','aoc ','white house','pentagon']:
+            for except_fund in ['hedgeye','jefferies','citron','airforce','navy ','army ','aoc ','white house','pentagon','wedbush']:
                 if re.search(except_fund,     inputTxt, re.IGNORECASE): self.assessment_by=except_fund.strip(' ')
             # still not sure who made this? Then let's try to reason it out with countries and proper nouns
             if self.assessment_by=='unknown':
@@ -358,7 +399,18 @@ class Sentiment:
         # Just a little cleaning
         #if self.assessment_by!='unknown':
         #    if self.assessment_by.find('\'s'): self.assessment_by=self.assessment_by[:self.assessment_by.find('\'s')]
-    
+
+    # processing the sentiment analysis
+    def Process(self):
+        if self.message=='recom':
+            print('analyzing this recommendation')
+        elif self.message=='target':
+            print('analyzing price target')
+            
+        else:
+            print('cannot yet process this request')
+        return
+
 @dataclass
 class News:
     """"Store the news with tickers, timeSlot: posting time, complete story and headline, company, current price of the company. 
@@ -383,6 +435,19 @@ class News:
         sent = Sentiment()
         sent.Parse(inputTxt,self.company)
         return sent
+
+    # collect price info from before
+    def ProcessSentiment(self, sentiment):
+        ticker=''
+        if len(self.tickers)>0:
+            ticker = tickers[0]
+            
+        if ticker!='':
+            # read in the daily data. not adjusted. collecting from alpaca
+            stock_info = runTicker(api,ticker)
+            print(stock_info)
+            sentiment.Process() #ticker
+
 
 # Read the php or html. Then check for the short title as the key. build a struct.
 def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={}):
@@ -485,10 +550,16 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={}):
             my_news = News(tickers,timeSlot,
                  completeText.rstrip('Reference Link').strip().rstrip('\n'),
                  shortText,company,currPrice,upgradeRel,downgradeRel,nochangeRel)
-            print(my_news.Sentiment())
+
+            # only process new stories
             if shortText not in my_map:
                 my_map[shortText] = my_news
                 new_map[shortText] = my_news
+
+                # running the sentiment analysis
+                print('')
+                print(shortText)
+                print(my_news.Sentiment())                
             if debug:
                 print(my_news)
                 print(tickers)
@@ -501,49 +572,56 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={}):
                 print(downgradeRel)
                 print(nochangeRel)
 
-def Execute(f1='/tmp/recommend.php', f2='/tmp/news.php',total_news_map={},total_recs_map={}):
+def Execute(f1='/tmp/recommend.php', f2='/tmp/news.php',total_news_map={},total_recs_map={}, outFileName='News.p'):
 
     new_news_map ={}
     new_recs_map ={}
     # read these in and save to a pickle file.
-    ParseTheFly(inputFileName=f1,my_map=total_recs_map,new_map=new_recs_map)        
+    ParseTheFly(inputFileName=f1,my_map=total_recs_map,new_map=new_recs_map)
     ParseTheFly(inputFileName=f2,my_map=total_news_map,new_map=new_news_map)
 
     # Saving to a pickle file
-    pickle.dump( [total_news_map,total_recs_map], open( outFileName, "wb" ) )
-                
+    News = {'news':total_news_map,'recs':total_recs_map}
+    pickle.dump( News, open( outFileName, "wb" ) )
+
+    sys.stdout.flush()
+    
 if __name__ == "__main__":
     # execute only if run as a script
     today = datetime.datetime.today()
-    api = ALPACA_REST()
     
     # all news stories from today and load yesterday if it exists
     total_news_map ={}
     total_recs_map ={}
-    outFileName='News.p'
-    if os.path.exists(outFileName) and False:
+    outFileName='News_%s_%s_%s.p' %(today.day,today.month,today.year)
+    if os.path.exists(outFileName): # and False:
         try:
-            [total_news_map,total_recs_map] = pickle.load( open( outFileName, "rb" ) )
+            #[total_news_map,total_recs_map] = pickle.load( open( outFileName, "rb" ) )
+            oldNews = pickle.load( open( outFileName, "rb" ) )
+            if 'news' in oldNews: total_news_map = oldNews['news']
+            if 'recs' in oldNews: total_recs_map = oldNews['recs']
+            if debug: print(total_recs_map.keys())
         except:
             print('Could not read the older news file: %s' %outFileName)
-    while today.hour<24:
+    while (today.hour<23 or (today.hour==23 and today.minute<30)):
         try:
             #after the fact https://thefly.com/news.php?market_mover_filter=on&h=5
             #maybe others https://www.americanbankingnews.com/category/market-news/analyst-articles-us/page/17
             #maybe finviz.com            
             URL = 'https://thefly.com/news.php?analyst_recommendations=on&h=2'
             filename_rec = '/tmp/recommend.php'
-            os.system('wget -O %s %s' %(filename_rec,URL))    
+            os.system('wget -T 30 -q -O %s %s' %(filename_rec,URL))    
             URL = 'https://thefly.com/news.php'
             filename_news = '/tmp/newsInfo.php' # https://thefly.com/news.php?earnings_filter=on&h=3 earnings
-            os.system('wget -O %s %s' %(filename_news,URL))
+            os.system('wget -T 30 -q -O %s %s' %(filename_news,URL))
             # download the results
-            Execute(f1=filename_rec, f2=filename_news,total_news_map=total_news_map,total_recs_map=total_recs_map)
+            Execute(f1=filename_rec, f2=filename_news,total_news_map=total_news_map,total_recs_map=total_recs_map,outFileName=outFileName)
         except:
             print('Error downloading pages!')
         
         # sleep for 10 minutes
         time.sleep(600)
+        today = datetime.datetime.today()
 
     
     #Execute(f1='test/recommend.php', f2='test/news.php',total_news_map=total_news_map,total_recs_map=total_recs_map)

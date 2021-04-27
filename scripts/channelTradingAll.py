@@ -184,11 +184,11 @@ def CandleStick(data, ticker):
     # Add volume.
     # Add moving averages: 3,6,9.
     # Save graph to *.png.
-    ap0 = [ mpf.make_addplot(df['UpperB'],color='g'),  # uses panel 0 by default
-        mpf.make_addplot(df['LowerB'],color='b'),  # uses panel 0 by default
-        mpf.make_addplot(df['sma200'],color='r'),  # uses panel 0 by default        
-        mpf.make_addplot(df['KeltLower'],color='darkviolet'),  # uses panel 0 by default
-        mpf.make_addplot(df['KeltUpper'],color='magenta'),  # uses panel 0 by default
+    ap0 = [ mpf.make_addplot(df['UpperB'],color='g',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
+        mpf.make_addplot(df['LowerB'],color='b',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
+        mpf.make_addplot(df['sma200'],color='r',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default        
+        mpf.make_addplot(df['KeltLower'],color='darkviolet',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
+        mpf.make_addplot(df['KeltUpper'],color='magenta',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
       ]
     fig,axes=mpf.plot(df, type='candle', style='charles',
             title=ticker,
@@ -202,6 +202,7 @@ def CandleStick(data, ticker):
     
 
         # Configure chart legend and title
+    #for 
     axes[0].legend(['Price','Bolanger Up','Bolanger Down','SMA200','Kelt+','Kelt-'])
     #axes[0].set_title(ticker)
     # Save figure to file

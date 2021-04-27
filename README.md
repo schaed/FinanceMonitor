@@ -11,3 +11,7 @@ pip3 install numpy numpy_ext pandas scipy matplotlib alpha_vantage html5lib nltk
 May need to install the vader libraries
 import nltk
 nltk.download('vader_lexicon')
+
+
+For options pricing, try
+https://www.barchart.com/stocks/quotes/X/options
