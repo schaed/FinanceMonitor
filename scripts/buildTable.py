@@ -1,6 +1,6 @@
 from techindicators import techindicators # as techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,IS_ALPHA_PREMIUM_WAIT_ITER
 import pandas as pd
 import numpy as np
 import sys,os
@@ -161,14 +161,14 @@ ticker='TSLA'
 spy=None
 sqlcursor = SQL_CURSOR()
 if loadFromPickle and os.path.exists("SPY.p"):
-    spy = pickle.load( open( "SPY.p", "rb" ) )    
+    spy = pickle.load( open( "SPY.p", "rb" ) )
 else:
     spy=runTickerAlpha(ts,'SPY')
     pickle.dump( spy, open( "SPY.p", "wb" ) )
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 print(spy['close'][0])
 print(spy)
-
+n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 spy_info = GetPastPerformance(spy)
 # build html table
 columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
@@ -183,7 +183,7 @@ if doStocks:
         readShortInfo(s[0])
         if s[0].count('^'):
             continue
-        if j%4==0 and j!=0:
+        if j%n_ALPHA_PREMIUM_WAIT_ITER==0 and j!=0:
             time.sleep(56)
         #if j>0:
         #    break
@@ -218,7 +218,7 @@ entries+=[['SPY']+formatInput(spy, 'SPY',spy_info,spy=spy)]
 for s in b.etfs:
     if s[0]=='SPY':
         continue
-    if j%3==0 and j!=0:
+    if j%n_ALPHA_PREMIUM_WAIT_ITER==0 and j!=0:
         time.sleep(56)
     #if j>1:
     #    break

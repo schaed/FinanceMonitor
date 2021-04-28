@@ -62,7 +62,8 @@ print('Processing %s tickers' %(len(tickers)))
 for ticker in tickers:
     print(ticker)
     sys.stdout.flush()
-    if j%4==0 and j!=0:
+    #if j%4==0 and j!=0:
+    if j%70==0 and j!=0:
         time.sleep(60)
 
     # download the overview
@@ -126,9 +127,11 @@ for ticker in tickers:
         if debug:
             print(annualEarnings)
             print(totalDF)
-    if len(pastEarnings)>0 and 'quarterlyEarnings' in pastEarnings[0]:
+    if len(pastEarnings)>0 and ('quarterlyEarnings' in pastEarnings[0]):
         quarterlyEarnings = pd.DataFrame(pastEarnings[0]['quarterlyEarnings'])
         # cleaning data
+        if ('reportedDate' not in quarterlyEarnings.columns):
+            continue
         quarterlyEarnings['ticker'] = np.array([ticker for _ in range(0,len(quarterlyEarnings))])
         quarterlyEarnings.set_index('reportedDate')
         quarterlyEarnings['reportedDate']=pd.to_datetime(quarterlyEarnings['reportedDate'])

@@ -781,14 +781,15 @@ def getMinLevels(df):
   return levels
 
 # get support levels as drawn h-lines
-def supportLevels(data):
+def supportLevels(data,drawhlines=True):
     df = data.loc[:, ['open', 'high', 'low', 'close','volume']]
     df.columns = ['Open', 'High', 'Low', 'Close','Volume']
     levels = getMinLevels(df)
-    
-    for level in levels:
-        plt.hlines(level[1],xmin=df.index[level[0]], xmax=max(df.index),colors='blue')
-        plt.text(max(df.index), level[1], ' %0.2f' %level[1], ha='left', va='center')
+
+    if drawhlines:
+        for level in levels:
+            plt.hlines(level[1],xmin=df.index[level[0]], xmax=max(df.index),colors='blue')
+            plt.text(max(df.index), level[1], ' %0.2f' %level[1], ha='left', va='center')
     return levels
 
 # plot the support levels
@@ -797,7 +798,7 @@ def plot_support_levels(ticker,df,plots=[],outdir='',doPDF=True):
     # check that there are entries
     if len(df['Open'])<1:
         return
-  
+
     levels = getMinLevels(df)
     #sline = []
     #for level in levels:

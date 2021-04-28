@@ -1,6 +1,6 @@
 from techindicators import techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER
 import pandas as pd
 import numpy as np
 import sys
@@ -396,7 +396,7 @@ spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 AddInfo(spy, spy)
 spy_1year = GetTimeSlot(spy)
 DrawPlots(spy_1year,'SPY',spy_1year)
-
+n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 j=0
 cdir = os.getcwd()
 if doStocks:
@@ -408,7 +408,7 @@ if doStocks:
             continue
         if s[0].count('^'):
             continue
-        if j%4==0 and j!=0:
+        if j%n_ALPHA_PREMIUM_WAIT_ITER==0 and j!=0:
             time.sleep(56)
         print(s[0])
         sys.stdout.flush()
@@ -465,7 +465,7 @@ if doETFs:
     for s in b.etfs:
         if s[0].count('^'):
             continue
-        if j%4==0 and j!=0:
+        if j%n_ALPHA_PREMIUM_WAIT_ITER==0 and j!=0:
             time.sleep(56)
         print(s[0])
         sys.stdout.flush()

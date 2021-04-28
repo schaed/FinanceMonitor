@@ -86,7 +86,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             stockCompact = GetTimeSlot(stockCompact, days=(today - stock.index[-1]).days)
             UpdateTable(stockCompact, ticker, sqlcursor, index_label=index_label)
             stock = pd.concat([stock,stockCompact])
-            stock.sort_index()
+            stock = stock.sort_index()
     except:
         print('%s is a new entry to the database....' %ticker)
         try:
@@ -106,6 +106,21 @@ def ALPACA_REST():
     api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
     return api
 
+def IS_ALPHA_PREMIUM():
+    
+    ALPHA_PREMIUM = os.getenv('ALPHA_PREMIUM')
+    if ALPHA_PREMIUM=='' or ALPHA_PREMIUM==None: return False
+    if int(ALPHA_PREMIUM)==1:
+        ALPHA_PREMIUM=True
+    else:
+        ALPHA_PREMIUM=False
+    return ALPHA_PREMIUM
+
+def IS_ALPHA_PREMIUM_WAIT_ITER():
+    if IS_ALPHA_PREMIUM():
+        return 30 # can update to 75 or 74
+    return 4
+
 def ALPHA_TIMESERIES():
     ALPHA_ID = os.getenv('ALPHA_ID')
     ts = TimeSeries(key=ALPHA_ID)
@@ -116,10 +131,13 @@ def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
     fd = FundamentalData(key=ALPHA_ID,output_format=output_format)
     return fd
 
-def GetTimeSlot(stock, days=365):
+def GetTimeSlot(stock, days=365, startDate=None):
     today=datetime.datetime.now()
+    if startDate!=None:
+        today = startDate
     past_date = today + datetime.timedelta(days=-1*days)
-    date=stock.truncate(before=past_date)
+        
+    date=stock.truncate(before=past_date, after=startDate)
     #date = stock[nearest(stock.index,past_date)]
     return date
 
@@ -211,7 +229,9 @@ def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, l
 
 # add stock data and market data to compute metrics
 def AddInfo(stock,market,debug=False):
-
+    # let's make sure we sort this correctly
+    #stock = stock.sort_index()    
+    #print(stock.tail())
     # Label Volume as positive or negative
     stock['pos_volume'] = 0
     #stock.loc[stock.open>=stock.close,'pos_volume'] = stock.volume
@@ -238,6 +258,18 @@ def AddInfo(stock,market,debug=False):
     stock['KeltLower'],stock['KeltCenter'],stock['KeltUpper']=techindicators.kelt(stock['high'],stock['low'],stock['close'],20,2.0,20)
     stock['copp']=techindicators.copp(stock['close'],14,11,10)
     stock['daily_return']=stock['adj_close'].pct_change(periods=1)
+    
+    # add various future returns
+    stock['fiveday_future_return']=stock['adj_close'].shift(-5).pct_change(periods=5)
+    stock['oneday_future_return']=stock['adj_close'].shift(-1).pct_change(periods=1)
+    stock['twoday_future_return']=stock['adj_close'].shift(-2).pct_change(periods=2)
+    stock['thrday_future_return']=stock['adj_close'].shift(-5).pct_change(periods=3)
+    stock['fiveday_prior_vix']=stock['adj_close'].rolling(5).std()
+    stock['oneday_prior_vix']=stock['adj_close'].rolling(1).std()
+    stock['twoday_prior_vix']=stock['adj_close'].rolling(2).std()
+    stock['thrday_prior_vix']=stock['adj_close'].rolling(3).std()
+    #print(stock[['adj_close','oneday_future_return','twoday_future_return']])
+    
     stock['daily_return_stddev14']=techindicators.rstd(stock['daily_return'],14)
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
     stock['alpha']=techindicators.rollingAlpha(stock,14,market)
