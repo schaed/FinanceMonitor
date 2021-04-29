@@ -306,7 +306,7 @@ def AddInfo(stock,market,debug=False):
     stock['monthly_return']=stock['adj_close'].pct_change(freq='M')
     stock_1y = GetTimeSlot(stock)
     if len(stock_1y['adj_close'])<1:
-        print('Ticker has no adjusted close info: %s' %ticker)
+        print('Ticker has no adjusted close info.')
         stock['yearly_return']=stock['adj_close']
     else:
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1

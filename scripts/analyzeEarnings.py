@@ -62,6 +62,8 @@ def ProcessTicker(ticker, earningsExp, sqlcursor,spy,j,connectionCal):
     print(ticker)
     if debug: print(earningsExp)
     tstock_info,j=ConfigTable(ticker, sqlcursor, ts, readType, j, hoursdelay=23)
+    if len(tstock_info)==0:
+        return []
     AddInfo(tstock_info,spy,debug=debug)
     prev_earnings = None
     overview = None
@@ -70,7 +72,7 @@ def ProcessTicker(ticker, earningsExp, sqlcursor,spy,j,connectionCal):
         prev_earnings = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
     except:
         print('no previous info for %s' %ticker)
-        pass
+        return []
     if debug: print(prev_earnings)
     prev_earnings['earningDiff'] = prev_earnings['reportedEPS'] - prev_earnings['estimatedEPS']
 
@@ -127,22 +129,55 @@ fd = ALPHA_FundamentalData()
 my_3month_calendar=GetUpcomingEarnings(fd,ReDownload)
 print(my_3month_calendar)
 it=0
+preLoaded=[]
+if not ReDownload:
+    #tables = connectionCalv2.cursor().execute("select name from sqlite_master where type = 'table';")
+    #for t in tables:
+    #    print(t)
+    earningsInfoSaved = pd.read_sql('SELECT * FROM earningsInfo', connectionCalv2)
+    #print(earningsInfoSaved)
+    #earningsInfoSaved.drop(columns='level_0').to_sql('earningsInfo', connectionCalv3)
+    #earningsInfoSaved.to_sql('earningsInfo', connectionCalv3)
+    #earningsInfoSaved = pd.read_sql('SELECT * FROM SHOO', connectionCalv2)
+    #connectionCalv2.cursor().execute('DROP TABLE OBNK')
+    #connectionCalv2.cursor().execute('ALTER TABLE SHOO RENAME TO earningsInfo')
+#('SHOO',)
+    preLoaded = earningsInfoSaved['ticker'].unique()
+    print(preLoaded)
+#sys.exit(0)
 all_merged_stock_earnings=[]
+list_of_symbols = my_3month_calendar['symbol'].values
 for it in range(0,len(my_3month_calendar)):
-    ticker = my_3month_calendar['symbol'].values[it]
+    ticker = list_of_symbols[it]
+    if ticker in ['BRKB']: continue
+    print(ticker)
+    sys.stdout.flush()
+    # skip if this is already loaded
+    if not ReDownload and (ticker in preLoaded):
+        print('Skipping because earnings info is already loaded %s' %ticker)
+        continue
     merged_stock_earnings = ProcessTicker(ticker, my_3month_calendar[it:it+1],sqlcursor,spy,j,connectionCal)
-
+    print(merged_stock_earnings)
+    if len(merged_stock_earnings)==0:
+        print('Skipping because earnings info is empty %s' %ticker)
+        continue
 
     # merge these data frames
     if len(all_merged_stock_earnings)==0:
         all_merged_stock_earnings = merged_stock_earnings
     else:
-        all_merged_stock_earnings = pd.concat([merged_stock_earnings,all_merged_stock_earnings])
-    it+=1
+        if ReDownload:
+            all_merged_stock_earnings = pd.concat([merged_stock_earnings,all_merged_stock_earnings])
+        else: all_merged_stock_earnings = merged_stock_earnings
     print(all_merged_stock_earnings)
 
+    # if just appending new stuff, then do it.
+    if len(all_merged_stock_earnings)>0 and not ReDownload:
+        all_merged_stock_earnings.to_sql('earningsInfo', connectionCalv2,if_exists='append', index=True)  
+    
     # write the output
     if it%20==0 and it!=0:
         #UpdateTable(stock, ticker, sqlcursor, index_label='Date')
-        all_merged_stock_earnings.to_sql(ticker, connectionCalv2,if_exists='replace', index=True)
+        if ReDownload:
+            all_merged_stock_earnings.to_sql('earningsInfo', connectionCalv2,if_exists='replace', index=True)
         #break

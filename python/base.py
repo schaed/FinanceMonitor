@@ -873,6 +873,7 @@ stock_list = [
         #['S',2.0,5.0,'NYSE','sprint'], # sprint
         ['TMUS',2.0,5.0,'NASDAQ','t-mobile'], # t-mobile
         ['HOG',40.0,55.0,'NYSE','harley davidson'], # 3% dividend harley davidson
+        ['PINS',40.0,55.0,'NYSE','pinterest'], # 
         #['PIR',5.0,10.0,'NYSE','pier 1'], # 3% dividend pier 1 imports
         ['DDD',15.0,25.0,'NYSE','3D printing'], # 3D printing manufacturer
         ['XONE',10.0,15.0,'NASDAQ','3D printing exone'], # 3D printing manufacturer exone
@@ -925,6 +926,8 @@ stock_list = [
          #['CBA',6.0,9.0,'NYSE','clearbridge. energy company'], # clearbridge. energy company, 10% dividend. 
          #['UTX',80.0,120.0,'NYSE',' united  technolgy. airplane builder'], # united  technolgy. airplane builder most shorted, 2.4% dividend.
          ['HON',95.0,130.0,'NYSE','honeywell'], # honeywell. 2%
+         ['OPRA',95.0,130.0,'NASDAQ','web browser opera'], 
+         ['CIT',95.0,130.0,'NYSE','bank'], 
          ['V',65.0,100.0,'NYSE','visa'], # visa. 0.7%
          ['MO',50.0,70.0,'NYSE','tobacco Altria'], # tobacco company. Altria 3%
          ['TIPT',50.0,70.0,'NYSE','Tip tree'], 
