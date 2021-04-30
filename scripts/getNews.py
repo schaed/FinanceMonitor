@@ -593,7 +593,7 @@ if __name__ == "__main__":
     # all news stories from today and load yesterday if it exists
     total_news_map ={}
     total_recs_map ={}
-    outFileName='News_%s_%s_%s.p' %(today.day,today.month,today.year)
+    outFileName='News/News_%s_%s_%s.p' %(today.day,today.month,today.year)
     if os.path.exists(outFileName): # and False:
         try:
             #[total_news_map,total_recs_map] = pickle.load( open( outFileName, "rb" ) )
