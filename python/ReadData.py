@@ -11,6 +11,7 @@ import numpy as np
 import os
 import sqlite3
 from dateutil.parser import parse
+import urllib3
 
 # db_name the database name
 def SQL_CURSOR(db_name='stocksAV.db'):
@@ -64,8 +65,14 @@ def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='D
 def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursdelay=5):
 
     stock = None
+    NewEntry=False
     try:
         stock = pd.read_sql('SELECT * FROM %s' %ticker, sqlcursor) #,index_col='Date')
+    except (sqlite3.OperationalError, pd.io.sql.DatabaseError, IOError, EOFError) as e:
+        print("Testing multiple exceptions. {}".format(e.args[-1]))
+        pass
+    try:
+        # if we retrieved info, then try to process it
         stock[index_label]=pd.to_datetime(stock[index_label].astype(str), format='%Y-%m-%d')
         stock[index_label]=pd.to_datetime(stock[index_label])
         stock = stock.set_index(index_label)
@@ -78,7 +85,8 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             try:
                 stockCompact=runTickerAlpha(ts,ticker,'compact')
                 j+=1
-            except ValueError:
+            except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError) as e:
+                print("Testing multiple exceptions. {}".format(e.args[-1]))
                 print('%s could not load compact....' %ticker)
                 j+=1
                 return [],j
@@ -88,11 +96,14 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             stock = pd.concat([stock,stockCompact])
             stock = stock.sort_index()
     except:
+        NewEntry=True
         print('%s is a new entry to the database....' %ticker)
+    if NewEntry:
         try:
             stock=runTickerAlpha(ts,ticker,'full')
             j+=1
-        except ValueError:
+        except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))
             j+=1
             print('%s could not load....' %ticker)
             return [],j

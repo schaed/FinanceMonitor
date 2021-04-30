@@ -437,12 +437,13 @@ if doStocks:
         #    print('ERROR processing...ValueError %s' %s[0])
         #    j+=1
         #    continue
+        print(tstock_info)
         try:
             start = time.time()
             AddInfo(tstock_info, spy)
             end = time.time()
             if debug: print('Process time to add info: %s' %(end - start))
-        except ValueError:
+        except (ValueError,KeyError):
             print('Error processing %s' %s[0])
             j+=1
             continue

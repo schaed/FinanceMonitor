@@ -64,7 +64,11 @@ def ProcessTicker(ticker, earningsExp, sqlcursor,spy,j,connectionCal):
     tstock_info,j=ConfigTable(ticker, sqlcursor, ts, readType, j, hoursdelay=23)
     if len(tstock_info)==0:
         return []
-    AddInfo(tstock_info,spy,debug=debug)
+    try:
+        AddInfo(tstock_info,spy,debug=debug)
+    except (ValueError,KeyError):
+        print('Error getting infor for %s' %ticker)
+        return []
     prev_earnings = None
     overview = None
     try:

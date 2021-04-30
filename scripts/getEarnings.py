@@ -115,7 +115,11 @@ for ticker in tickers:
         continue
     if len(pastEarnings)>0 and 'annualEarnings' in pastEarnings[0]:
         annualEarnings = pd.DataFrame(pastEarnings[0]['annualEarnings'])
-        annualEarnings.set_index('fiscalDateEnding')
+        try:
+            annualEarnings.set_index('fiscalDateEnding')
+        except KeyError:
+            print('skipping missing fiscaleDate for %s' %ticker)
+            continue
         if debug: print(annualEarnings.dtypes)
         # cleaning up data
         annualEarnings['ticker'] = np.array([ticker for _ in range(0,len(annualEarnings))])
