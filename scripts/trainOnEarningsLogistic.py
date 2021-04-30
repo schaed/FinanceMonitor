@@ -26,14 +26,15 @@ import numpy as np
 import numpy.lib.recfunctions as recfn
 import seaborn as sns
 
-training_name='stockEarningsModel'
+training_dir='models/'
+training_name='stockEarningsModelTest'
 ReDownload = False
 readType='full'
 debug=False
 draw=True
 doPDFs = False
 doPlot = False
-doTrain = False
+doTrain = True
 outdir = b.outdir
 import matplotlib.pyplot as plt
 import matplotlib
@@ -241,6 +242,9 @@ print(len(earningsInfoRed))
 
 data_train, data_test, label_train, label_test = train_test_split(earningsInfoRed, earningsInfoRed[labelNames], test_size=0.2, random_state=0) # 80%/20% train/test split
 X_weight = data_train['oneday_future_return'].abs()
+#X_weightdf = pd.DataFrame(X_weight,columns=['oneday_future_return'])
+#X_weight = X_weightdf['oneday_future_return'].where(X_weightdf['oneday_future_return'] >= 0.01, 0.01)
+#X_weight = X_weight**2 #data_train['oneday_future_return'].abs()
 X_train = data_train[COLS] # use only COLS
 X_test = data_test[COLS] # use only COLS
 y_train = label_train
@@ -255,7 +259,7 @@ print(y_train.max())
 ###############################################################################
 # Preprocess data
 #################
-scaler_filename = "scaler"+training_name+".save"
+scaler_filename = training_dir+"scaler"+training_name+".save"
 scaler=None
 # Make scaler for train data
 if doTrain:
@@ -287,11 +291,11 @@ X_test = scaler.transform(X_test) # apply to test data
 ############################
 
 # Fit the model
-model_filename = 'model'+training_name+'.hf'
+model_filename = training_dir+'model'+training_name+'.hf'
 model=None
 if doTrain:
     model = CategoryModel(COLS)
-    history = model.fit(X_train, y_train,  epochs=25, batch_size=50,validation_split = 0.2, sample_weight=X_weight) #, class_weight=class_weight)#, sample_weight=w_train) #validation_split=0.1,
+    history = model.fit(X_train, y_train,  epochs=40, batch_size=50,validation_split = 0.2, sample_weight=X_weight) #, class_weight=class_weight)#, sample_weight=w_train) #validation_split=0.1,
     #print(history.history)
     plot_loss(history)
     # Save the model

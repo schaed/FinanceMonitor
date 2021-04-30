@@ -102,7 +102,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     # Add Information
     try:
         AddInfo(stock,spy)
-    except KeyError:
+    except (KeyError,ValueError):
         print('ERROR processing %s' %ticker)
         return None
     past_perf = GetPastPerformance(stock)
