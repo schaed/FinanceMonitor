@@ -47,3 +47,19 @@ analyzeEarnings.py
 
 # scrap the web for short data
 shortData.py
+
+
+#
+https://eresearch.fidelity.com/eresearch/conferenceCalls.jhtml?tab=earnings&begindate=4/29/2021
+https://marketchameleon.com/Calendar/Earnings #
+https://finance.yahoo.com/calendar/earnings/?day=2021-05-26
+
+
+Way cheaper API
+https://financialmodelingprep.com/developer/docs#Company-Quote
+
+# has the time the data was delivered for the earnings
+https://financialmodelingprep.com/api/v3/income-statement/AAPL?limit=120&apikey=demo
+
+# another free option. well free to start with low latency
+https://iexcloud.io/docs/api/

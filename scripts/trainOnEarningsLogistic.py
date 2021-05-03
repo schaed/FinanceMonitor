@@ -1,5 +1,5 @@
 import os,sys,time,datetime,copy,pickle
-from ReadData import SQL_CURSOR,GetUpcomingEarnings,AddInfo,ALPHA_TIMESERIES,ConfigTable,ALPHA_FundamentalData,GetTimeSlot
+from ReadData import SQL_CURSOR,GetUpcomingEarnings,AddInfo,ALPHA_TIMESERIES,ConfigTable,ALPHA_FundamentalData,GetTimeSlot,ApplySupportLevel
 import pandas  as pd
 import numpy as np
 import base as b
@@ -27,27 +27,34 @@ import numpy.lib.recfunctions as recfn
 import seaborn as sns
 
 training_dir='models/'
-training_name='stockEarningsModelTest'
+training_name='stockEarningsModelTestv2'
 ReDownload = False
 readType='full'
 debug=False
 draw=True
 doPDFs = False
 doPlot = False
-doTrain = True
+doTrain = False
 outdir = b.outdir
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy import stats
 if not draw:
     matplotlib.use('Agg')
 
-def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
+def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None, axis = []):
     # plotting
     plt.clf()
     plt.scatter(xaxis,yaxis)
     plt.gcf().autofmt_xdate()
+    if len(axis)>0:
+        plt.axis(axis)
     plt.ylabel(yname)
     plt.xlabel(xname)
+    if len(axis)>0:
+        m, b = np.polyfit(xaxis.values, yaxis.values, 1) #m = slope, b=intercept
+        plt.plot(xaxis.values, m*xaxis.values + b,color='red')
+        print(m,b)
     if title!="":
         plt.title(title, fontsize=30)
     for h in hlines:
@@ -120,13 +127,6 @@ def LoadData():
 
     return earningsInfoSaved
 
-# Compute the support levels
-def ApplySupportLevel(ex):
-    if ex['tech_levels']=='':
-        return 0
-    a = np.array(ex['tech_levels'].split(','),dtype=float)/ex.adj_close_daybefore-1.0
-    return [np.min(a[a>0.0],initial=0.25),np.max(a[a<0.0],initial=-0.25)]
-
 earningsInfo = LoadData()
 
 print(earningsInfo)
@@ -161,6 +161,26 @@ labelNames = ['label1','label2','label3','label4','label5']
 earningsInfoSort = earningsInfo.sort_values('reportedDate')
 print(earningsInfoSort[['ticker','reportedDate','adj_close']].tail(50))
 
+# basic plots:
+earningsInfoSortPos = earningsInfoSort[earningsInfoSort['estimatedEPS']>0.35]
+# clean up
+earningsInfoSortPos = earningsInfoSortPos[['estimatedEPS','surprisePercentage','oneday_future_return','adj_close_daybefore','adj_close']].dropna()
+earningsInfoSortPos['z_score']=stats.zscore(earningsInfoSortPos['surprisePercentage'])
+earningsInfoSortPos = earningsInfoSortPos[earningsInfoSortPos['z_score'].abs()<3.0]
+
+earningsInfoSortPos['adj_close_nextday'] = (1.0+earningsInfoSortPos.oneday_future_return)*earningsInfoSortPos.adj_close
+print(earningsInfoSortPos.oneday_future_return)
+earningsInfoSortPos['daily_prev_return'] = (earningsInfoSortPos.adj_close - earningsInfoSortPos.adj_close_daybefore)/earningsInfoSortPos.adj_close_daybefore
+earningsInfoSortPos['two_day_return'] = (earningsInfoSortPos.adj_close_nextday - earningsInfoSortPos.adj_close_daybefore)/earningsInfoSortPos.adj_close_daybefore
+#earningsInfoSortPos['earningsInfoSortPos'] reportedEPS
+print(earningsInfoSortPos.describe())
+MakePlot(  earningsInfoSortPos.surprisePercentage, earningsInfoSortPos.daily_prev_return, xname='earnings surprise',yname='previous day return',saveName='predictedResponse', hlines=[],title='suprise',axis = [-75, 75, -0.5, 0.5])
+MakePlot( earningsInfoSortPos.surprisePercentage,  earningsInfoSortPos.two_day_return, xname='earnings surprise',yname='Two day Return',saveName='predictedResponse', hlines=[],title='suprise',axis = [-75, 75, -0.5, 0.5])
+MakePlot( earningsInfoSortPos.surprisePercentage, earningsInfoSortPos.oneday_future_return,  xname='earnings surprise',yname='one day future return',saveName='predictedResponse', hlines=[],title='suprise',axis = [-75, 75, -0.5, 0.5])
+MakePlot( earningsInfoSortPos.daily_prev_return, earningsInfoSortPos.oneday_future_return,  xname='earnings surprise',yname='one day future return',saveName='predictedResponse', hlines=[],title='suprise',axis = [-0.5, 0.5, -0.5, 0.5])
+#MakePlot( earningsInfoSortPos.oneday_future_return, earningsInfoSortPos.surprisePercentage, xname='Return',yname='suprise',saveName='predictedResponse', hlines=[],title='suprise')
+
+
 print('starting support levels info')
 sys.stdout.flush()
 SupportLevels = earningsInfo.apply(ApplySupportLevel,axis=1,result_type='expand')
@@ -188,8 +208,10 @@ for c in labelNames:
 # preparing data
 for c in ['sma50_daybefore','sma20_daybefore','sma200_daybefore']:
     earningsInfo[c+'r']= earningsInfo.adj_close_daybefore/earningsInfo[c]
-for c in ['fiveday_prior_vix','thrday_prior_vix','twoday_prior_vix','SAR_daybefore','estimatedEPS']:
-    earningsInfo[c+'r']=earningsInfo[c]/ earningsInfo.adj_close_daybefore
+for c in ['fiveday_prior_vix','thrday_prior_vix','twoday_prior_vix']:
+    earningsInfo[c+'r']=earningsInfo[c]/earningsInfo.adj_close_daybefore
+for c in ['SAR_daybefore','estimatedEPS']:
+    earningsInfo[c+'r']=earningsInfo[c]/earningsInfo.adj_close_daybefore
 
 #sys.exit(0)
 COLS  = ['sma50_daybeforer','sma20_daybeforer','sma200_daybeforer',
@@ -211,9 +233,9 @@ COLS  = ['sma50_daybeforer','sma20_daybeforer','sma200_daybeforer',
 'stochK_daybefore',
 'stochD_daybefore',
 'willr_daybefore',
-'fiveday_prior_vixr',
-'thrday_prior_vixr',
-'twoday_prior_vixr',
+#'fiveday_prior_vix_daybeforer',
+#'thrday_prior_vix_daybeforer',
+#'twoday_prior_vix_daybeforer',
 'estimatedEPSr',
 'upSL',
 'downSL',
@@ -295,7 +317,7 @@ model_filename = training_dir+'model'+training_name+'.hf'
 model=None
 if doTrain:
     model = CategoryModel(COLS)
-    history = model.fit(X_train, y_train,  epochs=40, batch_size=50,validation_split = 0.2, sample_weight=X_weight) #, class_weight=class_weight)#, sample_weight=w_train) #validation_split=0.1,
+    history = model.fit(X_train, y_train,  epochs=20, batch_size=50,validation_split = 0.2, sample_weight=X_weight) #, class_weight=class_weight)#, sample_weight=w_train) #validation_split=0.1,
     #print(history.history)
     plot_loss(history)
     # Save the model

@@ -1,6 +1,6 @@
 from techindicators import techindicators # as techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,IS_ALPHA_PREMIUM_WAIT_ITER
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,IS_ALPHA_PREMIUM_WAIT_ITER,GetNNSelection
 import pandas as pd
 import numpy as np
 import sys,os
@@ -10,6 +10,7 @@ import base as b
 import time
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
+debug=False
 draw=False
 outdir = b.outdir
 doStocks=True
@@ -100,11 +101,12 @@ def GetPastPerformance(stock):
 
 def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     # Add Information
-    try:
-        AddInfo(stock,spy)
-    except (KeyError,ValueError):
-        print('ERROR processing %s' %ticker)
-        return None
+    if 'cmf' not in stock.columns:
+        try:
+            AddInfo(stock,spy)
+        except (KeyError,ValueError):
+            print('ERROR processing %s' %ticker)
+            return None
     past_perf = GetPastPerformance(stock)
 
     # compute the percentage changes
@@ -127,7 +129,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     
     # label the price as green if above the 200 day moving average
     entry=-1
-    input_list = ['sma10','sma20','sma100','sma200','rstd10','cci','chosc','force']
+    input_list = ['sma10','sma20','sma100','sma200','rstd10','cci','chosc','force','pred']
     color='red'
     if stock['close'][entry]>stock['sma200'][entry]:
         color='green'
@@ -158,20 +160,26 @@ ticker='X'
 ticker='TSLA'
 #stock_info = runTicker(api,ticker)
 #stock_info=runTickerAlpha(ts,ticker)
-spy=None
 sqlcursor = SQL_CURSOR()
-if loadFromPickle and os.path.exists("SPY.p"):
-    spy = pickle.load( open( "SPY.p", "rb" ) )
-else:
-    spy=runTickerAlpha(ts,'SPY')
-    pickle.dump( spy, open( "SPY.p", "wb" ) )
-spy['daily_return']=spy['adj_close'].pct_change(periods=1)
+connectionCal = SQL_CURSOR('earningsCalendar.db')
+#spyB=None
+#if loadFromPickle and os.path.exists("SPY.p"):
+#    spyB = pickle.load( open( "SPY.p", "rb" ) )
+#else:
+#    spyB=runTickerAlpha(ts,'SPY')
+#    pickle.dump( spyB, open( "SPY.p", "wb" ) )
+#spyB['daily_return']=spyB['adj_close'].pct_change(periods=1)
+j=0
+spy,j=GetNNSelection('SPY', ts, connectionCal, sqlcursor, None,
+                       debug=debug, j=j,addRangeOpens=False,
+                       training_dir='models/',training_name='stockEarningsModelTestv2noEPS')
+
 print(spy['close'][0])
 print(spy)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','Pred','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0
@@ -190,7 +198,10 @@ if doStocks:
         print(s[0])
         sys.stdout.flush()    
         stock=None
-        stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+        stock,j=GetNNSelection(s[0], ts, connectionCal, sqlcursor,spy,
+                                   debug=debug,j=j,addRangeOpens=False,
+                        training_dir='models/',training_name='stockEarningsModelTestv2noEPS',draw=True)
+        #stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
         if len(stock)==0:
             continue
         #try:
@@ -225,7 +236,11 @@ for s in b.etfs:
     print(s[0])
     sys.stdout.flush()
     stock=None
-    stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+    stock,j=GetNNSelection(s[0], ts,connectionCal, sqlcursor, spy,
+                                   debug=debug,j=j,addRangeOpens=False,
+                        training_dir='models/',
+                        training_name='stockEarningsModelTestv2noEPS')
+    #stock,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
     if len(stock)==0:
         continue
     #try:

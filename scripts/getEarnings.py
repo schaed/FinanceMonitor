@@ -8,7 +8,8 @@ debug=False
 
 # Read and process the overview info
 def GetOverview(fd, ticker, connectionCal):
-    # should load this once per quarter
+    today=datetime.datetime.now().strftime("%Y-%m-%d")
+    # should load this once per week?
     #https://www.alphavantage.co/query?function=OVERVIEW&symbol=IBM&apikey=demo
     overview = fd.get_company_overview(ticker) # has P/E, etc
     if len(overview)>0: # and type(overview) is tuple:
@@ -22,13 +23,17 @@ def GetOverview(fd, ticker, connectionCal):
             overview[dat] = pd.to_numeric(overview[dat],errors='coerce')
 
     # Fill the output
-    overview['Date']=today=datetime.datetime.now().strftime("%Y-%m-%d")
+    overview['Date']=today
     overview=overview.set_index('Date')
     if debug: print(overview)
 
     oEDF = ConfigTableFromPandas('overview',ticker,connectionCal,overview,index_label='Date',tickerName='Symbol')
 
-connectionCal = SQL_CURSOR('earningsCalendar.db')
+connectionCal = SQL_CURSOR('earningsCalendarv2.db')
+# clean up the null results before we start
+connectionCal.cursor().execute('DELETE FROM quarterlyEarnings WHERE (reportedDate>="2021-04-20" AND reportedEPS is NULL)')
+# remove the duplicates
+#connectionCal.cursor().execute("DELETE FROM quarterlyEarnings WHERE rowid NOT IN (  SELECT MIN(rowid)   FROM quarterlyEarnings   GROUP BY reportedDate,ticker )").fetchall()
 fd = ALPHA_FundamentalData()
 
 my_3month_calendar=GetUpcomingEarnings(fd,ReDownload)
@@ -51,6 +56,7 @@ if debug: print(my_3month_calendar['symbol'])
 #sys.exit(0)
 j=0
 tickers=['IBM']
+today=datetime.datetime.now().strftime("%Y-%m-%d")
 tickers = my_3month_calendar['symbol'].values.tolist()
 for t in b.stock_list:
     if t[0].count('^'):
@@ -60,6 +66,7 @@ for t in b.stock_list:
 print('Processing %s tickers' %(len(tickers)))
 #sys.exit(0)
 for ticker in tickers:
+    
     print(ticker)
     sys.stdout.flush()
     #if j%4==0 and j!=0:
@@ -73,6 +80,15 @@ for ticker in tickers:
         try:
             stockOver = pd.read_sql('SELECT * FROM overview WHERE Symbol="%s"' %(ticker), connectionCal)
             if len(stockOver)==0: DownloadOverview=True
+            # https://www.finra.org/filing-reporting/regulatory-filing-systems/short-interest
+            # check if the last entry was more than 10 days ago. If so, then load a new entry. Things like the short data are updated once every two weeks
+            # info saved as Date when it was recorded
+            if 'Date' in stockOver.columns:
+                stockOver['Date'] = pd.to_datetime(stockOver['Date'])
+                if len(stockOver['Date'])>0:
+                    # time check
+                    if (np.datetime64(today) - stockOver['Date'].values[-1])>np.timedelta64(10,'D'):
+                        DownloadOverview=True
         except:
             DownloadOverview=True
     if DownloadOverview:
@@ -87,6 +103,12 @@ for ticker in tickers:
     DownloadInfo=False
     if ReDownload:
         DownloadInfo=True
+
+    reportDate = my_3month_calendar[my_3month_calendar['symbol']==ticker].index.values
+    if len(reportDate)>0:
+        if (np.datetime64(today) - reportDate[0])>np.timedelta64(5,'h'):
+            print('will update earnings for %s' %ticker)
+            DownloadInfo=True
     if not ReDownload:
         try:
             stockInfo = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
@@ -104,7 +126,6 @@ for ticker in tickers:
             continue
     else:
         continue
-
 
     # Loading the previous earnings!
     try:

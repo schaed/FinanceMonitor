@@ -4,14 +4,18 @@ import alpaca_trade_api
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.fundamentaldata import FundamentalData
 from techindicators import techindicators
+from sklearn import preprocessing
+from keras.models import load_model
 import talib
-import datetime,time
+import datetime,time,os,pickle
 import pandas as pd
 import numpy as np
-import os
 import sqlite3
 from dateutil.parser import parse
 import urllib3
+import matplotlib.pyplot as plt
+import matplotlib
+import base as baseB
 
 # db_name the database name
 def SQL_CURSOR(db_name='stocksAV.db'):
@@ -32,6 +36,7 @@ def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='D
 
     stock = None
     try:
+    #if True:
         stock = pd.read_sql('SELECT * FROM %s WHERE %s="%s"' %(tableName,tickerName,ticker), sqlcursor) #,index_col='Date')
         if len(stock)==0 and len(earnings)>0: # if empty, then let's fill it
             UpdateTable(earnings, tableName, sqlcursor, index_label=None)
@@ -45,11 +50,15 @@ def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='D
         if len(earnings)>0:
             earnings[index_label]=pd.to_datetime(earnings[index_label])
             today = earnings.sort_values(index_label)[index_label].values[-1]
-            print(today)
+            earnings=earnings.set_index(index_label)
+            #print(today)
         StartLoading = True
-        if (today - stock.index[-1])>datetime.timedelta(days=1,hours=12) and (StartLoading):
+        if len(earnings)>0 and (today - stock.index[-1])>datetime.timedelta(days=1,hours=12) and (StartLoading):
             stockCompact=earnings
             # make sure we only add newer dates
+            #print(stockCompact)
+            #print(stockCompact.dtypes)
+            #print((today - stock.index[-1]).days)
             stockCompact = GetTimeSlot(stockCompact, days=(today - stock.index[-1]).days)
             UpdateTable(stockCompact, tableName, sqlcursor, index_label=index_label)
             stock = pd.concat([stock,stockCompact])
@@ -308,6 +317,7 @@ def AddInfo(stock,market,debug=False):
     stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
+    stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']    
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     stock['market'] = market['adj_close']
@@ -350,3 +360,214 @@ def GetUpcomingEarnings(fd,ReDownload):
     my_3month_calendar=my_3month_calendar.set_index('reportDate')
     my_3month_calendar=my_3month_calendar.sort_index()
     return my_3month_calendar
+
+def GetCompanyEarningsInfo(ticker, fd, connectionCal, debug=False):
+
+    try:
+        pastEarnings = fd.get_company_earnings(ticker)
+    except:
+        print('Could not collect earnings for: %s' %ticker)
+        return []
+    quarterlyEarnings=[]
+    # Loading the previous earnings!
+    try:
+        pastEarnings[0]
+        if debug: print(pastEarnings[0].keys())
+    except:
+        print('pastEarnings are empty for %s' %ticker)
+        return []
+    if len(pastEarnings)>0 and 'annualEarnings' in pastEarnings[0]:
+        annualEarnings = pd.DataFrame(pastEarnings[0]['annualEarnings'])
+        try:
+            annualEarnings.set_index('fiscalDateEnding')
+        except (KeyError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))
+            print('skipping missing fiscaleDate for %s' %ticker)
+            return []
+        if debug: print(annualEarnings.dtypes)
+        # cleaning up data
+        annualEarnings['ticker'] = np.array([ticker for _ in range(0,len(annualEarnings))])
+        annualEarnings['fiscalDateEnding']=pd.to_datetime(annualEarnings['fiscalDateEnding'])
+        for sch in ['reportedEPS']:
+            if sch in annualEarnings:
+                annualEarnings[sch]=pd.to_numeric(annualEarnings[sch],errors='coerce')
+        totalDF = ConfigTableFromPandas('annualEarnings',ticker,connectionCal,annualEarnings,index_label='fiscalDateEnding')
+        if debug:
+            print(annualEarnings)
+            print(totalDF)
+    if len(pastEarnings)>0 and ('quarterlyEarnings' in pastEarnings[0]):
+        quarterlyEarnings = pd.DataFrame(pastEarnings[0]['quarterlyEarnings'])
+        # cleaning data
+        if ('reportedDate' not in quarterlyEarnings.columns):
+            return []
+        quarterlyEarnings['ticker'] = np.array([ticker for _ in range(0,len(quarterlyEarnings))])
+        quarterlyEarnings.set_index('reportedDate')
+        quarterlyEarnings['reportedDate']=pd.to_datetime(quarterlyEarnings['reportedDate'])
+        quarterlyEarnings['fiscalDateEnding']=pd.to_datetime(quarterlyEarnings['fiscalDateEnding'])
+        for sch in ['surprise','reportedEPS','estimatedEPS','surprisePercentage']:
+            if sch in quarterlyEarnings:
+                quarterlyEarnings[sch]=pd.to_numeric(quarterlyEarnings[sch],errors='coerce')
+        if debug:
+            print(quarterlyEarnings)
+            print(quarterlyEarnings.dtypes)
+        qEDF = ConfigTableFromPandas('quarterlyEarnings',ticker,connectionCal,quarterlyEarnings,index_label='reportedDate')
+        if debug: print(qEDF)
+    return quarterlyEarnings
+
+# Compute the support levels so that they are entries to the machine learning
+def ApplySupportLevel(ex):
+    if ex['tech_levels']=='':
+        return 0
+    a = np.array(ex['tech_levels'].split(','),dtype=float)/ex.adj_close_daybefore-1.0
+    return [np.min(a[a>0.0],initial=0.25),np.max(a[a<0.0],initial=-0.25)]
+
+# preprocess to add the info for running the earnings NN
+# input is a dataframe with daily info
+# addRangeOpens returns only the most recent day and price variations
+def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDownload=False, debug=False, addRangeOpens=True):
+    
+    if debug:
+        print(spy)
+        print(ticker)
+    tstock_info,j=ConfigTable(ticker, sqlcursor, ts, 'full', j, hoursdelay=23)
+    
+    if len(tstock_info)==0:
+        return []
+    try:
+        
+        if ticker=='SPY':
+            AddInfo(tstock_info,tstock_info,debug=debug)
+        else:
+            AddInfo(tstock_info,spy,debug=debug)
+    except (ValueError,KeyError) as e:
+        print("Testing multiple exceptions. {}".format(e.args[-1]))
+        print('Error getting info for %s' %ticker)
+        return []
+
+    # read in the earnings info
+    fd = ALPHA_FundamentalData()
+    my_3month_calendar = GetUpcomingEarnings(fd,ReDownload)
+    estimateEPS=0.0
+    try:
+        estimateEPS = my_3month_calendar[my_3month_calendar['symbol']==ticker]['estimate'].dropna().values[-1]
+    except (ValueError,KeyError,IndexError) as e:
+        #print("Testing multiple exceptions. {}".format(e.args[-1]))
+        pass
+    if estimateEPS==0:
+        prev_earnings = None
+        overview = None
+        try:
+            overview = pd.read_sql('SELECT * FROM overview WHERE Symbol="%s"' %(ticker), connectionCal)
+            prev_earnings = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
+            estimateEPS = prev_earnings[prev_earnings['ticker']==ticker]['estimatedEPS'].dropna().values[-1]
+        except:
+            print('no previous info earnings info for %s' %ticker)
+
+        # last try at getting the earnings
+        if estimateEPS==0:
+            try:
+                quarterlyEarnings = GetCompanyEarningsInfo(ticker, fd, connectionCal, debug=debug)
+                if len(quarterlyEarnings)>0:
+                    estimateEPS = prev_earnings[prev_earnings['ticker']==ticker]['estimatedEPS'].dropna().values[-1]
+            except:
+                pass
+    
+    for a in ['open', 'high', 'low', 'close', 'adj_close', 'volume', 'dividendamt', 'splitcoef', 'pos_volume', 'neg_volume', 'sma10', 'sma20', 'sma50', 'sma100', 'sma200', 'rstd10', 'rsi10', 'cmf', 'BolLower', 'BolCenter', 'BolUpper', 'KeltLower', 'KeltCenter', 'KeltUpper', 'copp','daily_return_stddev14', 'beta', 'alpha', 'rsquare', 'sharpe', 'cci', 'stochK', 'stochD', 'obv', 'force', 'macd', 'macdsignal', 'bop', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE', 'HT_SINE', 'HT_SINElead', 'HT_PHASORphase', 'HT_PHASORquad', 'adx', 'willr', 'ultosc', 'aroonUp', 'aroonDown', 'aroon', 'senkou_spna_A', 'senkou_spna_B', 'chikou_span', 'SAR', 'vwap14', 'vwap10', 'vwap20', 'chosc', 'market', 'corr14']:
+        tstock_info[a+'_daybefore'] = tstock_info[a].shift(1)
+
+    # compute the last years support levels
+    tstock_info['downSL']=0
+    tstock_info['upSL']=0
+    prior_year_tstock_infoR = GetTimeSlot(tstock_info,800,startDate=None)
+    #prior_year_tstock_infoR.index = pd.to_datetime(prior_year_tstock_infoR.index)
+    for i in prior_year_tstock_infoR.index.values:
+        earn_dateA = (i - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+        earn_dateA=datetime.datetime.utcfromtimestamp(earn_dateA)
+        prior_year_tstock_info = GetTimeSlot(tstock_info,startDate=earn_dateA)
+        tech_levels = techindicators.supportLevels(prior_year_tstock_info,drawhlines=False)
+        adj_close=1.0
+        if  len(prior_year_tstock_info)>0:
+            adj_close = prior_year_tstock_info.adj_close.values[-1]
+        a = np.array(tech_levels,dtype=float)/adj_close-1.0
+        tstock_info.loc[tstock_info.index==i,['downSL']] = np.max(a[a<0.0],initial=-0.25)
+        tstock_info.loc[tstock_info.index==i,['upSL']] = np.min(a[a>0.0],initial=0.25)
+    tstock_info['estimatedEPS'] = estimateEPS
+
+    # If true, then we drop all of the older earnings and add positive and negative variations of the adj_close. I think this can be iterpreted as what a buy in would be.
+    if addRangeOpens:
+        tstock_info = tstock_info[-1:]
+        #print(tstock_info)
+        tstock_info['Date'] = tstock_info.index
+        tstock_info.set_index([pd.Index([0])],inplace=True)
+        new_tstock_info = tstock_info[-1:]
+        for i in range(-10,11):
+            if i==0: continue
+            new_tstock_info.set_index([pd.Index([i])],inplace=True)
+            new_adj_close = float(100+i)/100.0*adj_close
+            new_tstock_info.loc[new_tstock_info.index==i,'adj_close'] = new_adj_close
+            a = np.array(tech_levels,dtype=float)/new_adj_close-1.0
+            new_tstock_info.loc[new_tstock_info.index==i,'downSL'] = np.max(a[a<0.0],initial=-0.25)
+            new_tstock_info.loc[new_tstock_info.index==i,'upSL']= np.min(a[a>0.0],initial=0.25)
+            tstock_info = tstock_info.append(new_tstock_info)
+
+        if debug: print(tstock_info)
+    
+    # add some extra info
+    for c in ['sma50','sma20','sma200']:
+        tstock_info[c+'r']=tstock_info.adj_close/tstock_info[c]
+    for c in ['fiveday_prior_vix','thrday_prior_vix','twoday_prior_vix','SAR','estimatedEPS']:
+        tstock_info[c+'r']=tstock_info[c]/tstock_info.adj_close
+    
+    return tstock_info
+
+
+# fills data with info & adds NN info
+# ticker = ticker
+# ts = time series from alpha
+# connectionCal = SQL_CURSOR('earningsCalendar.db')
+# sqlcursor = SQL_CURSOR()
+# 
+def GetNNSelection(ticker, ts, connectionCal, sqlcursor, spy, debug=False,j=0,
+                       addRangeOpens=True,
+                       training_dir='models/',
+                       training_name='stockEarningsModelTestv2noEPS',
+                       draw=False):
+    
+    stock_info = EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal,j=j, ReDownload=False, debug=debug, addRangeOpens=addRangeOpens)
+    if debug: print(stock_info)
+    if len(stock_info)==0:
+        return [],j
+    COLS  = ['sma50r','sma20r','sma200r','copp','daily_return_stddev14',
+    'beta','alpha','rsquare','sharpe','cci','cmf',
+    'bop','SAR','adx','rsi10','ultosc','aroonUp','aroonDown',
+    'stochK','stochD','willr',
+    #'estimatedEPSr',
+    'upSL','downSL','corr14',]
+    
+    model_filename = training_dir+'model'+training_name+'.hf'
+    scaler_filename = training_dir+"scaler"+training_name+".save"
+    scaler = pickle.load(open(scaler_filename, 'rb'))
+    model = load_model(model_filename)
+    
+    X_test = stock_info[COLS] # use only COLS
+    vector_y_pred = model.predict(X_test)
+    stock_info['pred'] = np.argmax(vector_y_pred, axis = 1) + np.amax(vector_y_pred, axis = 1)
+    if draw:
+        matplotlib.use('Agg')
+        stock_1y = GetTimeSlot(stock_info,800)
+        plt.clf()
+        fig, ax1 = plt.subplots()
+        ax1.plot(stock_1y.index,stock_1y['pred'])
+        ax1.set_ylabel('NN score for %s' %ticker)        
+        ax2 = ax1.twinx()  
+        ax2.plot(stock_1y.index,stock_1y['adj_close'],color='red')
+        #ax2.plot(stock_1y.index,stock_1y['daily_return'],color='red')
+        ax2.tick_params(axis='y', labelcolor='red')
+        ax2.set_ylabel('Adjusted Closing Price', color='red')
+        plt.gcf().autofmt_xdate()
+        plt.ylabel('NN')
+        plt.xlabel('date')
+        plt.title('NN', fontsize=30)
+        plt.savefig(baseB.outdir+'%s%s.png' %('NNscore',ticker))
+    if debug: print(stock_info[['adj_close','open','pred','sma50r','sma20r','sma200r','downSL','upSL']])
+    return stock_info,j

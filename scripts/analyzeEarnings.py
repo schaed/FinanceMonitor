@@ -82,7 +82,7 @@ def ProcessTicker(ticker, earningsExp, sqlcursor,spy,j,connectionCal):
 
     # shift some of the inputs by one day to have the day before inputs
     #print(list(tstock_info.columns))
-    for a in ['open', 'high', 'low', 'close', 'adj_close', 'volume', 'dividendamt', 'splitcoef', 'pos_volume', 'neg_volume', 'sma10', 'sma20', 'sma50', 'sma100', 'sma200', 'rstd10', 'rsi10', 'cmf', 'BolLower', 'BolCenter', 'BolUpper', 'KeltLower', 'KeltCenter', 'KeltUpper', 'copp','daily_return_stddev14', 'beta', 'alpha', 'rsquare', 'sharpe', 'cci', 'stochK', 'stochD', 'obv', 'force', 'macd', 'macdsignal', 'bop', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE', 'HT_SINE', 'HT_SINElead', 'HT_PHASORphase', 'HT_PHASORquad', 'adx', 'willr', 'ultosc', 'aroonUp', 'aroonDown', 'aroon', 'senkou_spna_A', 'senkou_spna_B', 'chikou_span', 'SAR', 'vwap14', 'vwap10', 'vwap20', 'chosc', 'market', 'corr14']:
+    for a in ['open', 'high', 'low', 'close', 'adj_close', 'volume', 'dividendamt', 'splitcoef', 'pos_volume', 'neg_volume', 'sma10', 'sma20', 'sma50', 'sma100', 'sma200', 'rstd10', 'rsi10', 'cmf', 'BolLower', 'BolCenter', 'BolUpper', 'KeltLower', 'KeltCenter', 'KeltUpper', 'copp','daily_return_stddev14', 'beta', 'alpha', 'rsquare', 'sharpe', 'cci', 'stochK', 'stochD', 'obv', 'force', 'macd', 'macdsignal', 'bop', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE', 'HT_SINE', 'HT_SINElead', 'HT_PHASORphase', 'HT_PHASORquad', 'adx', 'willr', 'ultosc', 'aroonUp', 'aroonDown', 'aroon', 'senkou_spna_A', 'senkou_spna_B', 'chikou_span', 'SAR', 'vwap14', 'vwap10', 'vwap20', 'chosc', 'market', 'corr14','fiveday_prior_vix','oneday_prior_vix','twoday_prior_vix','thrday_prior_vix']:
         tstock_info[a+'_daybefore'] = tstock_info[a].shift(1)
     #print(tstock_info[['rsi10_daybefore','rsi10','willr_daybefore','willr']].tail())
 
@@ -101,7 +101,7 @@ def ProcessTicker(ticker, earningsExp, sqlcursor,spy,j,connectionCal):
         if len(tech_levels)>0:
             tech_levels = [str(level[1]) for level in tech_levels]
             prev_earnings.loc[prev_earnings.fiscalDateEnding==earn_date,['tech_levels']] = ','.join(tech_levels)
-    
+            
     # merging or joining on the report date
     merged_stock_earn = pd.merge(prev_earnings,tstock_info,how="left",left_on='reportedDate',right_index=True)
     merged_stock_earn['high_from_open'] = merged_stock_earn['high'] - merged_stock_earn['open']
@@ -138,7 +138,12 @@ if not ReDownload:
     #tables = connectionCalv2.cursor().execute("select name from sqlite_master where type = 'table';")
     #for t in tables:
     #    print(t)
-    earningsInfoSaved = pd.read_sql('SELECT * FROM earningsInfo', connectionCalv2)
+    try:
+        earningsInfoSaved = pd.read_sql('SELECT * FROM earningsInfo', connectionCalv2)
+        preLoaded = earningsInfoSaved['ticker'].unique()
+        print(preLoaded)
+    except (pd.io.sql.DatabaseError,KeyError):
+        pass
     #print(earningsInfoSaved)
     #earningsInfoSaved.drop(columns='level_0').to_sql('earningsInfo', connectionCalv3)
     #earningsInfoSaved.to_sql('earningsInfo', connectionCalv3)
@@ -146,8 +151,7 @@ if not ReDownload:
     #connectionCalv2.cursor().execute('DROP TABLE OBNK')
     #connectionCalv2.cursor().execute('ALTER TABLE SHOO RENAME TO earningsInfo')
 #('SHOO',)
-    preLoaded = earningsInfoSaved['ticker'].unique()
-    print(preLoaded)
+    
 #sys.exit(0)
 all_merged_stock_earnings=[]
 list_of_symbols = my_3month_calendar['symbol'].values
