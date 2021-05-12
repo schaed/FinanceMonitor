@@ -5,7 +5,7 @@ FinanceMonitor
 pip3 install alpaca_trade_api
 pip3 install numpy
 pip3 install pandas matplotlib mplfinance numpy_ext
-pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk --user
+pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk cython zigzag --user
 
 
 May need to install the vader libraries
@@ -63,3 +63,7 @@ https://financialmodelingprep.com/api/v3/income-statement/AAPL?limit=120&apikey=
 
 # another free option. well free to start with low latency
 https://iexcloud.io/docs/api/
+
+
+# interesting to read
+https://github.com/Syakyr/My-Trading-Project/tree/master/Risk%20Management

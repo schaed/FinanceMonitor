@@ -17,6 +17,7 @@ doStocks=True
 loadFromPickle=False
 loadSQL = True
 readType='full'
+from zigzag import *
 
 sqlcursorShort = SQL_CURSOR(db_name='stocksShort.db')
 sqlcursorExtra = SQL_CURSOR(db_name='stocksShortExtra.db')
@@ -71,6 +72,10 @@ def AddInfo(stock,market):
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']
+    #stock['max_drawdown'] = stock['adj_close'].rolling(250).apply(max_drawdown)
+    day365 = GetTimeSlot(stock,365)
+    stock['max_drawdown'] = max_drawdown(day365['adj_close'].values)
+    #print(stock.max_drawdown)
     
 def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
@@ -149,7 +154,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     
     for j in input_list:
         info_list += [stock[j][entry]]
-    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff','corr14']:
+    for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff','corr14','max_drawdown']:
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
     info_list+=list(readShortInfo(ticker))
     return info_list
@@ -179,7 +184,7 @@ print(spy)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','Pred','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','Max DrawDown','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','Pred','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0

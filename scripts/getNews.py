@@ -167,7 +167,7 @@ if __name__ == "__main__":
     # all news stories from today and load yesterday if it exists
     total_news_map ={}
     total_recs_map ={}
-    outFileName='News/News_%s_%s_%s_v2.p' %(today.day,today.month,today.year)
+    outFileName='News/News_%s_%s_%s.p' %(today.day,today.month,today.year)
     #outFileName='Newstoday.p'
     if os.path.exists(outFileName): # and False:
         try:
@@ -202,8 +202,8 @@ if __name__ == "__main__":
         except:
             print('Error downloading pages!')
         
-        # sleep for 10 minutes
-        time.sleep(600)
+        # sleep for 5 minutes
+        time.sleep(300)
         today = datetime.datetime.today()
 
     

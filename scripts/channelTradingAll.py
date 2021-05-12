@@ -15,10 +15,12 @@ import matplotlib
 matplotlib.use('Agg') 
 import mplfinance as mpf
 import argparse
+from zigzag import *
 
 my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
 my_parser.add_argument('--filter', default='', type=str) # filter by ticker
+my_parser.add_argument('--add', default='', type=str) # filter by ticker
 args = my_parser.parse_args()
 
 draw=False
@@ -31,6 +33,38 @@ debug=False
 loadSQL=True
 readType='full'
 
+
+# https://www.investopedia.com/terms/z/zig_zag_indicator.asp
+def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
+
+    #modes = pivots_to_modes(pivots) # 1 for valley to peak and -1 for peak to valley
+    #pd.Series(X).pct_change().groupby(modes).describe().unstack()
+    #compute_segment_returns(X, pivots)
+    #max_drawdown(X) = (trough value - peak)/peak -> look for a small value
+
+    plt.clf()
+    pivots = peak_valley_pivots(yaxis.values, 0.05, -0.05)
+    ts_pivots = yaxis #pd.Series(yaxis, index=xaxis)
+    ts_pivots = ts_pivots[pivots != 0]
+    yaxis.plot(color='black',alpha=0.8)
+    
+    plt.ylim(yaxis.min()*0.99, yaxis.max()*1.01)
+    plt.plot(yaxis[pivots != 0].index, yaxis[pivots != 0], 'b-',alpha=0.5)
+    plt.scatter(yaxis[pivots == 1].index, yaxis[pivots == 1], color='g')
+    plt.scatter(yaxis[pivots == -1].index, yaxis[pivots == -1], color='r')
+
+    plt.gcf().autofmt_xdate()
+    #ts_pivots.plot(style='g-o');
+    plt.ylabel(yname)
+    plt.xlabel(xname)
+    if title!="":
+        plt.title(title, fontsize=30)
+    if draw: plt.show()
+    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
+    plt.savefig(outdir+'%s.png' %(saveName))
+    if not draw: plt.close()
+    plt.close()
+    
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
     # plotting
     plt.clf()
@@ -84,6 +118,8 @@ def PlotTiming(data, ticker):
     top_plt.plot(data.index, data["sma200"],color='magenta',label='SMA200')
     top_plt.plot(data.index, data["sma100"],color='cyan',label='SMA100')
     top_plt.plot(data.index, data["sma50"],color='yellow',label='SMA50')
+    top_plt.plot(data.index, data["sma20"],color='green',label='SMA20')
+    top_plt.plot(data.index, data["ema13"],color='blue',label='EMA13')
     plt.legend(loc="upper center")
     techindicators.supportLevels(data)
     top_plt.grid(1)
@@ -136,6 +172,8 @@ def PlotVolume(data, ticker):
     top_plt.plot(data.index, data["sma200"],color='magenta',label='SMA200')
     top_plt.plot(data.index, data["sma100"],color='cyan',label='SMA100')
     top_plt.plot(data.index, data["sma50"],color='yellow',label='SMA50')
+    top_plt.plot(data.index, data["sma20"],color='peru',label='SMA20')
+    top_plt.plot(data.index, data["ema13"],color='teal',label='EMA13')
     plt.legend(loc="upper center")
     techindicators.supportLevels(data)
     # normalize this bar chart to have half of the width. Need to get this because matplotlib doesn't use
@@ -176,6 +214,8 @@ def CandleStick(data, ticker):
     df['KeltLower'] = data['KeltLower']
     df['KeltUpper'] = data['KeltUpper']
     df['sma200'] = data['sma200']
+    df['sma50'] = data['sma50']
+    df['sma20'] = data['sma20']
 
     if len(df['Open'])<1:
         return
@@ -188,6 +228,8 @@ def CandleStick(data, ticker):
         mpf.make_addplot(df['sma200'],color='r',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default        
         mpf.make_addplot(df['KeltLower'],color='darkviolet',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
         mpf.make_addplot(df['KeltUpper'],color='magenta',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default
+        mpf.make_addplot(df['sma50'],color='teal',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default        
+        mpf.make_addplot(df['sma20'],color='peru',secondary_y=False,alpha=0.5,y_on_right=False),  # uses panel 0 by default        
       ]
     fig,axes=mpf.plot(df, type='candle', style='charles',
             title=ticker,
@@ -202,7 +244,7 @@ def CandleStick(data, ticker):
 
         # Configure chart legend and title
     #for 
-    axes[0].legend(['Price','Bolanger Up','Bolanger Down','SMA200','Kelt+','Kelt-'])
+    axes[0].legend(['Price','Bolanger Up','Bolanger Down','SMA200','Kelt+','Kelt-','SMA50','SMA20'])
     #axes[0].set_title(ticker)
     # Save figure to file
     if doPDFs: fig.savefig(outdir+'test-mplfiance_'+ticker+'.pdf')
@@ -268,6 +310,8 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title='Ultimate Oscillator')
     MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')],title='R-squared')
     MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')],title='Chaikin Money Flow')
+    MakePlot(my_stock_info.index, my_stock_info['mfi_bill_ana'], xname='Date',yname='MFI = 4 is buy',saveName='mfi_bill_ana%s_%s' %(plttext,ticker), hlines=[(4.0,'green','dotted'),(0.0,'black','dotted'),(3.0,'red','dotted')],title='Market Fluctuation index')
+    MakePlot(my_stock_info.index, my_stock_info['mfi'], xname='Date',yname='MFI',saveName='mfi%s_%s' %(plttext,ticker), hlines=[(20.0,'green','dotted'),(50.0,'black','-'),(80.0,'red','dotted')],title='Money Flow Index')
     MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker),title='Commodity Channel Index')
     MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker),title='On Balanced Volume')    
     MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker),title='Force Index')
@@ -278,6 +322,10 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker),title='MACD')
     if 'aroon' in my_stock_info:
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker),title='AROON')
+    if 'jaws' in my_stock_info:
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['jaws'],my_stock_info['teeth'],my_stock_info['lips']], colors=['black','blue','red','green'], labels=['Closing','Jaws','teeth','lips'], xname='Date',yname='Closing Price',saveName='alligator%s_%s' %(plttext,ticker),title='Alligator')
+    if 'bullPower' in my_stock_info:
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['bullPower'],my_stock_info['bearPower']], colors=['green','red'], labels=['Bull Power','Bear Power'], xname='Date',yname='Bull/Bear Power',saveName='bullbear%s_%s' %(plttext,ticker),title='Bull/Bear Power')
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic')
 
@@ -285,6 +333,12 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     PlotVolume(my_stock_info, ticker)
     # Plot timing indicators
     PlotTiming(my_stock_info, ticker)
+
+    # plot the zigzag
+    start = time.time()
+    plot_pivots(my_stock_info.index, my_stock_info.adj_close, saveName='zigzag%s_%s' %(plttext,ticker), xname='Date', yname='Closing Price')
+    end = time.time()
+    if debug: print('Process time to find pivots: %s' %(end - start))
     
     # plot Ichimoku Cloud
     plt.cla()
@@ -400,7 +454,15 @@ n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 j=0
 cdir = os.getcwd()
 if doStocks:
-    for s in b.stock_list:
+    runList =  b.stock_list
+    if args.filter!='':
+        runList+=[[args.filter,0,0,'NYSE','']]
+    if args.add!='':
+        addt = args.add.split(',')
+        runList=[]        
+        for at in addt:
+            runList+=[[at,0,0,'NYSE','']]
+    for s in runList:
         if args.filter!='':
             if s[0]!=args.filter:
                 continue

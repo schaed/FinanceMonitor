@@ -565,18 +565,17 @@ def chand(a,b,c,d,e,f):
 # Rate of change (ROC)
 # a is an array of prices, b is a number of periods
 def roc(a,b,sameSize=True):
-    #mroc = (a - a.shift(b))/a.shift(b)*100
+    mroc = a.pct_change(periods=b)*100.0
+    if not sameSize:
+        mroc = mroc[b:]
+    #result = np.zeros(len(a)-b)
+    #for i in range(b,len(a)):
+    #    result[i-b] = ((a[i]-a[i-b])/a[i-b])*100
     #if sameSize:
-    #    return mroc
-    #mroc = mroc[b:]
-    #return mroc
-    result = np.zeros(len(a)-b)
-    for i in range(b,len(a)):
-        result[i-b] = ((a[i]-a[i-b])/a[i-b])*100
-    if sameSize:
-        result = np.concatenate((np.zeros(b),result))
+    #    result = np.concatenate((np.zeros(b),result))
     #print(mroc - result)
-    return result
+    #return result
+    return mroc
 #
 # Coppock Curve
 # a is an array of prices, b is number of periods for long ROC
@@ -626,6 +625,37 @@ def vwap(a,b,c,d,e):
     PV = d*(a+b+c)/3.0
     return PV.rolling(e).sum()/d.rolling(e).sum();
 
+#The linear weighted MA, so weight the weight is linearly increasing closer to the current price
+# a is the price
+# b is the period for the ma
+def lwma(a,b):
+    weights = np.arange(1, b + 1)
+    wmas = a.rolling(b).apply(lambda x: np.dot(x, weights) /
+                            weights.sum(), raw=True).to_list()
+    return wmas
+
+#The SMMA (Smoothed Moving Average) gives recent prices an equal weighting to historic prices.
+#https://en.wikipedia.org/wiki/Moving_average#Modified_moving_average
+# a is the price
+# b is the period for the smma
+def smma(a,b):
+    result = a.ewm(alpha=1/b, adjust=True).mean() #, name="SMMA"
+    #result = sma(a,b)
+    return result
+
+# 
+# https://www.investopedia.com/articles/trading/072115/exploring-williams-alligator-indicator.asp
+# williams alligator indicator, typically used with cci
+# a is the price
+# b is the shortest period to average over (5) lips 
+# c is the middle period to average over (8) teeth
+# d is the highest period to average over (13) jaws
+def alligator(a,b,c,d):
+    jaw = smma(a,d).shift(8)
+    teeth = smma(a,c).shift(5)
+    lips = smma(a,b).shift(3)
+    return jaw,teeth,lips
+
 # 
 # Chaikin Oscillator
 # a is high prices, b is low prices
@@ -664,28 +694,65 @@ def mindx(a,b,c):
     for i in range(len(eratio)-c+1):
         result[i] = np.sum(eratio[i:i+c])
     return result
+
+# Market facilitation index
+# https://en.wikipedia.org/wiki/Market_facilitation_index
+# a is high prices, b is low prices
+# c is volume
+def mfi_bill(a,b,c):
+    return (a-b)/c
+
+# Market facilitation index
+# https://en.wikipedia.org/wiki/Market_facilitation_index
+# a is high prices, b is low prices
+# c is volume
+# +3 = green, 2 = fade, 1 fake, 0=squat
+def mfi_bill_ana(a,b,c):
+    mfi = pd.DataFrame(mfi_bill(a,b,c),columns=['mfi'])
+    mfi['vol_change'] = c.pct_change()
+    mfi['mfi_change'] = mfi.mfi.pct_change()
+    mfi['mfi_bill_ana'] = 0
+    mfi.loc[(mfi.vol_change>0) & (mfi.mfi_change>0),'mfi_bill_ana']=4
+    mfi.loc[(mfi.vol_change<0) & (mfi.mfi_change<0),'mfi_bill_ana']=3
+    mfi.loc[(mfi.vol_change>0) & (mfi.mfi_change<0),'mfi_bill_ana']=1
+    mfi.loc[(mfi.vol_change<0) & (mfi.mfi_change>0),'mfi_bill_ana']=2
+    return mfi.mfi_bill_ana
 #
 # Money Flow Index (MFI)
 # a is high prices, b is low prices
 # c is closing prices, d is volume
 # e is number of periods
-def mfi(a,b,c,d,e):
-    tp = (a+b+c)/3
-    rmf = d*tp
-    pmf = np.zeros(len(a))
-    nmf = np.zeros(len(a))
-    pmfs = np.zeros(len(a))
-    nmfs = np.zeros(len(a))
-    for i in range(1,len(a)):
-        if tp[i]>tp[i-1]:
-            pmf[i] = rmf[i]
-        elif tp[i]<tp[i-1]:
-            nmf[i] = rmf[i]
-    for j in range(e,len(a)):
-        pmfs[j] = np.sum(pmf[j-e+1:j+1])
-        nmfs[j] = np.sum(nmf[j-e+1:j+1])
-    pmfs = pmfs[e:]
-    nmfs = nmfs[e:]
+def mfi(a,b,c,d,e, sameSize=True):
+    tp = pd.DataFrame((a+b+c)/3,columns=['tp'])
+    tp['rmf'] = d*tp.tp
+    tp['difftp'] = tp.tp.diff()
+    tp['pmf'] = tp[tp.difftp>0].rmf 
+    tp['nmf'] = tp[tp.difftp<0].rmf
+    tp['pmf'] = tp['pmf'].fillna(0)
+    tp['nmf'] = tp['nmf'].fillna(0)
+    #tp.loc[tp.difftp>0,'pmf']=tp.rmf
+    #tp.loc[tp.difftp<0,'nmf']=tp.rmf
+    #pmf = np.zeros(len(a))
+    #nmf = np.zeros(len(a))
+    #for i in range(1,len(a)):
+    #    if tp.tp.values[i]>tp.tp.values[i-1]:
+    #        pmf[i] = tp.rmf[i]
+    #    elif tp.tp.values[i]<tp.tp.values[i-1]:
+    #        nmf[i] = tp.rmf[i]
+    #for j in range(e,len(a)):
+    #    pmfs[j] = np.sum(pmf[j-e+1:j+1])
+    #    nmfs[j] = np.sum(nmf[j-e+1:j+1])
+    #pmfs = pd.DataFrame(pmf).rolling(e).sum()
+    #nmfs = pd.DataFrame(nmf).rolling(e).sum()
+    pmfs = tp.pmf.rolling(e).sum()
+    nmfs = tp.nmf.rolling(e).sum()
+    #print(pmfs - pmfsB)
+    #print(pmfs)
+    #print(tp)
+    if not sameSize:
+        pmfs = pmfs[e:]
+        nmfs = nmfs[e:]
+        
     return (100-100/(1+pmfs/nmfs))
 #
 # Negative Volume Index (NVI)
@@ -745,6 +812,33 @@ def kst(a,b,c,d,e,f,g,h,i,j):
     line = aroc1[len(aroc1)-len(aroc4):]+2*aroc2[len(aroc2)-len(aroc4):]+\
     3*aroc3[len(aroc3)-len(aroc4):]+4*aroc4
     signal = sma(line,j)
+    return line,signal
+
+#
+# Pring's special K
+# a is an array of closing prices 
+# b SMA to use as an indicator line
+# f, g, h, and i are periods for moving averages of ROC
+# j is the number of periods for signal line SMA
+# standard parameters are (close price,100)
+# https://school.stockcharts.com/doku.php?id=technical_indicators:pring_s_special_k
+def specialk(a,b):
+    aroc1 = sma(roc(a,10),10)
+    aroc2 = sma(roc(a,15),10)
+    aroc3 = sma(roc(a,20),10)
+    aroc4 = sma(roc(a,30),15)
+    aroc5 = sma(roc(a,40),50)
+    aroc6 = sma(roc(a,65),65)
+    aroc7 = sma(roc(a,75),75)
+    aroc8 = sma(roc(a,100),100)
+    aroc9 = sma(roc(a,195),130)
+    aroc10= sma(roc(a,265),130)
+    aroc11= sma(roc(a,390),130)
+    aroc12= sma(roc(a,530),195)
+    line = aroc1 + 2.0*aroc2 + 3.0*aroc3 + 4.0*aroc4 \
+    + aroc5 + 2.0*aroc6 + 3.0*aroc7 + 4.0*aroc8 \
+    + aroc9 + 2.0*aroc10 + 3.0*aroc11 + 4.0*aroc12
+    signal = sma(line,b)
     return line,signal
 
 # find the support levels using arcs with option 'low'

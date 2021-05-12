@@ -250,7 +250,7 @@ def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, l
 # add stock data and market data to compute metrics
 def AddInfo(stock,market,debug=False):
     # let's make sure we sort this correctly
-    #stock = stock.sort_index()    
+    #stock = stock.sort_index()
     #print(stock.tail())
     # Label Volume as positive or negative
     stock['pos_volume'] = 0
@@ -270,10 +270,15 @@ def AddInfo(stock,market,debug=False):
     if len(stock['adj_close'])>200:
         stock['sma200']=techindicators.sma(stock['adj_close'],200)
     else: stock['sma200']=np.zeros(len(stock['adj_close']))
+
+    # EMA
+    stock['ema13']=techindicators.ema(stock['adj_close'],13)
+    stock['bullPower']=stock['high'] - stock['ema13']
+    stock['bearPower']=stock['low'] - stock['ema13']
     stock['rstd10']=techindicators.rstd(stock['adj_close'],10)
     stock['rsi10']=techindicators.rsi(stock['adj_close'],10)
     stock['cmf']=techindicators.cmf(stock['high'],stock['low'],stock['close'],stock['volume'],10)
-    stock['BolLower'],stock['BolCenter'],stock['BolUpper']=techindicators.boll(stock['adj_close'],20,2.0,5)
+    stock['BolLower'],stock['BolCenter'],stock['BolUpper']=techindicators.boll(stock['adj_close'],14,2.0,14)
     start = time.time()
     stock['KeltLower'],stock['KeltCenter'],stock['KeltUpper']=techindicators.kelt(stock['high'],stock['low'],stock['close'],20,2.0,20)
     stock['copp']=techindicators.copp(stock['close'],14,11,10)
@@ -294,9 +299,19 @@ def AddInfo(stock,market,debug=False):
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
     stock['alpha']=techindicators.rollingAlpha(stock,14,market)
     stock['rsquare']=techindicators.rollingRsquare(stock,14,market)
+    start = time.time()
+    stock['mfi']=techindicators.mfi(stock.high,stock.low,stock.close,stock.volume,14) # money flow index
+    end = time.time() 
+    if debug: print('Process time to mfi: %s' %(end - start))
+    start = time.time()
+    stock['mfi_bill']=techindicators.mfi_bill(stock.high,stock.low,stock.volume)
+    stock['mfi_bill_ana']=techindicators.mfi_bill_ana(stock.high,stock.low,stock.volume)
+    end = time.time() 
+    if debug: print('Process time to mfi bill: %s' %(end - start))
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
     start = time.time()
     stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
+    stock['jaws'],stock['teeth'],stock['lips']=techindicators.alligator(stock['adj_close'],5,8,13)
     stock['stochK'],stock['stochD']=techindicators.stoch(stock['high'],stock['low'],stock['close'],14,3,3)    
     stock['obv']=techindicators.obv(stock['adj_close'],stock['volume'])
     stock['force']=techindicators.force(stock['adj_close'],stock['volume'],13)
@@ -434,7 +449,6 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
     if len(tstock_info)==0:
         return []
     try:
-        
         if ticker=='SPY':
             AddInfo(tstock_info,tstock_info,debug=debug)
         else:
