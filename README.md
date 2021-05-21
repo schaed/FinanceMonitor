@@ -67,3 +67,9 @@ https://iexcloud.io/docs/api/
 
 # interesting to read
 https://github.com/Syakyr/My-Trading-Project/tree/master/Risk%20Management
+
+# add the data for company info and historical earnings
+# analyze daily rates relative to the SMA. some kind of reversion to
+# the mean. can I build a return probability  using the MA, bolanger
+# bands, etc? Maybe do it on the 5m time scale
+# add in fibs plotting with the zigzag 

@@ -33,7 +33,6 @@ debug=False
 loadSQL=True
 readType='full'
 
-
 # https://www.investopedia.com/terms/z/zig_zag_indicator.asp
 def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
 
