@@ -3,6 +3,13 @@ import datetime,time,re
 debug=False
 
 def ReturnSpacyDoc(inputTxt, nlp):
+    """ ReturnSpacyDoc - parse data. not currently functional
+    
+        Parameters:
+         inputTxt - str
+              Text to be parsed
+         nlp - spacey parser
+    """
     Token.set_extension("is_rating", default=False)
     doc = nlp("I like David Bowie")
     ## Add attribute ruler with exception for "The Who" as NNP/PROPN NNP/PROPN
@@ -27,6 +34,14 @@ def ReturnSpacyDoc(inputTxt, nlp):
 
 # This filters out a list of elements
 def FilterResult(filter_list, my_list):
+    """ FilterResult - removes words or strings from a list
+    
+        Parameters:
+         filter_list - array of str
+              Text to be filtered
+         my_list - array of str
+            Text to be filtered
+    """
     buildNewList=[]
     for m in my_list:
         foundTxt=False
@@ -43,6 +58,29 @@ def FilterResult(filter_list, my_list):
 @dataclass
 class Sentiment:
     """"Store the decision, the type as well as other info
+
+        Parameters:
+             message:           str   = None # 'options' for put or call, target for a price target, position for announcing position, recom = recommendation, 'stake'=has stock, 'news' just trying to say positive or negative, 'clinicaltrial': is report on clinical trial
+             ticker:            str   = None # ticker symbol
+             sentiment:         float = None # -1 downgrade, 0 neutral, 1 is upgrade.
+             assessment_result: int   = None # 0 underweight, 2 neutral, 3 is overweight.
+             assessment_change: int   = None # Delta or change. Positive is an upgrade and negative is downgrade
+             assessment_stake:  float = None # passive stake notes in percentage
+             assessment_amt:    float = None # amount for grants or other things
+             price_before:      float = -1 # previous price target
+             price_after:       float = -1 # after price target
+             assessment_by:     str   = 'unknown' # company
+             assessment_opt:    int   = None # is this an options assement? -1 for bearish, 0 unsure, and 1 for bullish
+             assessment_vol:    float = None # is this an options assement? options implied volatility
+             assessment_consistent: bool = True
+             first_rev:         bool  = False
+             vader_pos:         float  = None
+             vader_compound:    float  = None
+             vader_neg:         float  = None
+             vader_neu:         float  = None
+             phase:             str    = None # clinical trial phase
+             status:            str    = None # clinical status
+
     """
     message:           str   = None # 'options' for put or call, target for a price target, position for announcing position, recom = recommendation, 'stake'=has stock, 'news' just trying to say positive or negative, 'clinicaltrial': is report on clinical trial
     ticker:            str   = None # ticker symbol
@@ -126,6 +164,13 @@ class Sentiment:
         return self.assessment_result
 
     def ParseEarnings(self,inputTxt, companyName='', ticker='', nlp=None):
+        """ParseEarnings - Parse the text to fill attributes
+
+            inputTxt - str - news story text
+            companyName - str - company name
+            ticker - str - ticker symbol
+            nlp - Spacey NLP
+        """
         #TODO Capital Bancorp reports Q1 EPS 65c, consensus 56c
         #TODO BankUnited reports Q1 EPS $1.06, consensus 74c
         #TODO MarineMax raises FY21 EPS view to $5.50-$5.65 from $4.00-$4.20, consensus $4.35
@@ -138,6 +183,15 @@ class Sentiment:
     
     # handed a short string to determine meaning
     def Parse(self, inputTxt, companyName='', ticker='', sid=None, nlp=None, is_earnings=False):
+        """Parse - Parse the text to fill attributes
+
+            inputTxt - str - news story text
+            companyName - str - company name
+            ticker - str - ticker symbol
+            sid - Spacey vader sentiment, but could be changed to another analyzer
+            nlp - Spacey NLP
+            is_earnings - Bool - stating if this is from an earnings webpage to facilitate the parsing
+        """
         doc = nlp(inputTxt)
         inputTxtLower = inputTxt.lower()
         self.ticker = ticker
@@ -431,6 +485,13 @@ class News:
     
     # process request to set the sentiment
     def Sentiment(self,inputTxt=None, sid=None, nlp=None, is_earnings=False):
+        """Sentiment - create a sentiment object and parse it
+
+            inputTxt - str - news story text
+            sid - Spacey vader sentiment, but could be changed to another analyzer
+            nlp - Spacey NLP
+            is_earnings - Bool - stating if this is from an earnings webpage to facilitate the parsing
+        """
         if inputTxt==None: inputTxt = self.shortText
         ticker=''
         if len(self.tickers)>0:
@@ -444,6 +505,11 @@ class News:
 
     # collect price info from before
     def ProcessSentiment(self, sentiment, api=None):
+        """ProcessSentiment - make a buy or sell decision. not functional
+
+            sentiment - Sentiment object with data extracted
+            api - alpaca API to read in data if needed
+        """
         ticker=''
         if len(self.tickers)>0:
             ticker = self.tickers[0]

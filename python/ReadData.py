@@ -19,13 +19,29 @@ import base as baseB
 
 # db_name the database name
 def SQL_CURSOR(db_name='stocksAV.db'):
-
+    """ SQL_CURSOR - Retrieve sqlite data base cursor
+        
+         Parameters:
+         db_name - str
+                File name
+    """
     connection = sqlite3.connect(db_name)
     #cursor = connection.cursor()
     return connection
 
 # append this entry to the sql table
 def UpdateTable(stock, ticker, sqlcursor, index_label='Date'):
+    """ UpdateTable - append this entry to the sql table
+        
+         Parameters:
+         stock - pandas dataframe 
+                Stock date with adj_close
+         ticker - str
+                Stock ticker
+         sqlcursor - sqlite cursor
+         index_label - str
+                Index label
+    """
     if index_label!=None:
         stock.to_sql(ticker, sqlcursor,if_exists='append', index=True, index_label=index_label)
     else:
@@ -33,7 +49,20 @@ def UpdateTable(stock, ticker, sqlcursor, index_label='Date'):
 
 # try to read back info. if not, then update the SQL database
 def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='Date',tickerName='ticker'):
-
+    """ ConfigTableFromPandas - search existing database to see if the stock is already stored. If so, do not request from the API to reduce data transfers
+        
+         Parameters:
+         tableName - str
+                Table name
+         ticker - str
+                Stock ticker
+         sqlcursor - sqlite cursor
+         earnings - pandas dataframe of stock earnings from alpha vantage
+         index_label - str
+                Date index label name
+         tickerName - str
+                attribute name for the ticker symbol in this sql data base
+    """
     stock = None
     try:
     #if True:
@@ -72,7 +101,21 @@ def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='D
 
 # try to read back info. if not, then update the SQL database
 def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursdelay=5):
-
+    """ ConfigTable - search existing database to see if the stock is already stored. If so, do not request from the API to reduce data transfers
+        
+         Parameters:
+         ticker - str
+                Stock ticker
+         sqlcursor - sqlite cursor
+         readType - str
+                full or compact for the amount of data to retrieve from the alpha vantage API
+         j - int
+                Number of API requests made. The number is limited, so we must keep track
+         index_label - str
+                Date index label name
+         hoursdelay - int
+                number of hours of delay for the data request
+    """
     stock = None
     NewEntry=False
     try:
@@ -121,13 +164,16 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
     return stock,j
 
 def ALPACA_REST():
+    """ ALPACA_REST - Return alpaca api
+    """
     ALPACA_ID = os.getenv('ALPACA_ID')
     ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
     api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
     return api
 
 def IS_ALPHA_PREMIUM():
-    
+    """ IS_ALPHA_PREMIUM - Decide if we should load the premium API key
+    """
     ALPHA_PREMIUM = os.getenv('ALPHA_PREMIUM')
     if ALPHA_PREMIUM=='' or ALPHA_PREMIUM==None: return False
     if int(ALPHA_PREMIUM)==1:
@@ -137,21 +183,40 @@ def IS_ALPHA_PREMIUM():
     return ALPHA_PREMIUM
 
 def IS_ALPHA_PREMIUM_WAIT_ITER():
+    """ IS_ALPHA_PREMIUM_WAIT_ITER - Number of requests per minute depending on the API key
+    """
     if IS_ALPHA_PREMIUM():
         return 30 # can update to 75 or 74
     return 4
 
 def ALPHA_TIMESERIES():
+    """ ALPHA_TIMESERIES - Return TimeSeries API from Alpha Vantage
+    """
     ALPHA_ID = os.getenv('ALPHA_ID')
     ts = TimeSeries(key=ALPHA_ID)
     return ts
  
 def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
+    """ ALPHA_FundamentalData - Return fundamental data like earnings along with the output format
+
+         Parameters:
+         output_format - str
+                output format pandas, json, csv, csvpan
+    """
     ALPHA_ID = os.getenv('ALPHA_ID')
     fd = FundamentalData(key=ALPHA_ID,output_format=output_format)
     return fd
 
 def GetTimeSlot(stock, days=365, startDate=None):
+    """ GetTimeSlot - Filter time slot. Handle the datatime manipulation
+
+         Parameters:
+         stock - pandas dataframe with time index
+         days - int
+              Number of days from the current date that is requested.
+         startDate - datetime
+              date for the start date. end of the series. required for delays because the APIs are delayed
+    """
     today=datetime.datetime.now()
     if startDate!=None:
         today = startDate
@@ -177,7 +242,15 @@ def is_date(string, fuzzy=False):
 
 # detail reads the amount of data compact or full
 def runTickerAlpha(ts, ticker, detail='full'): 
-    
+    """ runTickerAlpha - Request data from alpha vantage and format into a pandas data frame from a json
+
+         Parameters:
+         ts - alpha vantage TimeSeries
+         ticker - str
+              Stock ticker name
+         detail - str
+              full or compact
+    """
     a=ts.get_daily_adjusted(ticker,detail)
     a_new={}
     cols = ['Date','open','high','low','close','volume']
@@ -212,6 +285,19 @@ def runTickerAlpha(ts, ticker, detail='full'):
 
 # Alpaca info
 def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None):
+    """ runTicker - Request data from alpaca
+
+         Parameters:
+         api - alpaca API
+         ticker - str
+              Stock ticker name
+         timeframe - TimeFrame object
+              TimeFrame.Day, TimeFrame.Minute, TimeFrame.Second
+         start - Date time object 
+              Start date of request
+         end - Date time object 
+              End date of request
+    """
     today=datetime.datetime.now()
     if timeframe==TimeFrame.Day and start==None and end==None:
         yesterday = today + datetime.timedelta(days=-1)
@@ -228,6 +314,23 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None):
 #   api.get_quotes
 #   api.get_trades
 def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=None, dataType='bars'):
+    """ runTicker - Request data from alpaca for bars or other potential objects
+
+         Parameters:
+         api - alpaca API
+         ticker - str
+              Stock ticker name
+         timeframe - TimeFrame object
+              TimeFrame.Day, TimeFrame.Minute, TimeFrame.Second
+         start - Date time object 
+              Start date of request
+         end - Date time object 
+              End date of request
+         limit - int
+              Number of entries requested. 50k is the current max
+         dataType - str - data request type
+              bars 
+    """
     today=datetime.datetime.now()
     trade_days=None
     if timeframe==TimeFrame.Day and start==None and end==None:
@@ -249,6 +352,15 @@ def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, l
 
 # add stock data and market data to compute metrics
 def AddInfo(stock,market,debug=False):
+    """ AddInfo - Add data to the stock pandas data frame
+
+         Parameters:
+         stock - pandas dataframe for the stock
+         market - market or comparison pandas dataframe
+              Stock ticker name
+         debug - Bool
+              Level of printout
+    """
     # let's make sure we sort this correctly
     #stock = stock.sort_index()
     #print(stock.tail())
@@ -359,7 +471,13 @@ def AddInfo(stock,market,debug=False):
 # fd in the fundamentals data api
 # ReDownload: newly downloads the file when True.
 def GetUpcomingEarnings(fd,ReDownload):
+    """ GetUpcomingEarnings - collect the upcoming earnings info
 
+         Parameters:
+         fd - Alpha vantage Fundamental data
+         ReDownload - Bool
+              When true, downloads a new version. False uses the old version
+    """
     if os.path.exists('stockEarnings.csv') and not ReDownload:
         my_3month_calendar = pd.read_csv('stockEarnings.csv')
     else:
@@ -377,7 +495,15 @@ def GetUpcomingEarnings(fd,ReDownload):
     return my_3month_calendar
 
 def GetCompanyEarningsInfo(ticker, fd, connectionCal, debug=False):
+    """ GetCompanyEarningsInfo - collect the upcoming earnings info
 
+         Parameters:
+         ticker - str
+              Ticker stock symbol
+         fd - Alpha vantage Fundamental data
+         debug - Bool
+              determines printout
+    """
     try:
         pastEarnings = fd.get_company_earnings(ticker)
     except:
@@ -431,6 +557,11 @@ def GetCompanyEarningsInfo(ticker, fd, connectionCal, debug=False):
 
 # Compute the support levels so that they are entries to the machine learning
 def ApplySupportLevel(ex):
+    """ ApplySupportLevel - returns an array of stock earnings
+
+         Parameters:
+         ex - pandas dataframe of stoack earnings
+    """
     if ex['tech_levels']=='':
         return 0
     a = np.array(ex['tech_levels'].split(','),dtype=float)/ex.adj_close_daybefore-1.0
@@ -440,7 +571,8 @@ def ApplySupportLevel(ex):
 # input is a dataframe with daily info
 # addRangeOpens returns only the most recent day and price variations
 def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDownload=False, debug=False, addRangeOpens=True):
-    
+    """ EarningsPreprocessing - returns an array of stock data along with added indicators. Protects against crashes
+    """
     if debug:
         print(spy)
         print(ticker)
@@ -546,6 +678,18 @@ def GetNNSelection(ticker, ts, connectionCal, sqlcursor, spy, debug=False,j=0,
                        training_dir='models/',
                        training_name='stockEarningsModelTestv2noEPS',
                        draw=False):
+    """ GetNNSelection - draws an ML decision and adds the info to the stock dataframe
+    
+        Parameters:
+         ticker - str
+              Stock ticker name
+         training_dir - str
+              model input directory
+         training_name - str
+              NN model name
+         draw - bool
+              decide to draw the ML distribution
+    """
     
     stock_info = EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal,j=j, ReDownload=False, debug=debug, addRangeOpens=addRangeOpens)
     if debug: print(stock_info)

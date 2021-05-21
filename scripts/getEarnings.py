@@ -8,6 +8,14 @@ debug=False
 
 # Read and process the overview info
 def GetOverview(fd, ticker, connectionCal):
+    """ GetOverview - Back testing of the SAR trading model. Shows the cumulative return from the strategy
+        
+         Parameters:
+         fd - Fundamental data api source from alpha vantage
+         ticker - str
+                Stock ticker symbol
+        connectionCal - sqlite database cursor
+    """
     today=datetime.datetime.now().strftime("%Y-%m-%d")
     # should load this once per week?
     #https://www.alphavantage.co/query?function=OVERVIEW&symbol=IBM&apikey=demo

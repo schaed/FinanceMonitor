@@ -35,7 +35,22 @@ readType='full'
 
 # https://www.investopedia.com/terms/z/zig_zag_indicator.asp
 def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
-
+     """ Plotting the pivot points - when a stock changes direction
+         
+         Parameters:
+         xaxis : numpy array
+            Date of stock value
+         yaxis : numpy array
+            Closing stock value
+         saveName : str
+            Saved file name
+         xname : str
+            x-axis name
+         yname : str
+            y-axis name
+         title : str
+            Title of plot
+     """
     #modes = pivots_to_modes(pivots) # 1 for valley to peak and -1 for peak to valley
     #pd.Series(X).pct_change().groupby(modes).describe().unstack()
     #compute_segment_returns(X, pivots)
@@ -65,6 +80,26 @@ def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',titl
     plt.close()
     
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
+    """ Generic plotting with option to show support lines
+         
+         Parameters:
+         xaxis : numpy array
+            Date of stock value
+         yaxis : numpy array
+            Closing stock value
+         xname : str
+            x-axis name
+         yname : str
+            y-axis name
+         saveName : str
+            Saved file name
+         hlines : array of horizontal lines drawn in matplotlib
+         title : str
+            Title of plot
+         doSupport : bool
+            Request generation of support lines on the fly
+         my_stock_info : pandas data frame of stock timing and adj_close
+     """
     # plotting
     plt.clf()
     plt.plot(xaxis,yaxis)
@@ -84,6 +119,30 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     plt.close()
 
 def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
+    """ Generic plotting option for multiple plots 
+         
+         Parameters:
+         xaxis : numpy array
+            Date of stock value
+         yaxis : numpy array
+            Closing stock value
+         xname : str
+            x-axis name
+         colors : array of strings
+            colors compatible with matplotlib
+         labels : array of str
+            legend names
+         yname : str
+            y-axis name
+         saveName : str
+            Saved file name
+         hlines : array of horizontal lines drawn in matplotlib
+         title : str
+            Title of plot    
+         doSupport : bool
+            Request generation of support lines on the fly
+         my_stock_info : pandas data frame of stock timing and adj_close
+    """
     # plotting
     j=0
     plt.clf()
@@ -107,6 +166,13 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
 
 # Draw the timing indices
 def PlotTiming(data, ticker):
+    """ Plot timing indicators including moving averages as well as Fourier Transforms
+        
+         Parameters:
+         data - pandas data frame with time plus adj_close price
+         ticker - string
+                ticker symbol for the stock
+    """
     if len(data)<1:
         return
     plt.clf()
@@ -154,6 +220,13 @@ def PlotTiming(data, ticker):
         
 # Draw the volume and the price by volume with various inputs
 def PlotVolume(data, ticker):
+    """ Plot Volume indicators along with moving averages 
+        
+         Parameters:
+         data - pandas data frame with time plus adj_close price
+         ticker - string
+                ticker symbol for the stock
+    """
     if len(data)<1:
         return
     # group the volume by closing price by the set division
@@ -203,7 +276,13 @@ def PlotVolume(data, ticker):
     if not draw: plt.close()
 
 def CandleStick(data, ticker):
-
+    """ Plot candle stock plot of stock prices along with Bolanger Bands and Keltner ranges
+        
+         Parameters:
+         data - pandas data frame with time plus adj_close price
+         ticker - string
+                ticker symbol for the stock
+    """
     # Extracting Data for plotting
     #data = pd.read_csv('candlestick_python_data.csv')
     df = data.loc[:, ['open', 'high', 'low', 'close','volume']]
@@ -264,6 +343,16 @@ def CandleStick(data, ticker):
     #    )
     
 def LongTermPlot(my_stock_info,market,ticker,plttext=''):
+    """ Plot 5 year time window
+        
+         Parameters:
+         my_stock_info - pandas data frame with time plus adj_close price
+         market - pandas data frame with the S&P
+         ticker - string
+                ticker symbol for the stock
+         plttext - string
+                Label for the plot
+    """
     date_diff = 5*365
     my_stock_info5y = GetTimeSlot(my_stock_info, days=date_diff)
     market5y = GetTimeSlot(market, days=date_diff)
@@ -294,6 +383,16 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     if not draw: plt.close()
 
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
+    """ DrawPlots - Draw all plots of the stock along with market comparisons
+        
+         Parameters:
+         my_stock_info - pandas data frame with time plus adj_close price
+         market - pandas data frame with the S&P
+         ticker - string
+                ticker symbol for the stock
+         plttext - string
+                Common label for the plot
+    """
     #plt.plot(stock_info.index,stock_info['close'])
 
     if not draw:
@@ -403,7 +502,11 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
         #    print('Abandoned baby signal buy: %s' %ticker)
     
 def SARTradingStategy(stock):
-
+    """ SARTradingStategy - Back testing of the SAR trading model. Shows the cumulative return from the strategy
+        
+         Parameters:
+         stock - pandas data frame with time plus adj_close price
+    """
     # Trade strategy from SAR
     stock['signal'] = 0
     stock.loc[(stock.close > stock.senkou_spna_A) & (stock.close >stock.senkou_spna_B) & (stock.close > stock.SAR), 'signal'] = 1
