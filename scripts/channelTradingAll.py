@@ -35,7 +35,7 @@ readType='full'
 
 # https://www.investopedia.com/terms/z/zig_zag_indicator.asp
 def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
-     """ Plotting the pivot points - when a stock changes direction
+    """Plotting the pivot points - when a stock changes direction
          
          Parameters:
          xaxis : numpy array
@@ -49,14 +49,14 @@ def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',titl
          yname : str
             y-axis name
          title : str
-            Title of plot
-     """
+            Title of plot"""
     #modes = pivots_to_modes(pivots) # 1 for valley to peak and -1 for peak to valley
     #pd.Series(X).pct_change().groupby(modes).describe().unstack()
     #compute_segment_returns(X, pivots)
     #max_drawdown(X) = (trough value - peak)/peak -> look for a small value
 
     plt.clf()
+    
     pivots = peak_valley_pivots(yaxis.values, 0.05, -0.05)
     ts_pivots = yaxis #pd.Series(yaxis, index=xaxis)
     ts_pivots = ts_pivots[pivots != 0]
@@ -66,11 +66,47 @@ def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',titl
     plt.plot(yaxis[pivots != 0].index, yaxis[pivots != 0], 'b-',alpha=0.5)
     plt.scatter(yaxis[pivots == 1].index, yaxis[pivots == 1], color='g')
     plt.scatter(yaxis[pivots == -1].index, yaxis[pivots == -1], color='r')
-
+    axb = plt.gca()
+    
+    # compute the most recent zigzag for fibs
+    last_range = 0.0
+    last_price=0
+    fibsL=[0,0.236,0.382,0.5,0.618,0.764,1.0,1.618]    
+    fibs=[0,0.236,0.382,0.5,0.618,0.764,1.0,1.618]
+    xpos = 0
+    if len( yaxis[pivots == -1])>0 and len(yaxis[pivots == 1])>0:
+        yaxisimportant = pd.concat([yaxis[pivots == -1],yaxis[pivots == 1]])
+        yaxisimportant = yaxisimportant.sort_index()
+        last_range = yaxisimportant[-1] - yaxisimportant[-2]
+            
+        if last_range < 0:
+            last_price = yaxisimportant[-1]
+            xpos = yaxis[pivots == -1].index[-1]
+            fibsL = fibsL[::-1]
+        else:
+            last_price = yaxisimportant[-1]
+            xpos = yaxis[pivots == 1].index[-1]
+            
+        for f in range(0,len(fibs)):
+            if last_range<0:
+                fibs[f] = last_range*fibs[f]+last_price
+            else:
+                fibs[f] = -last_range*fibs[f]+last_price    
+        #print(yaxis[pivots == -1].index)
+    if debug: print('last range: %s %s' %(last_range,last_price))
+    
     plt.gcf().autofmt_xdate()
     #ts_pivots.plot(style='g-o');
     plt.ylabel(yname)
     plt.xlabel(xname)
+    l=0
+    for level in fibs:
+        mylim = axb.get_xlim()
+        mylimy = axb.get_ylim()
+        axb.axhline(y=level,  color='grey',linewidth=0.5,linestyle='-') #xpos-20,xpos+10,level, #xmin=mylimy[0]+10, xmax=mylimy[1]-10, xmin=mylim[1]-20, xmax=mylim[1]-2,
+        #plt.axhline(xpos-20,xpos+10,level,color='blue',linewidth=0.5,linestyle='-')
+        axb.text(mylim[1]+1, level, ' %0.2f fib%0.1f' %(level,fibsL[l]*100), fontsize=4) #xpos+
+        l+=1
     if title!="":
         plt.title(title, fontsize=30)
     if draw: plt.show()
@@ -424,7 +460,7 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['jaws'],my_stock_info['teeth'],my_stock_info['lips']], colors=['black','blue','red','green'], labels=['Closing','Jaws','teeth','lips'], xname='Date',yname='Closing Price',saveName='alligator%s_%s' %(plttext,ticker),title='Alligator')
     if 'bullPower' in my_stock_info:
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['bullPower'],my_stock_info['bearPower']], colors=['green','red'], labels=['Bull Power','Bear Power'], xname='Date',yname='Bull/Bear Power',saveName='bullbear%s_%s' %(plttext,ticker),title='Bull/Bear Power')
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20']], colors=['red','blue','green','magenta'], labels=['Close Price','VWAP10','VWAP14','VWAP20'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20'],my_stock_info['BolLower'],my_stock_info['BolUpper']], colors=['red','blue','green','magenta','cyan','cyan'], labels=['Close Price','VWAP10','VWAP14','VWAP20','VWAPBol-','VWAPBol+'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic')
 
     # plot volume

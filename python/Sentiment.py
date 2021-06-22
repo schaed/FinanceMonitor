@@ -57,7 +57,7 @@ def FilterResult(filter_list, my_list):
 
 @dataclass
 class Sentiment:
-    """"Store the decision, the type as well as other info
+    """Store the decision, the type as well as other info
 
         Parameters:
              message:           str   = None # 'options' for put or call, target for a price target, position for announcing position, recom = recommendation, 'stake'=has stock, 'news' just trying to say positive or negative, 'clinicaltrial': is report on clinical trial
@@ -163,7 +163,7 @@ class Sentiment:
             self.assessment_result = j1
         return self.assessment_result
 
-    def ParseEarnings(self,inputTxt, companyName='', ticker='', nlp=None):
+    def ParseEarnings(self,inputTxt, companyName='', ticker='', nlp=None, doc=None):
         """ParseEarnings - Parse the text to fill attributes
 
             inputTxt - str - news story text
@@ -176,9 +176,41 @@ class Sentiment:
         #TODO MarineMax raises FY21 EPS view to $5.50-$5.65 from $4.00-$4.20, consensus $4.35
         #TODO Sandy Spring Bancorp reports Q1 EPS $1.58, consensus $1.0
         #TODO Cleveland-Cliffs sees FY21 adjusted EBITDA $4B
+        #TODO Lennar reports Q2 adjusted EPS $2.95, consensus $2.36
         self.message='earnings'
-        if self.message==None and (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and re.search('consensus',     inputTxt, re.IGNORECASE)):
+        if (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and (re.search('consensus',     inputTxt, re.IGNORECASE) or re.search('last year',     inputTxt, re.IGNORECASE))):
             self.message='earnings'
+            money = [ent for ent in doc.ents if ent.label_ == "MONEY"]
+            for curr in ['EUR ','CHF ',' GBp','c']:
+                if re.search(curr,   inputTxt, re.IGNORECASE):
+                    money = [tok for tok in doc if tok.pos_ == "NUM"];
+                    break;
+            imon=0
+            for mon in money:
+                if re.search('\('+str(mon)+'\)',   inputTxt, re.IGNORECASE):
+                    money[imon] = '-'+str(mon).strip().strip('c')
+                    try:
+                        if str(mon).count('c'):
+                            money[imon] = float(money[imon])/100.0
+                    except:
+                        print('Failed to convert')
+                imon+=1
+            if len(money)==1:
+                self.price_after = money[0]
+                #if 'initiat' in inputTxtLower:
+            if len(money)==2:
+                self.price_after  = money[0]
+                self.price_before = money[1]
+
+            if len(money)==0:
+                icurr=0
+                for w in inputTxt.split(' '):
+                    for curr in ['c']:
+                        if w.count(curr):
+                            if (w.strip('c,')).isdigit():
+                                if icurr==0: self.price_after  = float(w.strip('c,'))/100.0
+                                if icurr==1: self.price_before  = float(w.strip('c,'))/100.0
+                                icurr+=1
         return
     
     # handed a short string to determine meaning
@@ -204,7 +236,7 @@ class Sentiment:
 
         
         if is_earnings:
-            self.ParseEarnings(inputTxt, companyName, ticker, nlp)
+            self.ParseEarnings(inputTxt, companyName, ticker, nlp, doc)
             return
         # This is an options statement
         # Alcoa call volume above normal and directionally bullish »
@@ -223,6 +255,17 @@ class Sentiment:
             if len(money)>0:
                 self.assessment_vol =  money[0]
 
+        # IPO
+        #WalkMe indicated to open at $33.20, IPO priced at $31
+        if re.search('IPO priced at',   inputTxt, re.IGNORECASE):
+            self.message='ipo'
+            money = [tok for tok in doc if tok.pos_ == "NUM"];
+            if len(money)==1:
+                self.price_after = money[0]
+            if len(money)==2:
+                self.price_after  = money[0]
+                self.price_before = money[1]
+                
         # price target
         # Alcoa price target raised to $20 from $14 at B. Riley Securities »
         # Alcoa price target raised to $38 from $36 at BMO Capital »
@@ -305,17 +348,20 @@ class Sentiment:
         # TODO: Grainger elevated to bullish Fresh Pick at Baird
         # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
         # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
-        for init in ['reiterate','restate','re-iterate','re-state']:
+        for init in ['reiterate','restate','re-iterate','re-state','transferred with']:
             if re.search(init, inputTxt, re.IGNORECASE): self.sentiment=0; self.message='recom'
         # not sure of the message, but checking for the following for a hint: 
-        for init in [' initiat',' re-initiat',' reinitiat',' assum',' re-assum',' reassum']:
+        for init in [' initiat',' re-initiat',' reinitiat',' assum',' re-assum',' reassum', 'resumed with a']:
             if re.search(init,  inputTxt, re.IGNORECASE): self.first_rev=True; self.message='recom'
         if re.search('upgrade',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'
-        if re.search(' elevate',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'        
-        #if re.search(' rating',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'        
+        if re.search(' elevate',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'
+        #if re.search(' rating',   inputTxt, re.IGNORECASE): self.sentiment=1; self.message='recom'
         if re.search('downgrade', inputTxt, re.IGNORECASE): self.sentiment=-1; self.message='recom'
         if re.search('lower',     inputTxt, re.IGNORECASE): self.sentiment=-1; #self.message='recom'
         if re.search(' rais',      inputTxt, re.IGNORECASE): self.sentiment=1; #self.message='recom'
+        if re.search('resumed with a buy',      inputTxt, re.IGNORECASE): self.sentiment=1; #self.message='recom'
+        if re.search('resumed with a hold',      inputTxt, re.IGNORECASE): self.sentiment=0; #self.message='recom'
+        if re.search('resumed with a sell',      inputTxt, re.IGNORECASE): self.sentiment=-1; #self.message='recom'
 
         # Review levels. Search for each review level
         describ1 = ['underperform','sell','underweight','negative','reduce','bearish']
@@ -347,18 +393,25 @@ class Sentiment:
 
         # UNDER clinicaltrial could add reading for clinical trials...maybe own category
         # TODO::; CohBar completes last subject visit in Phase 1b clinical trial for CB4211
-        if self.message==None and re.search('clinical trial',     inputTxt, re.IGNORECASE):
+        if self.message==None and (re.search('clinical trial',     inputTxt, re.IGNORECASE) or (re.search('trial',inputTxt, re.IGNORECASE) and re.search('phase',inputTxt, re.IGNORECASE)) or re.search('Phase 2a study',inputTxt, re.IGNORECASE)):
             self.message='clinicaltrial'
             # status
             if re.search('complete',     inputTxt, re.IGNORECASE):
                 self.status = 'complete'
                 self.sentiment = 1
+            if re.search('preliminary',     inputTxt, re.IGNORECASE):
+                self.status = 'preliminary'
+                self.sentiment = 0.75
             for stat in ['start','launch','begin','initiate']:
                 if re.search('start',     inputTxt, re.IGNORECASE):
                     self.status = 'start'
                     self.sentiment = 0.5
             # phase
+            if re.search('Phase 1a',     inputTxt, re.IGNORECASE): self.phase = '1a'
             if re.search('Phase 1b',     inputTxt, re.IGNORECASE): self.phase = '1b'
+            if re.search('Phase 3',     inputTxt, re.IGNORECASE): self.phase = '3'
+            if re.search('Phase 2',     inputTxt, re.IGNORECASE): self.phase = '2'
+            if re.search('Phase 2a',     inputTxt, re.IGNORECASE): self.phase = '2a'
 
         #TODO Capital Bancorp reports Q1 EPS 65c, consensus 56c
         #TODO BankUnited reports Q1 EPS $1.06, consensus 74c
@@ -466,6 +519,42 @@ class Sentiment:
         else:
             print('cannot yet process this request')
         return
+
+    # processing the price target
+    def PassPriceTarget(self):
+        if self.message=='target':
+            print('analyzing price target on %s' %self.ticker)
+            price_after = float(str(self.price_after))
+            price_before = float(str(self.price_before))
+            if price_after!=-1 and price_before!=-1:
+                if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
+                    return [price_after,price_before]
+        return []
+    # processing the earnings
+    def PassEarnings(self):
+        if self.message=='earnings':
+            print('analyzing price target on %s' %self.ticker)
+            price_after = float(str(self.price_after))
+            price_before = float(str(self.price_before))
+            if price_after!=-1 and price_before!=-1:
+                if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
+                    return [price_after,price_before]
+        return []
+    
+    # processing the pharma
+    def PharmaPhase(self):
+        if self.message=='clinicaltrial':
+            print('Clinical trial on %s' %self.ticker)
+            return True
+        return False
+    
+    # processing the upgrade of company
+    def PassUpgrade(self):
+        if self.message=='recom':
+            print('analyzing this recommendation on %s' %self.ticker)
+            if self.assessment_result>1 and self.assessment_change>0:
+                return True
+        return False
 
 @dataclass
 class News:

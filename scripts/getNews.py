@@ -3,6 +3,7 @@ import re,os,sys
 from bs4 import BeautifulSoup
 from bs4 import SoupStrainer
 from Sentiment import Sentiment,News
+import AnaSignal 
 import datetime,time
 import wget,pickle
 debug=False
@@ -132,7 +133,45 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                 # running the sentiment analysis
                 print('')
                 print(shortText)
-                print(my_news.Sentiment(sid=sid,nlp=nlp,is_earnings=is_earnings))
+                my_sentiment = my_news.Sentiment(sid=sid,nlp=nlp,is_earnings=is_earnings)
+                print(my_sentiment)
+                if my_sentiment and my_sentiment.sentiment!=None:
+                    if len(my_sentiment.PassPriceTarget())>0:
+                        print('Calling target price upgrade check to launch trade!')
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_target_instructions.csv',my_sentiment.PassPriceTarget())
+                        except:
+                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
+                    if len(my_sentiment.PassEarnings())>0:
+                        print('Calling earnings report check to launch trade!')
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_earnings_instructions.csv',my_sentiment.PassEarnings())
+                        except:
+                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
+                    if my_sentiment.PharmaPhase():
+                        print('Calling upgrade to launch trade!')
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_pharmaphase_instructions.csv')
+                        except:
+                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
+                            
+                    if my_sentiment.PassUpgrade():
+                        print('Calling upgrade to launch trade!')
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_upgrade_instructions.csv')
+                        except:
+                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
+                    if my_sentiment.message!=None and my_sentiment.sentiment>0 and my_sentiment.message=='options':
+                        print('Calling call options check to launch trade!')
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_bull_instructions.csv')
+                        except:
+                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
             if debug:
                 print(my_news)
                 print(tickers)
@@ -140,7 +179,7 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                 print(completeText.rstrip('Reference Link').strip().rstrip('\n'))
                 print('shortText: %s' %shortText)
                 print(company)
-                print(currPrice)        
+                print(currPrice)
                 print(upgradeRel)
                 print(downgradeRel)
                 print(nochangeRel)
@@ -201,7 +240,7 @@ if __name__ == "__main__":
             Execute(f1=filename_rec, f2=filename_news, f3=filename_earn, total_news_map=total_news_map,total_recs_map=total_recs_map,outFileName=outFileName)
         except:
             print('Error downloading pages!')
-        
+            sys.stdout.flush()
         # sleep for 5 minutes
         time.sleep(300)
         today = datetime.datetime.today()

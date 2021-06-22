@@ -1,5 +1,6 @@
 from alpaca_trade_api.rest import TimeFrame
 from alpaca_trade_api.rest import REST
+from alpaca_trade_api.stream import Stream
 import alpaca_trade_api
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.fundamentaldata import FundamentalData
@@ -163,13 +164,37 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
 
     return stock,j
 
-def ALPACA_REST():
+def ALPACA_REST(paper=True):
     """ ALPACA_REST - Return alpaca api
     """
     ALPACA_ID = os.getenv('ALPACA_ID')
     ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
-    api = REST(ALPACA_ID,ALPACA_PAPER_KEY)
+    base_url = 'https://paper-api.alpaca.markets'
+    if not paper:
+        base_url = 'https://api.alpaca.markets'
+    api = REST(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url)
     return api
+
+async def trade_callback(t):
+    print('trade', t)
+async def quote_callback(q):
+    print('quote', q)
+async def bars_callback(q):
+    print('bars', q)
+
+def ALPACA_STREAM():
+    """ ALPACA_STREAM - Stream data from alpaca api. these are live quotes
+    """
+    ALPACA_ID = os.getenv('ALPACA_ID')
+    ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
+    base_url = 'https://paper-api.alpaca.markets'
+    stream = Stream(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url,data_feed='iex')  # <- replace to SIP if you have PRO subscription
+    return stream
+
+# subscribing to event
+#stream.subscribe_trades(trade_callback, 'AAPL')
+#stream.subscribe_quotes(quote_callback, 'IBM')
+#stream.run()
 
 def IS_ALPHA_PREMIUM():
     """ IS_ALPHA_PREMIUM - Decide if we should load the premium API key
@@ -309,6 +334,57 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None):
         trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw').df
     return trade_days
 
+#Get quotes
+def getQuotesTS(ts, ticker):
+    """ runTicker - Request data from alpaca
+
+         Parameters:
+         api - alpaca API
+         ticker - str
+              Stock ticker name
+    """
+    return_json=[]
+    while 1:
+        try:
+            return_json = ts.get_quote_endpoint(ticker)
+            break
+        except (pd.io.sql.DatabaseError,KeyError):
+            print('ERROR collecting quote for %s' %ticker)
+
+    if len(return_json)>0:
+        return_json = pd.DataFrame(return_json[0],index=[1])
+        try:
+            return_json.columns=['ticker','open','high','low','price','volume','trading_day','previous_close','change','change_percent']
+            for i in ['open','high','low','price','volume','previous_close','change']:
+                return_json[i] = pd.to_numeric(return_json[i],errors='coerce')
+        except (ValueError,KeyError):
+            print('Error processing %s' %ticker)
+    return return_json
+
+#Get quotes
+def getQuotes(api, ticker, start=None, end=None, limit=500):
+    """ runTicker - Request data from alpaca
+
+         Parameters:
+         api - alpaca API
+         ticker - str
+              Stock ticker name
+         timeframe - TimeFrame object
+              TimeFrame.Day, TimeFrame.Minute, TimeFrame.Second
+         start - Date time object 
+              Start date of request
+         end - Date time object 
+              End date of request
+    """
+    if start==None:
+        import pytz
+        est = pytz.timezone('US/Eastern')
+        today = datetime.datetime.now(tz=est) + datetime.timedelta(minutes=-15)
+        end = today.strftime("%Y-%m-%dT%H:%M:%S-04:00")
+        start = (today + datetime.timedelta(minutes=-30)).strftime("%Y-%m-%dT%H:%M:%S-04:00")
+    #ask_price,bid_price?
+    quotes = api.get_quotes(ticker, start, end, limit=limit).df
+    return quotes
 # get various types
 #   api.get_bars
 #   api.get_quotes
@@ -351,7 +427,7 @@ def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, l
     return trade_days
 
 # add stock data and market data to compute metrics
-def AddInfo(stock,market,debug=False):
+def AddInfo(stock,market,debug=False, AddSupport=False):
     """ AddInfo - Add data to the stock pandas data frame
 
          Parameters:
@@ -373,6 +449,7 @@ def AddInfo(stock,market,debug=False):
     # SMA
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
+    stock['sma20cen']=techindicators.sma(stock['adj_close'].shift(-10),20)    
     if len(stock['adj_close'])>50:
         stock['sma50']=techindicators.sma(stock['adj_close'],50)
     else: stock['sma50']=np.zeros(len(stock['adj_close']))
@@ -444,8 +521,13 @@ def AddInfo(stock,market,debug=False):
     stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
+    # centering on the date in question
+    stock['vwap10cen']=techindicators.vwap(stock['high'].shift(-5),stock['low'].shift(-5),stock['close'].shift(-5),stock['volume'].shift(-5),10)
     stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']    
     stock['vwap20']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],20)
+    
+    stock['BolLowerVWAP10'],stock['BolCenterVWAP10'],stock['BolUpperVWAP10']=techindicators.boll(stock['vwap10'],14,2.0,14)
+    
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     stock['market'] = market['adj_close']
     stock['corr14']=stock['adj_close'].rolling(14).corr(market['market'])
@@ -464,6 +546,22 @@ def AddInfo(stock,market,debug=False):
             if 'CDL' in ky and not 'stream' in ky:
                 stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
     end = time.time() 
+
+    if AddSupport and  len(stock_1y['adj_close'])>0:
+        # compute the last years support levels
+        stock['downSL']=0
+        stock['upSL']=0
+        for i in [stock_1y.index.values[-1]]:
+            earn_dateA = (i - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+            earn_dateA=datetime.datetime.utcfromtimestamp(earn_dateA)
+            prior_year_tstock_info = GetTimeSlot(stock,startDate=earn_dateA)
+            tech_levels = techindicators.supportLevels(prior_year_tstock_info,drawhlines=False)
+            adj_close=1.0
+            if  len(prior_year_tstock_info)>0:
+                adj_close = prior_year_tstock_info.adj_close.values[-1]
+            a = np.array(tech_levels,dtype=float)/adj_close-1.0
+            stock.loc[stock.index==i,['downSL']] = np.max(a[a<0.0],initial=-0.25)
+            stock.loc[stock.index==i,['upSL']] = np.min(a[a>0.0],initial=0.25)
     
     if debug: print('Process time to new: %s' %(end - start))
 
