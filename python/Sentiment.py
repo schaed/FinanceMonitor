@@ -520,25 +520,35 @@ class Sentiment:
             print('cannot yet process this request')
         return
 
+    # convert the tokens to a digit
+    #def Convert
+    
     # processing the price target
     def PassPriceTarget(self):
         if self.message=='target':
-            print('analyzing price target on %s' %self.ticker)
-            price_after = float(str(self.price_after))
-            price_before = float(str(self.price_before))
-            if price_after!=-1 and price_before!=-1:
-                if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
-                    return [price_after,price_before]
+            price_after  = str(self.price_after).replace(',','')
+            price_before = str(self.price_before).replace(',','')
+            print('analyzing price target on %s with price after %s' %(self.ticker,price_after))
+            if (price_after.replace('.','',1)).isdigit() and (price_before.replace('.','',1)).isdigit():
+                price_after = float(price_after)
+                price_before = float(price_before)
+                if price_after!=-1 and price_before!=-1:
+                    if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
+                        return [price_after,price_before]
         return []
     # processing the earnings
     def PassEarnings(self):
         if self.message=='earnings':
-            print('analyzing price target on %s' %self.ticker)
-            price_after = float(str(self.price_after))
-            price_before = float(str(self.price_before))
-            if price_after!=-1 and price_before!=-1:
-                if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
-                    return [price_after,price_before]
+            print('analyzing price target on %s with price after %s' %(self.ticker,price_after))
+            price_after  = str(self.price_after).replace(',','')
+            price_before = str(self.price_before).replace(',','')
+            print('analyzing price target on %s with price after %s' %(self.ticker,price_after))
+            if (price_after.replace('.','',1)).isdigit() and (price_before.replace('.','',1)).isdigit():
+                price_after = float(price_after)
+                price_before = float(price_before)
+                if price_after!=-1 and price_before!=-1:
+                    if (price_after/(price_before+0.00001))>1.07 and (price_after-price_before)>0.07:
+                        return [price_after,price_before]
         return []
     
     # processing the pharma

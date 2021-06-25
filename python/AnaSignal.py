@@ -229,6 +229,7 @@ class Earnings:
             data_frame['upSL'] = (1.0+data_frame['upSL'])*self.tstock_info['close'][-1]
             data_frame['fivedaymax'] = self.minute_prices['open'].max()
             data_frame['fivedaymin'] = self.minute_prices['open'].min()
+            data_frame['fivedayvol'] = self.minute_prices['open'].std()            
             data_frame['fivedaymean'] = self.minute_prices['open'].mean()
             est = pytz.timezone('US/Eastern')
             data_frame['signal_date'] = datetime.now(tz=est).strftime("%Y-%m-%dT%H:%M:%S-04:00")
@@ -342,7 +343,7 @@ def GenerateSignal(ticker, out_file_name = 'out_bull_instructions.csv',price_tar
     if debug:
         print(income_statement_quarterly)
         print(income_statement_quarterly.dtypes)
-    
+
     tstock_info,j=ConfigTable(ticker, sqlcursor, ts,'compact')
     spy,j = ConfigTable('SPY', sqlcursor,ts,'compact')
     
@@ -351,7 +352,7 @@ def GenerateSignal(ticker, out_file_name = 'out_bull_instructions.csv',price_tar
     #today = datetime.utcnow() + maindatetime.timedelta(minutes=-30)
     d1 = today.strftime("%Y-%m-%dT%H:%M:%S-04:00")
     five_days = (today + maindatetime.timedelta(days=-7)).strftime("%Y-%m-%dT%H:%M:%S-04:00")
-    
+
     minute_prices  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=five_days, end=d1)
     # may want to restrict to NYSE open times
     try:
