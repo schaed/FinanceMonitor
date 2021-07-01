@@ -184,16 +184,20 @@ class Sentiment:
             for curr in ['EUR ','CHF ',' GBp','c']:
                 if re.search(curr,   inputTxt, re.IGNORECASE):
                     money = [tok for tok in doc if tok.pos_ == "NUM"];
+                    if curr=="c":
+                        money = [tok for tok in doc if (tok.pos_ == "NUM") or (tok.pos_ != "NUM" and str(tok).strip('c').isdigit())];
                     break;
             imon=0
+
             for mon in money:
                 if re.search('\('+str(mon)+'\)',   inputTxt, re.IGNORECASE):
                     money[imon] = '-'+str(mon).strip().strip('c')
-                    try:
-                        if str(mon).count('c'):
-                            money[imon] = float(money[imon])/100.0
-                    except:
-                        print('Failed to convert')
+                try:
+                    if str(mon).count('c'):
+                        money[imon] = str(mon).strip().strip('c')
+                        money[imon] = float(money[imon])/100.0
+                except:
+                    print('Failed to convert')
                 imon+=1
             if len(money)==1:
                 self.price_after = money[0]
@@ -348,8 +352,13 @@ class Sentiment:
         # TODO: Grainger elevated to bullish Fresh Pick at Baird
         # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
         # TODO: Citi keeps Sell rating, $159 target on Tesla into Q1 results
+        describ1 = ['underperform','sell','underweight','negative','reduce','bearish']
+        describ2 = ['equal weight','market perform','neutral','hold','mixed','peer perform']
+        describ3 = ['outperform','overweight','buy','positive','add','bullish']
         for init in ['reiterate','restate','re-iterate','re-state','transferred with']:
             if re.search(init, inputTxt, re.IGNORECASE): self.sentiment=0; self.message='recom'
+            for de in describ3:
+                if re.search(de, inputTxt, re.IGNORECASE): self.sentiment=1;
         # not sure of the message, but checking for the following for a hint: 
         for init in [' initiat',' re-initiat',' reinitiat',' assum',' re-assum',' reassum', 'resumed with a']:
             if re.search(init,  inputTxt, re.IGNORECASE): self.first_rev=True; self.message='recom'
@@ -364,9 +373,6 @@ class Sentiment:
         if re.search('resumed with a sell',      inputTxt, re.IGNORECASE): self.sentiment=-1; #self.message='recom'
 
         # Review levels. Search for each review level
-        describ1 = ['underperform','sell','underweight','negative','reduce','bearish']
-        describ2 = ['equal weight','market perform','neutral','hold','mixed','peer perform']
-        describ3 = ['outperform','overweight','buy','positive','add','bullish']
         if self.sentiment==None:
             if re.search('bullish', inputTxt, re.IGNORECASE):   self.sentiment=1
             if re.search('bearish', inputTxt, re.IGNORECASE):   self.sentiment=-1
@@ -419,7 +425,7 @@ class Sentiment:
         #TODO Sandy Spring Bancorp reports Q1 EPS $1.58, consensus $1.0
         #TODO Cleveland-Cliffs sees FY21 adjusted EBITDA $4B
         if self.message==None and (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and re.search('consensus',     inputTxt, re.IGNORECASE)):
-            self.ParseEarnings(inputTxt, companyName, ticker, nlp)
+            self.ParseEarnings(inputTxt, companyName, ticker, nlp, doc)
             return
         # extra options. Just trying to understand positive versus negative
         # GameStop believes it has sufficient liquidity to fund operations

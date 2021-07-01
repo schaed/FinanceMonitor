@@ -246,7 +246,7 @@ def GetTimeSlot(stock, days=365, startDate=None):
     if startDate!=None:
         today = startDate
     past_date = today + datetime.timedelta(days=-1*days)
-        
+
     date=stock.truncate(before=past_date, after=startDate)
     #date = stock[nearest(stock.index,past_date)]
     return date
@@ -444,8 +444,8 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     stock['pos_volume'] = 0
     #stock.loc[stock.open>=stock.close,'pos_volume'] = stock.volume
     #stock.loc[stock.open<stock.close,'neg_volume'] = stock.volume
-    stock.loc[stock.adj_close>=stock.adj_close.shift(1),'pos_volume'] = stock.volume
-    stock.loc[stock.adj_close<stock.adj_close.shift(1),'neg_volume'] = stock.volume
+    stock.loc[stock.adj_close>=stock.adj_close.shift(1),'pos_volume'] = stock.volume[stock.adj_close>=stock.adj_close.shift(1)]
+    stock.loc[stock.adj_close<stock.adj_close.shift(1),'neg_volume'] = stock.volume[stock.adj_close<stock.adj_close.shift(1)]
     # SMA
     stock['sma10']=techindicators.sma(stock['adj_close'],10)
     stock['sma20']=techindicators.sma(stock['adj_close'],20)
@@ -461,7 +461,7 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     else: stock['sma200']=np.zeros(len(stock['adj_close']))
 
     # EMA
-    stock['ema13']=techindicators.ema(stock['adj_close'],13)
+    stock['ema13']=techindicators.ema(stock['adj_close'],13,True)
     stock['bullPower']=stock['high'] - stock['ema13']
     stock['bearPower']=stock['low'] - stock['ema13']
     stock['rstd10']=techindicators.rstd(stock['adj_close'],10)

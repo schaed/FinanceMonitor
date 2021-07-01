@@ -141,21 +141,21 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                         try:
                             AnaSignal.GenerateSignal(my_sentiment.ticker,'out_target_instructions.csv',my_sentiment.PassPriceTarget())
                         except:
-                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            print('Failed to evaluate target price company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
                     if len(my_sentiment.PassEarnings())>0:
                         print('Calling earnings report check to launch trade!')
                         try:
                             AnaSignal.GenerateSignal(my_sentiment.ticker,'out_earnings_instructions.csv',my_sentiment.PassEarnings())
                         except:
-                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            print('Failed to evaluate earnings company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
                     if my_sentiment.PharmaPhase():
                         print('Calling upgrade to launch trade!')
                         try:
                             AnaSignal.GenerateSignal(my_sentiment.ticker,'out_pharmaphase_instructions.csv')
                         except:
-                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            print('Failed to evaluate pharma company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
                             
                     if my_sentiment.PassUpgrade():
@@ -163,14 +163,14 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                         try:
                             AnaSignal.GenerateSignal(my_sentiment.ticker,'out_upgrade_instructions.csv')
                         except:
-                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            print('Failed to evaluate upgrade company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
                     if my_sentiment.message!=None and my_sentiment.sentiment>0 and my_sentiment.message=='options':
                         print('Calling call options check to launch trade!')
                         try:
                             AnaSignal.GenerateSignal(my_sentiment.ticker,'out_bull_instructions.csv')
                         except:
-                            print('Failed to evaluate company! %s' %my_sentiment.ticker)
+                            print('Failed to evaluate bullish company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
             if debug:
                 print(my_news)

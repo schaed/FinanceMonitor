@@ -10,7 +10,7 @@ import logging
 import urllib3,requests
 
 from ReadData import ALPACA_REST,ALPACA_STREAM
-from alpaca_trade_api.rest import TimeFrame
+from alpaca_trade_api.rest import TimeFrame,APIError
 
 import pytz,datetime
 est = pytz.timezone('US/Eastern')
@@ -486,7 +486,7 @@ def main(args):
     while 1:
         try:
             loop.run_until_complete(asyncio.gather(stream._run_forever(),periodic()))
-        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError):
+        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError):
             print('Connection error. will try to restart')
             pass
     loop.close()

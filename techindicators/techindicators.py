@@ -18,9 +18,10 @@ def sma(a,b, sameSize=True):
 #
 # Exponential Moving Average
 # a is an array of prices, b is a period for averaging
-def ema(a,b):
+def ema(a,b,sameSize=False):
     ema_short = a.ewm(span=b, adjust=False).mean()
-    ema_short = ema_short[b-1:]
+    if not sameSize:
+        ema_short = ema_short[b-1:]
     return ema_short
     #result = np.zeros(len(a)-b+1)
     #result[0] = np.sum(a[0:b])/b
@@ -247,10 +248,13 @@ def rollingBetav2(stock_data, w, market_data, sameSize=True):
     stock_data_short.columns=['stock']
     stock = 'stock'
     beta_data = stock_data_short.join(market_date_short, how = 'inner').pct_change().dropna()
-    ticker_covariance = beta_data.rolling(w).cov()
+    ticker_covariance_round = beta_data.rolling(w).cov()
     # Limit results to the stock (i.e. column name for the stock) vs. 'Market' covariance
-    ticker_covariance = ticker_covariance.loc[pd.IndexSlice[:, stock], 'Market'].dropna()
+    ticker_covariance = ticker_covariance_round.loc[pd.IndexSlice[:, stock], 'Market'].dropna()
     benchmark_variance = beta_data['Market'].rolling(w).var().dropna()
+    #print(len(ticker_covariance),len(benchmark_variance),len(stock_data))
+    #print(ticker_covariance)
+    #print(benchmark_variance)
     beta = ticker_covariance / benchmark_variance
     difflen = len(stock_data)-len(beta)
     if sameSize and difflen>0:

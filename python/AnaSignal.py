@@ -11,6 +11,7 @@ from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from statsmodels.tsa.arima.model import ARIMA
 import pmdarima as pmd
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+import requests
 import pytz,os
 debug=False
 draw=True
@@ -344,22 +345,27 @@ def GenerateSignal(ticker, out_file_name = 'out_bull_instructions.csv',price_tar
         print(income_statement_quarterly)
         print(income_statement_quarterly.dtypes)
 
-    tstock_info,j=ConfigTable(ticker, sqlcursor, ts,'compact')
+    tstock_info,j=ConfigTable(ticker, sqlcursor, ts,'full')
     spy,j = ConfigTable('SPY', sqlcursor,ts,'compact')
-    
+    #print(spy.columns)
     est = pytz.timezone('US/Eastern')
     today = datetime.now(tz=est) + maindatetime.timedelta(minutes=-40)
     #today = datetime.utcnow() + maindatetime.timedelta(minutes=-30)
     d1 = today.strftime("%Y-%m-%dT%H:%M:%S-04:00")
     five_days = (today + maindatetime.timedelta(days=-7)).strftime("%Y-%m-%dT%H:%M:%S-04:00")
-
-    minute_prices  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=five_days, end=d1)
+    minute_prices=[]; ntry=0
+    while ntry<3:
+        try:
+            minute_prices  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=five_days, end=d1)
+            break;
+        except (requests.exceptions.ConnectionError):
+            ntry+=1;
     # may want to restrict to NYSE open times
     try:
         AddInfo(spy, spy)
         AddInfo(tstock_info, spy, AddSupport=True)
     except (ValueError,KeyError):
-        print('Error processing %s' %ticker)
+        print('Error processing adding info %s' %ticker)
 
     recent_quotes = getQuotes(api,ticker)
     if debug: print(tstock_info[['adj_close','sma20','sma20cen','vwap10cen','vwap10']][50:-10])
@@ -431,7 +437,7 @@ if __name__ == "__main__":
         AddInfo(spy, spy)
         AddInfo(tstock_info, spy, AddSupport=True)
     except (ValueError,KeyError):
-        print('Error processing %s' %ticker)
+        print('Error processing adding info to SPY %s' %ticker)
 
     recent_quotes = getQuotes(api,ticker)
     if debug: print(tstock_info[['adj_close','sma20','sma20cen','vwap10cen','vwap10']][50:-10])
