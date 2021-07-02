@@ -34,7 +34,17 @@ def MoveOldSignals(api):
                 positions = [p for p in api.list_positions() if p.symbol == t ]
                 orders = [p for p in api.list_orders() if p.symbol == t ]
                 print(t,positions,orders)
-                time_of_signal = datetime.datetime.strptime(dfnow[dfnow['ticker']==t]['signal_date'].values[0],"%Y-%m-%dT%H:%M:%S-04:00")
+                if dfnow[dfnow['ticker']==t]['signal_date'].values[0]=='signal_date':
+                    print('removing this duplicate header line')
+                    dfnow.drop(index=dfnow[dfnow['ticker']==t].index,inplace=True)
+                    continue
+                time_of_signal=''
+                try:
+                    time_of_signal = datetime.datetime.strptime(dfnow[dfnow['ticker']==t]['signal_date'].values[0],"%Y-%m-%dT%H:%M:%S-04:00")
+                except:
+                    print(dfnow[dfnow['ticker']==t]['signal_date'])
+                    print('Error loading: %s' %(dfnow[dfnow['ticker']==t]['signal_date'].values[0]))
+                    sys.stdout.flush()
                 time_of_signal = time_of_signal.replace(tzinfo=est)
                 # if more than 5 days, then let's remove it or replace it.
                 if (time_of_signal<(datetime.datetime.now(tz=est)+datetime.timedelta(days=-5)) and len(positions)==0 and len(orders)==0 and dfnow[dfnow['ticker']==t]['sold_at_loss'].values[0]==0) or (time_of_signal<(datetime.datetime.now(tz=est)+datetime.timedelta(days=-40)) and len(positions)==0 and len(orders)==0 and dfnow[dfnow['ticker']==t]['sold_at_loss'].values[0]>0):

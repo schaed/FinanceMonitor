@@ -247,6 +247,7 @@ def rollingBetav2(stock_data, w, market_data, sameSize=True):
     market_date_short.columns=['Market']
     stock_data_short.columns=['stock']
     stock = 'stock'
+    #print(stock_data_short)
     beta_data = stock_data_short.join(market_date_short, how = 'inner').pct_change().dropna()
     ticker_covariance_round = beta_data.rolling(w).cov()
     # Limit results to the stock (i.e. column name for the stock) vs. 'Market' covariance

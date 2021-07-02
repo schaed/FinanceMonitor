@@ -11,7 +11,7 @@ import talib
 import datetime,time,os,pickle
 import pandas as pd
 import numpy as np
-import sqlite3
+import sqlite3,sys
 from dateutil.parser import parse
 import urllib3
 import matplotlib.pyplot as plt
@@ -145,9 +145,15 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
                 return [],j
             # make sure we only add newer dates
             stockCompact = GetTimeSlot(stockCompact, days=(today - stock.index[-1]).days)
-            UpdateTable(stockCompact, ticker, sqlcursor, index_label=index_label)
-            stock = pd.concat([stock,stockCompact])
+            if len(stockCompact)>0 and len(stock)>0 and stockCompact.index[-1]!=stock.index[-1]:
+                UpdateTable(stockCompact, ticker, sqlcursor, index_label=index_label)
+                stock = pd.concat([stock,stockCompact])
             stock = stock.sort_index()
+            before_len = len(stock)
+            stock.drop_duplicates(inplace=True)
+            if abs(before_len - len(stock))>0:
+                print('Note: this many duplicates %s were removed for %s' %(abs(before_len - len(stock)),ticker))
+                sys.stdout.flush()
     except:
         NewEntry=True
         print('%s is a new entry to the database....' %ticker)
