@@ -545,7 +545,7 @@ class Sentiment:
     # processing the earnings
     def PassEarnings(self):
         if self.message=='earnings':
-            print('analyzing price target on %s with price after %s' %(self.ticker,price_after))
+            print('analyzing earnings on %s with EPS after %s' %(self.ticker,self.price_after))
             price_after  = str(self.price_after).replace(',','')
             price_before = str(self.price_before).replace(',','')
             print('analyzing price target on %s with price after %s' %(self.ticker,price_after))

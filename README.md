@@ -8,6 +8,13 @@ pip3 install pandas matplotlib mplfinance numpy_ext watchdog
 pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk cython zigzag --user
 ```
 
+Running machine learning requires some specific tensorflow+numpy libraries
+```
+python3.7 -m venv tflow-env
+source tflow-env/bin/activate
+export PYTHONPATH=/Users/schae/testarea/finances/FinanceMonitor/tflow-env/lib/python3.7/site-packages:$PYTHONPATH
+pip3.7 install  "numpy==1.19.5" "tensorflow==2.5.0" # make sure to create an environment
+```
 
 May need to install the vader libraries
 ```
@@ -83,4 +90,15 @@ https://iexcloud.io/docs/api/
 https://github.com/Syakyr/My-Trading-Project/tree/master/Risk%20Management
 ```
 
-## Add the data for company info and historical earnings analyze daily rates relative to the SMA. some kind of reversion to the mean. can I build a return probability  using the MA, bolanger bands, etc? Maybe do it on the 5m time scale add in fibs plotting with the zigzag 
+## Add the data for company info and historical earnings analyze daily
+   rates relative to the SMA. some kind of reversion to the mean. can
+   I build a return probability  using the MA, bolanger bands, etc?
+   Maybe do it on the 5m time scale add in fibs plotting with the
+   zigzag
+
+https://www.tensorflow.org/tutorials/structured_data/time_series
+https://www.tensorflow.org/probability/examples/STS_approximate_inference_for_models_with_non_Gaussian_observations
+https://www.tensorflow.org/probability/examples/Structural_Time_Series_Modeling_Case_Studies_Atmospheric_CO2_and_Electricity_Demand
+
+Interesting for commodity pricing
+https://tradingeconomics.com/commodity/coffee

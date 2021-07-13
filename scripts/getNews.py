@@ -135,7 +135,17 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                 print(shortText)
                 my_sentiment = my_news.Sentiment(sid=sid,nlp=nlp,is_earnings=is_earnings)
                 print(my_sentiment)
-                if my_sentiment and my_sentiment.sentiment!=None:
+                if my_sentiment:
+                    if len(my_sentiment.PassEarnings())>0:
+                        print('Calling earnings report check to launch trade!')
+                        sys.stdout.flush()
+                        try:
+                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_earnings_instructions.csv',my_sentiment.PassEarnings())
+                        except:
+                            print('Failed to evaluate earnings company! %s' %my_sentiment.ticker)
+                            sys.stdout.flush()
+                            
+                elif my_sentiment and my_sentiment.sentiment!=None:
                     if len(my_sentiment.PassPriceTarget())>0:
                         print('Calling target price upgrade check to launch trade!')
                         try:
@@ -143,13 +153,7 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
                         except:
                             print('Failed to evaluate target price company! %s' %my_sentiment.ticker)
                             sys.stdout.flush()
-                    if len(my_sentiment.PassEarnings())>0:
-                        print('Calling earnings report check to launch trade!')
-                        try:
-                            AnaSignal.GenerateSignal(my_sentiment.ticker,'out_earnings_instructions.csv',my_sentiment.PassEarnings())
-                        except:
-                            print('Failed to evaluate earnings company! %s' %my_sentiment.ticker)
-                            sys.stdout.flush()
+                    
                     if my_sentiment.PharmaPhase():
                         print('Calling upgrade to launch trade!')
                         try:
@@ -218,8 +222,8 @@ if __name__ == "__main__":
         except:
             print('Could not read the older news file: %s' %outFileName)
     while (today.hour<23 or (today.hour==23 and today.minute<30)):
-        try:
-        #if True:
+        #try:
+        if True:
             #after the fact https://thefly.com/news.php?market_mover_filter=on&h=5
             #maybe others https://www.americanbankingnews.com/category/market-news/analyst-articles-us/page/17
             #maybe finviz.com
@@ -238,9 +242,9 @@ if __name__ == "__main__":
             #filename_news='/tmp/breakingtest.html'
             # download the results
             Execute(f1=filename_rec, f2=filename_news, f3=filename_earn, total_news_map=total_news_map,total_recs_map=total_recs_map,outFileName=outFileName)
-        except:
-            print('Error downloading pages!')
-            sys.stdout.flush()
+        #except:
+        #    print('Error downloading pages!')
+        #    sys.stdout.flush()
         # sleep for 5 minutes
         time.sleep(300)
         today = datetime.datetime.today()

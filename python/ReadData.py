@@ -7,7 +7,6 @@ from alpha_vantage.fundamentaldata import FundamentalData
 from techindicators import techindicators
 from sklearn import preprocessing
 from keras.models import load_model
-import talib
 import datetime,time,os,pickle
 import pandas as pd
 import numpy as np
@@ -315,7 +314,7 @@ def runTickerAlpha(ts, ticker, detail='full'):
     return output
 
 # Alpaca info
-def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None):
+def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=500000):
     """ runTicker - Request data from alpaca
 
          Parameters:
@@ -334,10 +333,10 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None):
         yesterday = today + datetime.timedelta(days=-1)
         d1 = yesterday.strftime("%Y-%m-%d")
         fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")
-        trade_days = api.get_bars(ticker, timeframe, fouryao, d1, 'raw').df
+        trade_days = api.get_bars(ticker, timeframe, fouryao, d1, 'raw',limit=limit).df
     elif start!=None and end!=None:
         #start_date = ''
-        trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw').df
+        trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw',limit=limit).df
     return trade_days
 
 #Get quotes
@@ -443,6 +442,7 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
          debug - Bool
               Level of printout
     """
+    import talib
     # let's make sure we sort this correctly
     #stock = stock.sort_index()
     #print(stock.tail())

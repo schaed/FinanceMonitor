@@ -310,7 +310,7 @@ def CollectEarnings(ticker,conn):
         print(company_overview.dtypes)
     return stockInfoQuarter,stockInfoAnnual,company_overview
 
-def GenerateSignal(ticker):
+def GenerateSignal(ticker, earnings_target=[]):
     connectionCal = SQL_CURSOR('earningsCalendarv2.db')
     fd = ALPHA_FundamentalData()
     sqlcursor = SQL_CURSOR()
