@@ -3,7 +3,7 @@ import re,os,sys
 from bs4 import BeautifulSoup
 from bs4 import SoupStrainer
 from Sentiment import Sentiment,News
-import AnaSignal 
+import AnaSignal
 import datetime,time
 import wget,pickle
 debug=False
