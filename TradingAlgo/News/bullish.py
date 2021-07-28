@@ -496,7 +496,7 @@ def main(args):
     while 1:
         try:
             loop.run_until_complete(asyncio.gather(stream._run_forever(),periodic()))
-        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError):
+        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError,TimeoutError):
             print('Connection error. will try to restart')
             pass
     loop.close()

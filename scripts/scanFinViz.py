@@ -71,20 +71,25 @@ if __name__ == "__main__":
         try:
             total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=320\&s=ta_unusualvolume\&r=',total_table=total_table_top_gain,maxIndex=2,name='unusualvolume')
         except:
-            print('failed...')
+            print('failed...volume')
+            sys.stdout.flush()
         try:
             total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_topgainers\&r=',total_table=total_table_top_gain,maxIndex=2,name='top_gain')
         except:
-            print('failed...')
+            print('failed...top gain')
+            sys.stdout.flush()
         try:
             total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_toplosers\&r=',total_table=total_table_top_gain,maxIndex=2,name='top_loser')
         except:
-            print('failed...')
+            print('failed...top losers')
+            sys.stdout.flush()
         try:
             total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=210\&s=ta_overbought\&r=',total_table=total_table_top_gain,maxIndex=2,name='overbought')
         except:
-            print('failed...')
+            print('failed...over bought')
+            sys.stdout.flush()
         print(total_table_top_gain)
+        sys.stdout.flush()
         today = datetime.datetime.today()
         
         if len(total_table_top_gain)>total_entries:

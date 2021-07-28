@@ -7,7 +7,7 @@ style_path = '/Users/schae/testarea/CAFAna/HWWMVACode'
 out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
-#outdir = '/tmp/'
+outdir = '/tmp/'
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
@@ -944,7 +944,7 @@ stock_list = [
          ['XM',50.0,70.0,'NASDAQ','qualtrics international software'],
          ['HZO',50.0,70.0,'NYSE','Marine Max florida provider of boat parts'],
          ['SKLZ',50.0,70.0,'NYSE','Skillz is an online mobile multiplayer competition platform'],
-         ['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
+    #['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
          ['RGR',40.0,70.0,'NYSE','ruger'], # ruger 2.5% dividend
          ['SWBI',40.0,70.0,'NYSE','Smith and wessin'], # ruger 2.5% dividend
          ['RETO',40.0,70.0,'NYSE','RETO'], # ruger 2.5% dividend
@@ -1042,18 +1042,34 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['GNR',8.0,20.0,'NYSE','SPDR S&P Global Natural Resources ETF'],
             ['GXC',8.0,20.0,'NYSE','SPDR S&P China ETF'],
             ['RZV',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Value ETF, short TZA'],
+            ['TZA',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Value ETF, short TZA'],
             ['RYE',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Energy ETF'],
             ['UGA',8.0,20.0,'NYSE','United States Gasoline Fund'],
             ['RCD',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Consumer Discretionary ETF'],
             ['SDOG',8.0,20.0,'NYSE','ALPS Sector Dividend Dogs ETF'],
+            ['DOG',8.0,20.0,'NYSE','short Dow30 ETF'],
             ['RFV',8.0,20.0,'NYSE','Invesco S&P MidCap 400 Pure Value ETF'],
             ['RZG',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Growth ETF'],
             ['USDU',8.0,20.0,'NYSE','WisdomTree Bloomberg U.S. Dollar Bullish Fund'],
             ['LOWC',8.0,20.0,'NYSE','SPDR MSCI ACWI Low Carbon Target ETF'],
             ['DBA',8.0,20.0,'NYSE','Invesco DB Agriculture'],
-            ['DRV',8.0,20.0,'NYSE','3x real estate bull'],            
+            ['DRV',8.0,20.0,'NYSE','3x real estate bear'],            
+            ['SRS',8.0,20.0,'NYSE','1x real estate bear'],            
+            ['JDST',8.0,20.0,'NYSE','2x short junior gold miners'],            
             ['GLTR',8.0,20.0,'NYSE','Aberdeen Standard Broad Precious Metals'],
             ['GLDM',8.0,20.0,'NYSE','SPDR Gold MiniShares'],
+            ['GLL',8.0,20.0,'NYSE','Short gold'],
+            ['DUG',8.0,20.0,'NYSE','Short 1x oil and gas'],
+            ['GNAF',8.0,20.0,'NYSE','Short 1x FANG'],
+            ['MYY',8.0,20.0,'NYSE','Short 1x midcap400'],
+            #['SBM',8.0,20.0,'NYSE','Short 1x basic materials'],
+            ['RXD',8.0,20.0,'NYSE','Short 1x healthcare'],
+            ['SZK',8.0,20.0,'NYSE','Short 1x consumer goods'],
+            ['SCC',8.0,20.0,'NYSE','Short 1x consumer services'],
+            ['EFU',8.0,20.0,'NYSE','Short 1x EAFE'],
+            ['SIJ',8.0,20.0,'NYSE','Short 1x industrials'],
+            ['EDZ',8.0,20.0,'NYSE','Short 3x emerging markets'],
+            ['EUM',8.0,20.0,'NYSE','Short 1x emerging markets'],
             ['DBO',8.0,20.0,'NYSE','Invesco DB Oil Optimum Yield Crude Oil TR USD'],
             ['GUSH',8.0,20.0,'NYSE','2x oil and gas prod and exploration'],
             ['DRIP',8.0,20.0,'NYSE','2x short oil and gas prod and exploration'],            
@@ -1061,7 +1077,12 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['UPRO',8.0,20.0,'NYSE','3x SPY Long, also see 3x SPXL. SPUU, SSO are 2x'],
             ['SPXU',8.0,20.0,'NYSE','3x SPY short, also see 3x SPXL. SPUU, SSO are 2x'],
             ['LABU',8.0,20.0,'NYSE','3x biomedical BIB, short is LABD'],            
-            ['BIB',8.0,20.0,'NYSE','Nasdaq Biomedical tech'],            
+            ['BIB',8.0,20.0,'NYSE','Nasdaq Biomedical tech'],
+            ['FAZ',8.0,20.0,'NYSE','Direxion Daily Financial Bear 3X Shares'],                        
+            ['KOLD',8.0,20.0,'NYSE','Proshare short natural gas'],                        
+            ['SCO',8.0,20.0,'NYSE','Short Crude oil'],                        
+            ['UDN',8.0,20.0,'NYSE','Short US dollar'],                        
+            ['TWM',8.0,20.0,'NYSE','Short Russell 2000'],                        
             ['FREL',8.0,20.0,'NYSE','Fidelity MSCI Real Estate ETF'],
             ['FSTA',8.0,20.0,'NYSE','Fidelity MSCI Consumer Staples ETF'],
             ['FENY',8.0,20.0,'NYSE','Fidelity MSCI Energy ETF'],

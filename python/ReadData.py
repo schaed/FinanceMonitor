@@ -16,7 +16,7 @@ import urllib3
 import matplotlib.pyplot as plt
 import matplotlib
 import base as baseB
-
+NY = 'America/New_York'
 # db_name the database name
 def SQL_CURSOR(db_name='stocksAV.db'):
     """ SQL_CURSOR - Retrieve sqlite data base cursor
@@ -187,13 +187,14 @@ async def quote_callback(q):
 async def bars_callback(q):
     print('bars', q)
 
-def ALPACA_STREAM():
+def ALPACA_STREAM(data_feed='sip'):
     """ ALPACA_STREAM - Stream data from alpaca api. these are live quotes
+        data_feed - str - iex or SIP for pro
     """
     ALPACA_ID = os.getenv('ALPACA_ID')
     ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
     base_url = 'https://paper-api.alpaca.markets'
-    stream = Stream(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url,data_feed='iex')  # <- replace to SIP if you have PRO subscription
+    stream = Stream(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url,data_feed=data_feed)  # <- replace to SIP if you have PRO subscription, iex is for non-pro
     return stream
 
 # subscribing to event
@@ -337,6 +338,8 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=
     elif start!=None and end!=None:
         #start_date = ''
         trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw',limit=limit).df
+    if len(trade_days)>0:
+        trade_days.index = pd.to_datetime(trade_days.index,utc=True).tz_convert(NY)
     return trade_days
 
 #Get quotes
@@ -389,6 +392,8 @@ def getQuotes(api, ticker, start=None, end=None, limit=500):
         start = (today + datetime.timedelta(minutes=-30)).strftime("%Y-%m-%dT%H:%M:%S-04:00")
     #ask_price,bid_price?
     quotes = api.get_quotes(ticker, start, end, limit=limit).df
+    if len(quotes)>0:
+        quotes.index = pd.to_datetime(quotes.index,utc=True).tz_convert(NY)
     return quotes
 # get various types
 #   api.get_bars
