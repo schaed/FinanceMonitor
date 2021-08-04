@@ -178,7 +178,7 @@ class Sentiment:
         #TODO Cleveland-Cliffs sees FY21 adjusted EBITDA $4B
         #TODO Lennar reports Q2 adjusted EPS $2.95, consensus $2.36
         self.message='earnings'
-        if (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and (re.search('consensus',     inputTxt, re.IGNORECASE) or re.search('last year',     inputTxt, re.IGNORECASE))):
+        if (re.search('reports',     inputTxt, re.IGNORECASE) and re.search('EPS',     inputTxt, re.IGNORECASE) and (re.search('consensus',     inputTxt, re.IGNORECASE) or re.search('last year',     inputTxt, re.IGNORECASE)  or re.search(' est. ',     inputTxt, re.IGNORECASE))):
             self.message='earnings'
             money = [ent for ent in doc.ents if ent.label_ == "MONEY"]
             for curr in ['EUR ','CHF ',' GBp','c']:
@@ -188,14 +188,35 @@ class Sentiment:
                         money = [tok for tok in doc if (tok.pos_ == "NUM") or (tok.pos_ != "NUM" and str(tok).strip('c').isdigit())];
                     break;
             imon=0
-
+            # removing random numbers like number of estimates
+            new_money=[]
             for mon in money:
+                skipMe=False
+                for ih in ['one','two','three','four']:
+                    if re.search(ih, str(mon), re.IGNORECASE):
+                        skipMe=True
+                        break
+                if skipMe:
+                    continue
+                new_money+=[mon]
+            money = new_money
+            for mon in money:
+                #print(mon)
                 if re.search('\('+str(mon)+'\)',   inputTxt, re.IGNORECASE):
                     money[imon] = '-'+str(mon).strip().strip('c')
+                elif re.search('\(\$'+str(mon)+'\)',   inputTxt, re.IGNORECASE):
+                    money[imon] = '-'+str(mon).strip().strip('c')
+                elif re.search('\('+str(mon)+'c\)',   inputTxt, re.IGNORECASE):
+                    money[imon] = '-'+str(mon).strip().strip('c')
+                #print(money[imon])
                 try:
-                    if str(mon).count('c'):
+                    if str(mon).count('c') and not re.search('c',str(money[imon]), re.IGNORECASE):
+                        money[imon] = float(money[imon].strip())/100.0
+                    elif str(mon).count('c'):
                         money[imon] = str(mon).strip().strip('c')
                         money[imon] = float(money[imon])/100.0
+                    elif type(str(''))==type(money[imon]):
+                        money[imon] = float(money[imon].strip())
                 except:
                     print('Failed to convert')
                 imon+=1

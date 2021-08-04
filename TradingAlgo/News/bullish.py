@@ -443,7 +443,7 @@ class BullishAlgo:
 
 
 def main(args):
-    stream = ALPACA_STREAM()
+    stream = ALPACA_STREAM(data_feed='iex')
     api = ALPACA_REST()
     fleet = {}
 
@@ -470,6 +470,8 @@ def main(args):
             fleet[data.symbol].on_bar(data)
 
     for symbol in symbols:
+        print(symbol)
+        sys.stdout.flush()
         #stream.subscribe_trades(on_bars, symbol)
         stream.subscribe_bars(on_bars, symbol)
     
