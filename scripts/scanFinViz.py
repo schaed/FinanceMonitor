@@ -16,8 +16,8 @@ def collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_topgainers\&r=
     for i in range(0,maxIndex):
         URL = URLin+'%s' %(1+i*20)
         filename_rec='/tmp/topgain%i.html' %i
-        if not os.path.exists(filename_rec):
-            os.system('wget -T 30 -q -O %s %s' %(filename_rec,URL))
+        #if not os.path.exists(filename_rec):
+        os.system('wget -T 30 -q -O %s %s' %(filename_rec,URL))
             
         table_MN = pd.read_html(filename_rec)
         ticker=''
