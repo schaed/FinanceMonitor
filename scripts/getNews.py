@@ -98,7 +98,10 @@ def ParseTheFly(inputFileName='/tmp/recommend.php',my_map={},new_map={},is_earni
         if len(allTime)>0:
             timeSlot = allTime[0].get_text()
             if debug: print(timeSlot[-8:])
-            timeSlot = datetime.datetime.strptime(timeSlot[-8:-2]+'20'+timeSlot[-2:]+' '+timeSlot[:-8], '%m/%d/%Y %H:%M')
+            try:
+                timeSlot = datetime.datetime.strptime(timeSlot[-8:-2]+'20'+timeSlot[-2:]+' '+timeSlot[:-8], '%m/%d/%Y %H:%M')
+            except ValueError:
+                timeSlot=''
 
         allA = t.find_all('a',attrs={'class':'newsTitleLink'})
         for a in allA:

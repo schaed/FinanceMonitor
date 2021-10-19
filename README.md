@@ -102,3 +102,15 @@ https://www.tensorflow.org/probability/examples/Structural_Time_Series_Modeling_
 
 Interesting for commodity pricing
 https://tradingeconomics.com/commodity/coffee
+
+
+Crontab
+```
+30 14 * * * /Users/schae/testarea/finances/googlefinance/getPrice.sh
+58 14 * * * /Users/schae/testarea/finances/yahoo-finance/getPriceAll.sh
+30  7 * * * /Users/schae/testarea/finances/FinanceMonitor/macros/getNews.sh
+31  7 * * 1-6 /Users/schae/testarea/finances/FinanceMonitor/macros/getSummaryData.sh
+32  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/scanFinViz.sh
+30  7 */10 * * /Users/schae/testarea/finances/FinanceMonitor/macros/getEarnings.sh
+30  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runNewsTrading.sh
+```
