@@ -20,8 +20,8 @@ def LoadData(df, sqlcursorExtra, tableName='SPY200MA', index_label='Date'):
         stock = stock.set_index('Date')
         stock = stock.sort_index()
 
-        if len(stock)>0 and (stock.index[-1]-todayDateTime)<datetime.timedelta(days=1,hours=18):
-            print('already loaded!')
+        if len(stock)>0 and (todayDateTime - stock.index[-1])<datetime.timedelta(days=1,hours=20):
+            print('already loaded %s! %s' %(tableName,stock.index[-1]))
             Load=False
     except pd.io.sql.DatabaseError:
         pass
