@@ -568,7 +568,7 @@ ticker='TSLA'
 stock_info=None
 spy=None
 sqlcursor = SQL_CURSOR()
-spy,j = ConfigTable('SPY', sqlcursor,ts,readType)
+spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
 print('spy')
 print(spy)
 #if loadFromPickle and os.path.exists("%s.p" %ticker):
@@ -613,7 +613,7 @@ if doStocks:
         print(s[0])
         sys.stdout.flush()
         
-        tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+        tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j, hoursdelay=15)
 
         if len(tstock_info)==0:
             continue
@@ -671,7 +671,7 @@ if doETFs:
         print(s[0])
         sys.stdout.flush()
         estock_info=None
-        estock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j)
+        estock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j, hoursdelay=15)
         if len(estock_info)==0:
             continue
         #try:

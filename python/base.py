@@ -699,7 +699,14 @@ stock_list = [
         ['CHK',4.0,7.0,'NYSE','cheseapeak oil'],  # cheseapeak
         ['FSLR',10.0,500.0, 'NASDAQ','first solar'], #first solar, arizona based
     #['SUNEQ',10.0,500.0, 'NASDAQ'], #first solar, arizona based
+        ['TAN',10.0,500.0, 'NYSEARCA','Invesco Solar ETF'], # solar ETF
+        ['RAYS',10.0,500.0, 'NASDAY','Global X Solar ETF'], # solar ETF
         ['SPWR',10.0,500.0, 'NASDAQ','sun power'], # sun power, san jose based
+        ['JKS',10.0,500.0, 'NYSE','JinkoSolar Holding Co., Ltd'], # largest solar panel manufacturer, shipping 11.4 GW
+        ['ORA',10.0,500.0, 'NYSE','Ormat Technologies, Inc.'], # l
+        ['PLUG',10.0,500.0, 'NASDAQ','Plug Power Inc'], # development of hydrogen fuel cell systems 
+        ['ENPH',10.0,500.0, 'NASDAQ','Enphase Energy Inc'], # energy technology company headquartered in Fremont, California
+        ['SEDG',10.0,500.0, 'NASDAQ','Solaredge Technologies Inc.'], # Solaredge Technologies Inc
         ['SO',10.0,500.0, 'NYSE','southern co'], # southern co, 4.7%
         #['TSL',10.0,500.0, 'NYSE','trina solar limited, chinese'], # trina solar limited, chinese
         ['EIX',10.0,500.0, 'NYSE','edison solar'], # edison international, 2.8% solar
@@ -986,7 +993,12 @@ stock_list = [
     ['IWF',30.0,500.0,'NYSEARCA','russel 1000 growth index'], # russel 1000 growth index. 1.8% dividend
     ['^VIX',0.0,20.0,'INDEXCBOE','Volatility Index'], # Volatility Index. look for a point where the price is 10 points from the MA. spikes indicate fear
     ['EL',30.0,500.0,'NYSE','estee lauder'], # estee lauder
-
+    ['EYPT',10.0,500.0,'NASDAQ','Eye Point'], # 
+    ['RIVN',10.0,500.0,'NASDAQ','Rivian automotive'], # 
+    ['BKKT',10.0,500.0,'NYSE','Bakkt Hldgs'], # 
+    ['LMDX',10.0,500.0,'NASDAQ','LumiraDx'], # 
+    ['KROS',10.0,500.0,'NASDAQ','Keros Therapeutics Inc'], # 
+    ['SABR',10.0,500.0,'NASDAQ','Sabre Corp'], # Sabre Corporation is a travel technology company 
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend         
         #['SPY',60.0,90.0], # spyder large cap mutual fund
         #['VIG',60.0,90.0], # vanguard large cap mutual fund 3.1% dividend
@@ -1116,4 +1128,6 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['SCHQ',8.0,20.0,'NYSE','Schwab Long-Term US Treasury ETF'],            
             ['SCHR',8.0,20.0,'NYSE','Schwab Intermediate-Term U.S. Treasury'],            
             ['SCHZ',8.0,20.0,'NYSE','Schwab US Aggregate Bond ETF'],
+            ['PDP',8.0,20.0,'NASDAQ','Invesco DWA Momentum ETF'],
+            ['PTF',8.0,20.0,'NASDAQ','Invesco DWA Technology Momentum ETF'],
             ['VTV',8.0,20.0,'NYSE','Vanguard Value ETF'],]
