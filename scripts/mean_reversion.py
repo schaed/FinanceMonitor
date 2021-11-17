@@ -19,8 +19,12 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sid = SentimentIntensityAnalyzer()
 import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
-
+import matplotlib.dates as mdates
+draw=False
+doPDFs=True
+outdir='/tmp/'
 api = ALPACA_REST()
+
 inputTxt='Honest Company reports Q1 EPS (13c) vs. 1c last year'
 #inputTxt='Lennar reports Q2 adjusted EPS $2.95, consensus $2.36'
 #inputTxt='Cognyte reports Q1 EPS (20c), consensus (15c)'
@@ -340,174 +344,206 @@ def DrawMinuteDiffs(minute_prices_thirty):
     plt.scatter(minute_prices.minute_diff_now,minute_prices.minute_diff_15minago)
     plt.xlabel('Current change')
     plt.ylabel('15 Min ago change')
-    plt.show()    
-#HandleTradeExit('CUBI',0,0,'X')
-#MoveOldSignals(api)
-ticker='WRN'
-#ticker='NTNX' #TDUP, SAVA, DOMO
-#ticker='SAVA' #TDUP, SAVA, DOMO
-#ticker='TSLA' #TDUP, SAVA, DOMO
-#ticker='DOMO'
-#ticker='KFY'
-#ticker='X'
-#ticker='HP'
-#ticker='CVS'
-#ticker='WBA'
-#ticker='BSET'
-ticker='X'
-#ticker='CPE'
-#ticker='GME'
-#ticker='XELA'
-#ticker='CLOV'
-ticker='USEG'
-ticker='DTSS'
-ticker='WHLM'
-ticker='YVR'
-ticker='IKNA'
-#ticker='NRBO'
-#ticker='NURO'
-#ticker='STAF'
-ticker='LTRN'
-ticker='CEMI'
-ticker='FWP'
-ticker='AMC'
-ticker='BTBT'
-ticker='INFI'
-ticker='NTEC'
+    plt.show()
+
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[]):
+    """
+    my_index : datetime array
+    price : array of prices or values
+    doMarker : bool : draw markers or if false draw line
+    ticker : str : ticker symbol name
+    outname : str : name of histogram to save as
+    poly_order : int : order of polynomial to fit
+    price_key : str : name of the price to entry to fit
+    spy_comparison : array : array of prices to use as a reference. don't use when None
+"""
+    prices = arr_prices[price_key]
+    x = mdates.date2num(my_index)
+    xx = np.linspace(x.min(), x.max(), 1000)
+    dd = mdates.num2date(xx)
+
+    # prepare a spy comparison
+    if len(spy_comparison)>0:
+        arr_prices = arr_prices.copy(True)
+        spy_comparison = spy_comparison.loc[arr_prices.index,:]
+        prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        
+    # perform the fit
+    z4 = np.polyfit(x, prices, poly_order)
+    p4 = np.poly1d(z4)
+
+    # create an error band
+    diff = prices - p4(x)
+    stddev = diff.std()
+
+    pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
+    pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
+    pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
+    pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
+    pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
+    if len(diff)>0:
+        print('Time period: %s for ticker: %s' %(outname,ticker))
+        coverage_txt='Percent covered\n'
+        coverage = [100.0*pos_count_1sigma/len(diff) , 100.0*pos_count_2sigma/len(diff),
+                        100.0*pos_count_3sigma/len(diff) , 100.0*pos_count_4sigma/len(diff),
+                        100.0*pos_count_5sigma/len(diff) ]
+        for i in range(0,5):
+            print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
+            coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
+
+    fig, cx = plt.subplots()
+
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*2.0*stddev,
+             #color='k',
+             ecolor='y',
+             alpha=0.05,
+             #label="4 sigma "
+                    )
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*1.5*stddev,
+             #color='k',
+             ecolor='y',
+             alpha=0.1,
+             #label="3 sigma "
+                    )
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*1.0*stddev,
+             marker='.',
+             color='k',
+             ecolor='g',
+             alpha=0.15,
+             markerfacecolor='b',
+             #label="2 sigma",
+             capsize=0,
+             linestyle='')
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*0.5*stddev,
+             marker='.',
+             color='k',
+             ecolor='g',
+             alpha=0.2,
+             markerfacecolor='b',
+             #label="1 sigma",
+             capsize=0,
+             linestyle='')
+    cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
+
+    plt.plot(arr_prices.high,color='red',label='High')
+    plt.plot(arr_prices.low,color='cyan',label='Low')
+    plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
+
+    if len(spy_comparison)>0:  cx.set_ylabel('Price / SPY')
+    else: cx.set_ylabel('Price')
+    #cx.set_xlabel('Date')
+    
+    if doMarker:
+        cx.plot(my_index, prices, '+', color='b', label=price_key)
+    else:
+        plt.plot(prices, label=price_key)  
+    plt.title("Fit - mean reversion %s for time period: %s" %(ticker,outname))
+    plt.legend()
+    plt.text(x.min(), max(prices), coverage_txt, ha='left', wrap=True)
+    if draw: plt.show()
+    if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
+    fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
+    if not draw: plt.close()
+    #plt.plot()
+    #plt.plot(prices)
+    #my_fit = np.polyfit(my_index,prices,deg=2)
+    #plt.plot(my_fit, color='darkgreen')
+    
+    #p = np.poly1d(z)
+    #plt.plot(results.fittedvalues[1:], color='darkgreen')
+    #plt.plot(index_of_fc,forecast['mean'].values, color='yellow')
+    #plt.fill_between(index_of_fc,#forecast.index, 
+    #                forecast['mean_ci_lower'], 
+    #                forecast['mean_ci_upper'], 
+    #                color='k', alpha=.15)
+    #
+    
 ticker='RDUS'
 ticker='EYPT'
-ticker='VGR'
 ticker='GGPI'
+#ticker='VGR'
+#ticker='X'
+#ticker='TSLA'
+ticker='SGMA'
+ticker='PLBY'
+ticker='WEN'
+ticker='KR'
+ticker='MSEX'
+#ticker='SPY'
+ticker='KZR'
+#ticker='NVDA'
+#ticker='SPY'
+filter_shift_days = 0
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
+todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))
 d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
-thirty_days = (today + datetime.timedelta(days=-30)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
 twohun_days = (today + datetime.timedelta(days=-200)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
-hour_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Hour, start=twohun_days, end=d1)
-AddData(hour_prices_thirty)
-AddDataShort(hour_prices_thirty)
-if True:
-    minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-    minute_prices_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-    # add the extra data
-    AddData(minute_prices_thirty)
-    AddData(minute_prices_spy)
-    
-    minute_prices_spy['signif_volume_spy'] = minute_prices_spy.signif_volume
-    minute_prices_spy['change_spy'] = minute_prices_spy.change
-    minute_prices_spy['minute_diffHL_spy'] = minute_prices_spy.minute_diffHL
-    minute_prices_spy['minute_diff_spy'] = minute_prices_spy.minute_diff
 
-    minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.signif_volume_spy,how='left')
-    minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.change_spy,how='left')
-    minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.minute_diff_spy,how='left')
-    minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.minute_diffHL_spy,how='left')
-    minute_prices_thirty['signif_volume_over_spy'] = minute_prices_thirty.signif_volume / minute_prices_thirty.signif_volume_spy
-    minute_prices_thirty['change_over_spy'] = minute_prices_thirty.change - minute_prices_thirty.change_spy
-    minute_prices_thirty['change_over_spy'] *=10.0
-    minute_prices_thirty['change_over_spy'] -=1.0
-    # get the last 5 days
-    minute_prices = GetTimeSlot(minute_prices_thirty,days=7)
-    minute_prices_spy_10d = GetTimeSlot(minute_prices_spy,days=10)
-    #minute_prices=minute_prices_thirty
-    print(minute_prices)
-    print(minute_prices.describe())
-    AddDataShort(minute_prices)
-    AddDataShort(minute_prices_spy_10d)
-    print(minute_prices.to_string())
-    if False:
-        DrawMinuteDiffs(minute_prices_thirty)
-    
-    plt.plot(minute_prices['volume'], label='volume')
-    plt.plot(minute_prices['norm_open'],color='red', label='Perc Chg*10')
-    #plt.plot(minute_prices['norm_close'],color='orange')
-    #plt.plot(minute_prices['norm_high'],color='cyan')
-    #plt.plot(minute_prices['norm_low'],color='cyan')
-    plt.plot(minute_prices['ma50_div'],color='yellow', label='50m MA')
-    plt.plot(minute_prices['minute_diff'],color='green', label='(C-O)/O')
-    plt.plot(minute_prices['minute_diffHL'],color='cyan', label='(H-L)/O')
-    plt.legend(loc="upper left")
-    plt.show()
-    
-    
-    print(minute_prices[minute_prices['signif_volume']>15.0])
-    print('SPY')
-    print(minute_prices_spy_10d[minute_prices_spy_10d['signif_volume']>15.0])
-    
-    minute_prices['signif_volume_over_spy']/=abs(minute_prices['signif_volume_over_spy']).max()*0.2
-    minute_prices['signif_volume_div100'] = minute_prices['signif_volume']/20.0
-    # check the ratio of the volume to that in spy
-    plt.plot(minute_prices['signif_volume_div100'], label='vol signif',color='orange')
-    #plt.plot(minute_prices['signif_volume_spy'], label='voume',color='cyan',alpha=0.25)
-    plt.plot(minute_prices['signif_volume_over_spy'],label='sig Vol/SPY')
-    plt.plot(minute_prices['minute_diff'],color='green', label='(C-O)/O')
-    plt.plot(minute_prices['minute_diffHL'],color='cyan', label='(H-L)/O')
-    plt.plot(minute_prices['norm_open'],color='red', label='Perc Chg*10')
-    plt.plot(minute_prices['change_over_spy'],color='yellow', label='(return-spy)*10')
-    plt.legend(loc="upper left")
-    plt.show()
+# checking if it is shortable and tradeable:
+aapl_asset = api.get_asset(ticker)
+print(aapl_asset)
+#print(aapl_asset.tradable)
+#print(aapl_asset.shortable)
 
-    # plot some correlations
-    minute_prices['corr_signif_volume_spy'] = minute_prices['signif_volume'].rolling(60).corr(minute_prices.signif_volume_spy)
-    minute_prices['corr_change_spy'] = minute_prices['change'].rolling(60).corr(minute_prices.change_spy)
-    minute_prices['corr_minute_diff_spy'] = minute_prices['minute_diff'].rolling(60).corr(minute_prices.minute_diff_spy)
-    minute_prices['corr_minute_diffHL_spy'] = minute_prices['minute_diffHL'].rolling(60).corr(minute_prices.minute_diffHL_spy)
-    plt.plot(minute_prices['norm_open'],color='red', label='Perc Chg*10')
-    plt.plot(minute_prices['corr_signif_volume_spy'],color='cyan', label='Corr Signif Vol')
-    plt.plot(minute_prices['corr_minute_diff_spy']+1,color='green', label='Corr (C-O)/O')
-    plt.plot(minute_prices['corr_minute_diffHL_spy']+2,color='yellow', label='Corr (H-L)/O')
-    plt.plot(minute_prices['corr_change_spy']+3,color='orange', label='Corr Price Change')
-    plt.legend(loc="upper left")
-    plt.show()
-    
-    #print(minute_prices[1950:2000])
-    #print(minute_prices[1950:2000].describe())
-    #print(tValLinR(minute_prices.close[-10:-1],   extra_vars=minute_prices[-10:-1]))
-    #print(tValLinR(minute_prices.close[1940:1950],extra_vars=minute_prices[1940:1950]))
-    #print(tValLinR(minute_prices.close[1980:1990],extra_vars=minute_prices[1980:1990]))
-    #print(tValLinR(minute_prices.close[1980:1990]))
-    
-    plt.plot(minute_prices.signif_volume)
-    plt.show()
-    #print(minute_prices[1850:1900])    
-    #print(minute_prices[1950:2000])
-    #print(minute_prices[1600:1650])
-    #print(minute_prices[600:650])
-    #print(minute_prices[1090:1140])
-    
-    #print(minute_prices[820:870])
-    print(minute_prices[650:700])
-    print(minute_prices[700:750])
-    print(minute_prices[900:950])
-    print(minute_prices[1000:1050])
-    print(minute_prices[1050:1100])
-    print(minute_prices[1250:1300])
-        
-    plt.plot(minute_prices['norm_open'],color='red')
-    plt.plot(minute_prices['volume'])
-    div = abs(minute_prices['slope'].max())/minute_prices['norm_open'].max()
-    minute_prices['slope']/=div
-    plt.plot(minute_prices['slope'],color='green')
-    plt.show()
-    #minute_prices_fit = minute_prices[['close','volume','open']] 
-    #ARIMAauto(minute_prices['close'],extra_vars=minute_prices['volume'],model_var='close',n_periods=300,fit_range_max=1950)
-    #ARIMAauto(minute_prices['close'],extra_vars=[],model_var='close',n_periods=300,fit_range_max=1890)
-    #ARIMAauto(minute_prices['close'],extra_vars=[],model_var='close',n_periods=300,fit_range_max=839)
-    #ARIMAauto(minute_prices['close'],extra_vars=[],model_var='close',n_periods=300,fit_range_max=810)
-    ARIMAauto(minute_prices['close'],extra_vars=[],model_var='close',n_periods=300,fit_range_max=len(minute_prices['close'])-100,seasonal_m=1) # 300
-    ARIMAauto(minute_prices['close'],extra_vars=[],model_var='close',n_periods=300,fit_range_max=len(minute_prices['close'])-1,  seasonal_m=1) # 300
-    ACF(minute_prices['close'],50,timescale='none',arima_order=(6, 1, 1))
 ts = ALPHA_TIMESERIES()
 sqlcursor = SQL_CURSOR()
-daily_prices,j = ConfigTable(ticker, sqlcursor,ts,'full')
-daily_prices_180d = GetTimeSlot(daily_prices, days=180)
-daily_prices_365d = GetTimeSlot(daily_prices, days=365)
-#plt.plot(daily_prices_180d['adj_close'])
-#plt.show()
+daily_prices,j    = ConfigTable(ticker, sqlcursor,ts,'full',hoursdelay=18)
+if filter_shift_days>0:
+    daily_prices  = GetTimeSlot(daily_prices, days=6*365, startDate=todayFilter)
+daily_prices_60d  = GetTimeSlot(daily_prices, days=60+filter_shift_days)
+daily_prices_180d = GetTimeSlot(daily_prices, days=180+filter_shift_days)
+daily_prices_365d = GetTimeSlot(daily_prices, days=365+filter_shift_days)
+daily_prices_3y   = GetTimeSlot(daily_prices, days=3*365+filter_shift_days)
+daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
 daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
-ARIMAauto(daily_prices_180d['adj_close'],extra_vars=[],model_var='adj_close',n_periods=10,fit_range_max=-1,seasonal_m=12)
-ACF(daily_prices_365d['adj_close'],50,sarima_order=(1, 1, 1,18),trend='t')
-ACF(daily_prices_365d['adj_close'],50,arima_order=(24, 1, 1),trend='t')
-ACF(daily_prices_180d['adj_close'],50,arima_order=(24, 1, 1),trend='t')
-ACF(daily_prices_365d['adj_close'],50)
-ARIMAauto(hour_prices_thirty['close'],extra_vars=[],model_var='close',n_periods=24,fit_range_max=len(hour_prices_thirty['close'])-1,seasonal_m=1) #250
-ARIMAauto(daily_prices_180d['daily_return'].dropna(),extra_vars=[],model_var='daily_return',n_periods=10,fit_range_max=-1,seasonal_m=7)
+FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
+FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
+FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
+FitWithBand(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y')
+FitWithBand(daily_prices_5y.index,  daily_prices_5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y')
+
+#print(daily_prices_365d[['adj_close','high','low','open','close']])
+#print('before above and after below')
+spy,j    = ConfigTable('SPY', sqlcursor,ts,'full',hoursdelay=18)
+if filter_shift_days>0:
+    spy  = GetTimeSlot(spy, days=6*365, startDate=todayFilter)
+spy_daily_prices_60d  = GetTimeSlot(spy, days=60+filter_shift_days)
+spy_daily_prices_365d = GetTimeSlot(spy, days=365+filter_shift_days)
+spy_daily_prices_5y   = GetTimeSlot(spy, days=5*365+filter_shift_days)
+FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
+                ticker=ticker,outname='365dspycomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']])
+FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
+                ticker=ticker,outname='60dspycomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']])
+FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','open','close']],
+                ticker=ticker,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])
+
+#print(daily_prices_365d[['adj_close','high','low','open','close']])
+#print(spy_daily_prices_365d[['adj_close','high','low','open','close']])
+#print(spy[['adj_close','high','low','open','close']])
+#ARIMAauto(daily_prices_180d['adj_close'],extra_vars=[],model_var='adj_close',n_periods=10,fit_range_max=-1,seasonal_m=12)
+#ACF(daily_prices_365d['adj_close'],50,sarima_order=(1, 1, 1,18),trend='t')
+#ACF(daily_prices_365d['adj_close'],50,arima_order=(24, 1, 1),trend='t')
+#ACF(daily_prices_180d['adj_close'],50,arima_order=(24, 1, 1),trend='t')
+#ACF(daily_prices_365d['adj_close'],50)
+#ARIMAauto(hour_prices_thirty['close'],extra_vars=[],model_var='close',n_periods=24,fit_range_max=len(hour_prices_thirty['close'])-1,seasonal_m=1) #250
+#ARIMAauto(daily_prices_180d['daily_return'].dropna(),extra_vars=[],model_var='daily_return',n_periods=10,fit_range_max=-1,seasonal_m=7)
+
+# see which stocks can be shorted? - DONE
+
+# can you add the sector and total market? maybe a ratio to the SPY return? -> SPY is done. could consider sectors in the future
+# could consider if this std dev should be a percentage change instead of dallar amount
+#  applying to finviz is great, but could also setup some kind of scan of prices to look for stocks exceeding the limits?
+
+# how to trade?
+#### on the 60d if there are excesses, then only buy on the side of more risk from the 1y.
+#### use the 5y to guide the bigger trend. could use this to tune risk for how long to carry
+#### could try to do a local fit or look for a volume spike to look for a max or min, but this could be a 2nd step. decide what time period matters?
+# how do you know if the news matters?
+# 

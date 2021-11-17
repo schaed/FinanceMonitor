@@ -16,6 +16,7 @@ matplotlib.use('Agg')
 import mplfinance as mpf
 import argparse
 from zigzag import *
+import matplotlib.dates as mdates
 
 my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
@@ -418,6 +419,134 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
     plt.savefig(outdir+'longmarket%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
 
+    daily_prices_60d  = GetTimeSlot(my_stock_info, days=60)
+    daily_prices_180d = GetTimeSlot(my_stock_info, days=180)
+    daily_prices_365d = GetTimeSlot(my_stock_info, days=365)
+    daily_prices_3y   = GetTimeSlot(my_stock_info, days=3*365)
+    if len(daily_prices_60d)>10:
+        FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
+        FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
+        FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
+        FitWithBand(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y')
+        FitWithBand(my_stock_info5y.index,  my_stock_info5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y')
+        filter_shift_days=0
+        spy_daily_prices_60d  = GetTimeSlot(market, days=60+filter_shift_days)
+        spy_daily_prices_365d = GetTimeSlot(market, days=365+filter_shift_days)
+        spy_daily_prices_5y   = GetTimeSlot(market, days=5*365+filter_shift_days)
+        if len(spy_daily_prices_60d)>0:
+            FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
+                        ticker=ticker,outname='365dsandpcomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']])
+            FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
+                        ticker=ticker,outname='60dsandpcomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']])
+            FitWithBand(my_stock_info5y.index,my_stock_info5y[['adj_close','high','low','open','close']],
+                        ticker=ticker,outname='5ysandpcomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])
+            
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[]):
+    """
+    my_index : datetime array
+    price : array of prices or values
+    doMarker : bool : draw markers or if false draw line
+    ticker : str : ticker symbol name
+    outname : str : name of histogram to save as
+    poly_order : int : order of polynomial to fit
+    price_key : str : name of the price to entry to fit
+    spy_comparison : array : array of prices to use as a reference. don't use when None
+"""
+    prices = arr_prices[price_key]
+    x = mdates.date2num(my_index)
+    xx = np.linspace(x.min(), x.max(), 1000)
+    dd = mdates.num2date(xx)
+
+    # prepare a spy comparison
+    if len(spy_comparison)>0:
+        arr_prices = arr_prices.copy(True)
+        spy_comparison = spy_comparison.loc[arr_prices.index,:]
+        prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+        arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        
+    # perform the fit
+    z4 = np.polyfit(x, prices, poly_order)
+    p4 = np.poly1d(z4)
+
+    # create an error band
+    diff = prices - p4(x)
+    stddev = diff.std()
+
+    pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
+    pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
+    pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
+    pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
+    pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
+    if len(diff)>0:
+        if debug: print('Time period: %s for ticker: %s' %(outname,ticker))
+        coverage_txt='Percent covered\n'
+        coverage = [100.0*pos_count_1sigma/len(diff) , 100.0*pos_count_2sigma/len(diff),
+                        100.0*pos_count_3sigma/len(diff) , 100.0*pos_count_4sigma/len(diff),
+                        100.0*pos_count_5sigma/len(diff) ]
+        for i in range(0,5):
+            if debug: print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
+            coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
+
+    fig, cx = plt.subplots()
+
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*2.0*stddev,
+             #color='k',
+             ecolor='y',
+             alpha=0.05,
+             #label="4 sigma "
+                    )
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*1.5*stddev,
+             #color='k',
+             ecolor='y',
+             alpha=0.1,
+             #label="3 sigma "
+                    )
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*1.0*stddev,
+             marker='.',
+             color='k',
+             ecolor='g',
+             alpha=0.15,
+             markerfacecolor='b',
+             #label="2 sigma",
+             capsize=0,
+             linestyle='')
+    cx.errorbar(dd, p4(xx),
+             np.ones(len(dd))*0.5*stddev,
+             marker='.',
+             color='k',
+             ecolor='g',
+             alpha=0.2,
+             markerfacecolor='b',
+             #label="1 sigma",
+             capsize=0,
+             linestyle='')
+    cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
+
+    plt.plot(arr_prices.high,color='red',label='High')
+    plt.plot(arr_prices.low,color='cyan',label='Low')
+    plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
+
+    if len(spy_comparison)>0:  cx.set_ylabel('Price / SPY')
+    else: cx.set_ylabel('Price')
+    #cx.set_xlabel('Date')
+    
+    if doMarker:
+        cx.plot(my_index, prices, '+', color='b', label=price_key)
+    else:
+        plt.plot(prices, label=price_key)  
+    plt.title("Fit - mean reversion %s for time period: %s" %(ticker,outname))
+    plt.legend()
+    plt.text(x.min(), max(prices), coverage_txt, ha='left', wrap=True)
+    if draw: plt.show()
+    if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
+    fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
+    if not draw: plt.close()
+        
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     """ DrawPlots - Draw all plots of the stock along with market comparisons
         
@@ -585,7 +714,13 @@ print(spy)
 if len(spy)==0:
     print('ERROR - empy info %s' %ticker)
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
-AddInfo(spy, spy)
+try:
+    AddInfo(spy, spy)
+except ValueError:
+    print('cleaning table')
+    sqlcursor.cursor().execute('DROP TABLE SPY')
+    spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
+    AddInfo(spy, spy)
 spy_1year = GetTimeSlot(spy)
 DrawPlots(spy_1year,'SPY',spy_1year)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()

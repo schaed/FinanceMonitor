@@ -999,12 +999,34 @@ stock_list = [
     ['LMDX',10.0,500.0,'NASDAQ','LumiraDx'], # 
     ['KROS',10.0,500.0,'NASDAQ','Keros Therapeutics Inc'], # 
     ['SABR',10.0,500.0,'NASDAQ','Sabre Corp'], # Sabre Corporation is a travel technology company 
+    ['JCI',10.0,500.0,'NYSE','Johnson Controls International PLC'], # produces fire, HVAC, and security equipment for buildings
+    ['NIO',10.0,500.0,'NYSE','Nio Inc - ADR'], # Shanghai, China - mining company
+    ['SQM',10.0,500.0,'Sociedad Quimica y Minera de Chile'], # Chilean chemical company and a supplier of plant nutrients, iodine, lithium and industrial chemicals
+    ['LAC',10.0,500.0,'NYSE','Lithium Americas Corp'], # Vancouver, Canada - lithium company
+    ['LTHM',10.0,500.0,'NYSE','Livent Corp'], # Philly Chemical manufacturing company
+    ['ENR',10.0,500.0,'NYSE','Energizer Holdings Inc'], # American manufacturer and one of the world's largest manufacturers of batteries
+    ['QS',10.0,500.0,'NYSE','Energizer Holdings Inc'], # QuantumScape is an American company that does research about solid state lithium metal batteries for electric cars
+    ['ALB',10.0,500.0,'NYSE','Albemarle Corporation'], # fine chemical manufacturing company based in Charlotte, North Carolina. It operates 3 divisions: lithium, bromine specialties and catalysts.
+    ['SGMA',10.0,500.0,'NASDAQ','SigmaTron International Inc'], # small junior mining...for litium
+    #['PLS',10.0,500.0,'ASX','Pilbara Minerals Ltd'], # Pilbara Minerals is an Australian lithium and tantalite mining company
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend         
         #['SPY',60.0,90.0], # spyder large cap mutual fund
         #['VIG',60.0,90.0], # vanguard large cap mutual fund 3.1% dividend
         #['WTI',20.0,35.0], # west texas intermediate. crude oil
         #['NDX',2000.0,5000.0], # nasdaq index  
         ]
+
+#    Jci
+#Nio
+#Lac
+#Sqm
+#Lthm
+#Enr
+#Qs
+#Alb lithium miner
+#Pls - show
+#Sgma small miner
+
 etfs = [['SPY',8.0,20.0,'NYSE','SPY'], 
             ['QQQ',8.0,20.0,'NYSE','nasdaq'],
             ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000
