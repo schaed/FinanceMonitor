@@ -378,6 +378,7 @@ ticker='RDUS'
 ticker='EYPT'
 ticker='VGR'
 ticker='GGPI'
+ticker='KZR'
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
 d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
 thirty_days = (today + datetime.timedelta(days=-30)).strftime("%Y-%m-%dT%H:%M:%S-05:00")

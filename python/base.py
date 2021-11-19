@@ -45,7 +45,7 @@ def makeHTMLIndex(outFileName,title, jetNames):
 def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0, chartSignals=[]):
 
     plots = glob.glob(filterPattern+'.png')
-
+    plots.sort()
     with open(outFileName, 'w') as outFile:
         # write HTML header
         outFile.write("""
@@ -73,7 +73,7 @@ def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0, chartS
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
         if len(chartSignals)>0:
             outFile.write(chartSignals.to_html(index=False,classes="searchable sortable table table-striped mt32 customers-list"))
-        plots = glob.glob(filterPattern+'.png')
+        #plots = glob.glob(filterPattern+'.png')
         outFile.write("<h2> %s - %s </h2>" %(title,describe))
         outFile.write('<table style="width:100%">')
         outFile.write("<tr>\n")

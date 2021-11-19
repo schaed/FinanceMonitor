@@ -17,6 +17,7 @@ import mplfinance as mpf
 import argparse
 from zigzag import *
 import matplotlib.dates as mdates
+from scipy.stats.mstats import gmean
 
 my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
@@ -33,6 +34,114 @@ doPDFs=False
 debug=False
 loadSQL=True
 readType='full'
+
+def GetMonthlyReturns(stockdatain,ticker):
+    """stockdatain : array of stock prices by date
+    ticker : str : stock ticker symbol
+"""
+    # add info
+    if len(stockdatain)==0:
+        print('ERROR - empy info %s' %ticker)
+
+    stockdata = stockdatain.copy(True)
+    stockdata['daily_return']=stockdata['adj_close'].pct_change(periods=1)+1
+    stockdata['openclosepct'] = (stockdata.close-stockdata.open)/stockdata.open+1
+    stockdata['closeopenpct'] = (stockdata.open-stockdata.shift(1).close)/stockdata.shift(1).close+1
+    stockdata['afterhourspct'] = (stockdata.shift(-1).open-stockdata.close)/stockdata.close+1
+    stockdata['year']=stockdata.index.year
+    stockdata['day']=stockdata.index.day
+    stockdata['month']=stockdata.index.month
+    stockdata['dayofyear']=stockdata.index.dayofyear
+    stockdata['dayofweek']=stockdata.index.dayofweek
+    stockdata['weekofyear']=stockdata.index.isocalendar().week
+    stockdata['is_month_end']=stockdata.index.is_month_end
+    if debug: print(stockdata[['open','close','daily_return','adj_close','openclosepct','closeopenpct']])
+    
+    # compute monthly returns
+    stockdata_month_grouped = stockdata.groupby(['year','month'])
+    end_of_month_idx = stockdata_month_grouped.day.transform(max) == stockdata['day']
+    stockdata_end_of_month = stockdata[end_of_month_idx].copy(True)
+    MakePlotMulti(stockdata_end_of_month.index, yaxis=[(stockdata_month_grouped['openclosepct']).apply(gmean)-1,(stockdata_month_grouped['closeopenpct']).apply(gmean)-1,(stockdata_month_grouped['daily_return']).apply(gmean)-1], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_monthly_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    stockdata_end_of_month.loc[:,'monthly_return'] = stockdata_end_of_month.adj_close.pct_change(periods=1)
+    stockdata_end_of_month_avg = stockdata_end_of_month.groupby('month').mean()
+    stockdata_end_of_month_std = stockdata_end_of_month.groupby('month').std()
+    stockdata_end_of_month_avg.loc[:,'signif'] = stockdata_end_of_month_avg.monthly_return / stockdata_end_of_month_std.monthly_return
+    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.monthly_return, xname='Month',yname='Avg. Monthly Returns',saveName='RETURNS_avg_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_month_std.index, stockdata_end_of_month_std.monthly_return, xname='Month',yname='Std Dev. Monthly Returns',saveName='RETURNS_stddev_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.signif, xname='Month',yname='Signif. Monthly Returns',saveName='RETURNS_signif_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    # scatter plot
+    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_scatter_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
+    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_box_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
+    
+    ## remove unity
+    stockdata['daily_return'] -=1
+    stockdata['openclosepct'] -=1
+    stockdata['closeopenpct'] -=1
+    
+    # Compare returns
+    if debug: print(stockdata[['openclosepct','daily_return','closeopenpct']].describe())
+    if debug: print(stockdata[['openclosepct','daily_return','closeopenpct']].corr())
+    
+    # compute weekly returns
+    stockdata_yearly_grouped = stockdata.groupby(['year','weekofyear'])
+    end_of_week_idx = stockdata_yearly_grouped.dayofyear.transform(max)==stockdata.dayofyear
+    stockdata_end_of_week = stockdata.loc[end_of_week_idx,:].copy(True)
+    stockdata_end_of_week.loc[:,'weekly_return'] = stockdata_end_of_week['adj_close'].pct_change(periods=1)
+    stockdata_end_of_week_avg = stockdata_end_of_week.groupby('weekofyear').mean()
+    stockdata_end_of_week_std = stockdata_end_of_week.groupby('weekofyear').std()
+    stockdata_end_of_week_avg['signif'] = stockdata_end_of_week_avg.weekly_return / stockdata_end_of_week_std.weekly_return
+    
+    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.weekly_return, xname='Week of year',yname='Avg. Weekly Returns',saveName='RETURNS_avg_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_week_std.index, stockdata_end_of_week_std.weekly_return, xname='Week of year',yname='Std Dev. Weekly Returns',saveName='RETURNS_stddev_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.signif, xname='Week of year',yname='Signif. Weekly Returns',saveName='RETURNS_signif_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    # compute day of week return.
+    stockdata_day_of_week_avg = stockdata.groupby('dayofweek').mean()
+    stockdata_day_of_week_std = stockdata.groupby('dayofweek').std()
+    stockdata_day_of_week_avg['signif'] = stockdata_day_of_week_avg.daily_return / stockdata_day_of_week_std.daily_return
+    MakePlot(stockdata_day_of_week_avg.index, stockdata_day_of_week_avg.daily_return, xname='Day of week',yname='Avg. Daily Returns',saveName='RETURNS_avg_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_std.daily_return, xname='Day of week',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_avg.signif, xname='Day of week',yname='Signif. Daily Returns',saveName='RETURNS_signif_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    # compute day of month return.
+    stockdata_day_of_month_avg = stockdata.groupby('day').mean()
+    stockdata_day_of_month_std = stockdata.groupby('day').std()
+    stockdata_day_of_month_avg['signif'] = stockdata_day_of_month_avg.daily_return / stockdata_day_of_month_std.daily_return
+    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg.daily_return, xname='Day of month',yname='Avg. Daily Returns',saveName='RETURNS_avg_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_month_std.index, stockdata_day_of_month_std.daily_return, xname='Day of month',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg['signif'], xname='Day of month',yname='Signif. Daily Returns',saveName='RETURNS_signif_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    # overnight vs daily
+    stockdata['openclosepctma20'] = ((stockdata['openclosepct']+1).rolling(20).apply(gmean)-1)
+    stockdata['closeopenpctma20'] = ((stockdata['closeopenpct']+1).rolling(20).apply(gmean)-1)
+    stockdata['daily_returnma20'] = ((stockdata['daily_return']+1).rolling(20).apply(gmean)-1)
+    stockdata['openclosepctmavg20'] = stockdata['openclosepct'].rolling(20).mean()
+    stockdata['closeopenpctmavg20'] = stockdata['closeopenpct'].rolling(20).mean()
+    stockdata['daily_returnmavg20'] = stockdata['daily_return'].rolling(20).mean()
+    stockdata['openclosepctma5'] = ((stockdata['openclosepct']+1).rolling(5).apply(gmean)-1)
+    stockdata['closeopenpctma5'] = ((stockdata['closeopenpct']+1).rolling(5).apply(gmean)-1)
+    stockdata['daily_returnma5'] = ((stockdata['daily_return']+1).rolling(5).apply(gmean)-1)
+    stockdata['openclosepctmag5'] = stockdata['openclosepct'].rolling(5).mean()
+    stockdata['closeopenpctmag5'] = stockdata['closeopenpct'].rolling(5).mean()
+    stockdata['daily_returnmag5'] = stockdata['daily_return'].rolling(5).mean()
+    
+    stockdata_1y = GetTimeSlot(stockdata, days=365)
+    MakePlotMulti(stockdata.index, yaxis=[stockdata['openclosepctma20'],stockdata['closeopenpctma20'],stockdata['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma20'],stockdata_1y['closeopenpctma20'],stockdata_1y['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_oneyear_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma5'],stockdata_1y['closeopenpctma5'],stockdata_1y['daily_returnma5']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA5',saveName='RETURNS_returns_daynight_oneyear_ma5_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepct'],stockdata_1y['closeopenpct'],stockdata_1y['daily_return']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_oneyear_noMA_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    
+    # Compare returns
+    if debug:
+        print(stockdata[['openclosepct','closeopenpct','open','close']])
+        print(stockdata_1y[['openclosepct','daily_return','closeopenpct','afterhourspct']].describe())
+        print(stockdata_1y[['openclosepct','daily_return','closeopenpct','afterhourspct']].corr())
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['afterhourspct'], xname='During trading hours',yname='After hours night after',saveName='RETURNS_trading_vs_nightafter_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['closeopenpct'], xname='During trading hours',yname='After hours night before',saveName='RETURNS_trading_vs_nightbefore_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['daily_return'], xname='During trading hours',yname='Returns',saveName='RETURNS_trading_vs_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
 
 # https://www.investopedia.com/terms/z/zig_zag_indicator.asp
 def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
@@ -116,7 +225,7 @@ def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',titl
     if not draw: plt.close()
     plt.close()
     
-def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
+def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None, doScatter=False,doBox=False):
     """ Generic plotting with option to show support lines
          
          Parameters:
@@ -136,10 +245,26 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
          doSupport : bool
             Request generation of support lines on the fly
          my_stock_info : pandas data frame of stock timing and adj_close
+         doScatter : bool - draw a scatter plot
+         doBox : bool - draw a box plot for unique x-values
      """
     # plotting
     plt.clf()
-    plt.plot(xaxis,yaxis)
+    ax7=None
+    fig7=None
+    if doScatter:
+        plt.scatter(xaxis,yaxis)
+    elif doBox: 
+        fig7, ax7 = plt.subplots()
+        d1=[]
+        for m in np.unique(xaxis.values):
+            d1+=[yaxis.loc[xaxis==m].dropna()]
+        bp = ax7.boxplot(d1,whis=[5,95],showmeans=True,notch=True)
+        ax7.grid()
+        ax7.legend([bp['medians'][0], bp['means'][0]],['median','mean'],loc="upper left")
+        plt.title(saveName.replace('_',' '))
+    else:
+        plt.plot(xaxis,yaxis)
     plt.gcf().autofmt_xdate()
     plt.ylabel(yname)
     plt.xlabel(xname)
@@ -149,9 +274,12 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
         plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
     if doSupport:
         techindicators.supportLevels(my_stock_info)
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
-    plt.savefig(outdir+'%s.png' %(saveName))
+    if draw and ax7!=None: fig7.show()
+    elif draw: plt.show()
+    if doPDFs and ax7!=None: fig7.savefig(outdir+'%s.pdf' %(saveName))
+    elif doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
+    if ax7!=None: fig7.savefig(outdir+'%s.png' %(saveName))
+    else: plt.savefig(outdir+'%s.png' %(saveName))
     if not draw: plt.close()
     plt.close()
 
@@ -390,6 +518,8 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
          plttext - string
                 Label for the plot
     """
+    GetMonthlyReturns(my_stock_info,ticker)
+    
     date_diff = 5*365
     my_stock_info5y = GetTimeSlot(my_stock_info, days=date_diff)
     market5y = GetTimeSlot(market, days=date_diff)

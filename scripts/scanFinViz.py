@@ -63,8 +63,6 @@ if __name__ == "__main__":
     today = datetime.datetime.today()
     total_table_top_gain=[]
     total_entries=0
-    #total_table_unusualvolume=[]
-    #total_table_top_loser=[]
     
     outFileName='News/table_%s_%s_%s.csv' %(today.day,today.month,today.year)
     while (today.hour<23 or (today.hour==23 and today.minute<30)):
@@ -74,20 +72,45 @@ if __name__ == "__main__":
             print('failed...volume')
             sys.stdout.flush()
         try:
-            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_topgainers\&r=',total_table=total_table_top_gain,maxIndex=2,name='top_gain')
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_topgainers\&r=',total_table=total_table_top_gain,maxIndex=15,name='top_gain')
         except:
             print('failed...top gain')
             sys.stdout.flush()
         try:
-            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_toplosers\&r=',total_table=total_table_top_gain,maxIndex=2,name='top_loser')
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_toplosers\&r=',total_table=total_table_top_gain,maxIndex=15,name='top_loser')
         except:
             print('failed...top losers')
             sys.stdout.flush()
         try:
-            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=210\&s=ta_overbought\&r=',total_table=total_table_top_gain,maxIndex=2,name='overbought')
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_overbought\&r=',total_table=total_table_top_gain,maxIndex=5,name='overbought')
         except:
             print('failed...over bought')
             sys.stdout.flush()
+        try:
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_oversold\&r=',total_table=total_table_top_gain,maxIndex=5,name='oversold')
+        except:
+            print('failed...over sold')
+            sys.stdout.flush()
+        try:
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=n_majornews\&r=',total_table=total_table_top_gain,maxIndex=2,name='majornews')
+        except:
+            print('failed...major news')
+            sys.stdout.flush()
+        try:
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=n_earningsbefore\&r=',total_table=total_table_top_gain,maxIndex=4,name='earningsbefore')
+        except:
+            print('failed...before earnings')
+            sys.stdout.flush()
+        try:
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=n_earningsafter\&r=',total_table=total_table_top_gain,maxIndex=4,name='earningsafter')
+        except:
+            print('failed...after earnings')
+            sys.stdout.flush()            
+        try:
+            total_table_top_gain = collect(URLin = 'https://finviz.com/screener.ashx?v=340\&s=ta_mostactive\&r=',total_table=total_table_top_gain,maxIndex=4,name='mostactive')
+        except:
+            print('failed...most active')
+            sys.stdout.flush()            
         print(total_table_top_gain)
         sys.stdout.flush()
         today = datetime.datetime.today()

@@ -21,6 +21,7 @@ import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 import matplotlib.dates as mdates
 draw=False
+debug=False
 doPDFs=True
 outdir='/tmp/'
 api = ALPACA_REST()
@@ -346,7 +347,7 @@ def DrawMinuteDiffs(minute_prices_thirty):
     plt.ylabel('15 Min ago change')
     plt.show()
 
-def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[]):
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[], doRelative=False, doJoin=True):
     """
     my_index : datetime array
     price : array of prices or values
@@ -356,6 +357,8 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     poly_order : int : order of polynomial to fit
     price_key : str : name of the price to entry to fit
     spy_comparison : array : array of prices to use as a reference. don't use when None
+    doRelative : bool : compute the error bands with relative changes. Bigger when there is a big change in price
+    doJoin : bool : join the two arrays on matching times
 """
     prices = arr_prices[price_key]
     x = mdates.date2num(my_index)
@@ -364,12 +367,21 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
 
     # prepare a spy comparison
     if len(spy_comparison)>0:
-        arr_prices = arr_prices.copy(True)
-        spy_comparison = spy_comparison.loc[arr_prices.index,:]
-        prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        if not doJoin:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.loc[arr_prices.index,:]
+            prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        else:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.copy(True)
+            for i in ['high','low','open','close']:
+                spy_comparison[i+'_spy'] = spy_comparison[i]
+                arr_prices = arr_prices.join(spy_comparison[i+'_spy'],how='left')
+                if len(arr_prices[i+'_spy'])>0:
+                    arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][-1])
         
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
@@ -379,23 +391,29 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     diff = prices - p4(x)
     stddev = diff.std()
 
+    if doRelative:
+        diff /= p4(x)
+        stddev = diff.std() #*p4(x).mean()
+        
     pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
     pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
     pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
     pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
     pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
     if len(diff)>0:
-        print('Time period: %s for ticker: %s' %(outname,ticker))
+        if debug: print('Time period: %s for ticker: %s' %(outname,ticker))
         coverage_txt='Percent covered\n'
         coverage = [100.0*pos_count_1sigma/len(diff) , 100.0*pos_count_2sigma/len(diff),
                         100.0*pos_count_3sigma/len(diff) , 100.0*pos_count_4sigma/len(diff),
                         100.0*pos_count_5sigma/len(diff) ]
         for i in range(0,5):
-            print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
+            if debug: print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
             coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
 
     fig, cx = plt.subplots()
-
+    if doRelative:
+        stddev *= p4(x).mean()
+        
     cx.errorbar(dd, p4(xx),
              np.ones(len(dd))*2.0*stddev,
              #color='k',
@@ -451,19 +469,6 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
     fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
     if not draw: plt.close()
-    #plt.plot()
-    #plt.plot(prices)
-    #my_fit = np.polyfit(my_index,prices,deg=2)
-    #plt.plot(my_fit, color='darkgreen')
-    
-    #p = np.poly1d(z)
-    #plt.plot(results.fittedvalues[1:], color='darkgreen')
-    #plt.plot(index_of_fc,forecast['mean'].values, color='yellow')
-    #plt.fill_between(index_of_fc,#forecast.index, 
-    #                forecast['mean_ci_lower'], 
-    #                forecast['mean_ci_upper'], 
-    #                color='k', alpha=.15)
-    #
     
 ticker='RDUS'
 ticker='EYPT'
@@ -480,15 +485,27 @@ ticker='MSEX'
 ticker='KZR'
 #ticker='NVDA'
 #ticker='SPY'
+ticker='GGPI'
+ticker='KTOS'
+ticker='KZR'
+ticker='PLBY'
 filter_shift_days = 0
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
 todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))
-d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
-twohun_days = (today + datetime.timedelta(days=-200)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+d1 = todayFilter.strftime("%Y-%m-%dT%H:%M:%S-05:00")
+thirty_days = (todayFilter + datetime.timedelta(days=-30)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
 
 # checking if it is shortable and tradeable:
 aapl_asset = api.get_asset(ticker)
 print(aapl_asset)
+hour_prices_thirty    = runTicker(api, ticker, timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
+minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
+hour_prices_thirty_spy    = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
+minute_prices_thirty_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
+hour_prices_10d       = GetTimeSlot(hour_prices_thirty,      days=10)
+minute_prices_10d     = GetTimeSlot(minute_prices_thirty,    days=10)
+hour_prices_spy_10d   = GetTimeSlot(hour_prices_thirty_spy,  days=10)
+minute_prices_spy_10d = GetTimeSlot(minute_prices_thirty_spy,days=10)
 #print(aapl_asset.tradable)
 #print(aapl_asset.shortable)
 
@@ -507,7 +524,7 @@ FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low',
 FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
 FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
 FitWithBand(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y')
-FitWithBand(daily_prices_5y.index,  daily_prices_5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y')
+FitWithBand(daily_prices_5y.index,  daily_prices_5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y', doRelative=False)
 
 #print(daily_prices_365d[['adj_close','high','low','open','close']])
 #print('before above and after below')
@@ -524,6 +541,16 @@ FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','o
 FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','open','close']],
                 ticker=ticker,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])
 
+# Spy and hour minute level
+FitWithBand(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
+                ticker=ticker,outname='10dhspycomparison', price_key='close',spy_comparison = hour_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True)
+FitWithBand(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
+                ticker=ticker,outname='10dh', price_key='close')
+FitWithBand(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
+                ticker=ticker,outname='10dmspycomparison', price_key='close',spy_comparison = minute_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True)
+FitWithBand(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
+                ticker=ticker,outname='10dm', price_key='close')
+
 #print(daily_prices_365d[['adj_close','high','low','open','close']])
 #print(spy_daily_prices_365d[['adj_close','high','low','open','close']])
 #print(spy[['adj_close','high','low','open','close']])
@@ -536,10 +563,14 @@ FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','ope
 #ARIMAauto(daily_prices_180d['daily_return'].dropna(),extra_vars=[],model_var='daily_return',n_periods=10,fit_range_max=-1,seasonal_m=7)
 
 # see which stocks can be shorted? - DONE
-
 # can you add the sector and total market? maybe a ratio to the SPY return? -> SPY is done. could consider sectors in the future
-# could consider if this std dev should be a percentage change instead of dallar amount
-#  applying to finviz is great, but could also setup some kind of scan of prices to look for stocks exceeding the limits?
+# could consider if this std dev should be a percentage change instead of dallar amount -> DONE. not huge
+
+
+# also not a bad idea to have a minute and hourly setup for these or maybe momentum is better using -> DONE. seems better for short term trades. 
+# These stocks are setup, but we need to process them...need a price,RMS,fit for 180d, 365, 3y and 5y. also hourly and minute-wise
+#    - applying to finviz is great, but could also setup some kind of scan of prices to look for stocks exceeding the limits?
+#    - Could have a list of stocks that are definitely worth buying when they drop (e.g. COST, KR, AAPL, GOOGL, AMZN, etc)
 
 # how to trade?
 #### on the 60d if there are excesses, then only buy on the side of more risk from the 1y.
