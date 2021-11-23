@@ -1152,4 +1152,7 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['SCHZ',8.0,20.0,'NYSE','Schwab US Aggregate Bond ETF'],
             ['PDP',8.0,20.0,'NASDAQ','Invesco DWA Momentum ETF'],
             ['PTF',8.0,20.0,'NASDAQ','Invesco DWA Technology Momentum ETF'],
-            ['VTV',8.0,20.0,'NYSE','Vanguard Value ETF'],]
+            ['VTV',8.0,20.0,'NYSE','Vanguard Value ETF'],
+            ['VBR',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Value Index Fund ETF'],
+            ['VBK',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Growth Index Fund ETF'],
+            ]

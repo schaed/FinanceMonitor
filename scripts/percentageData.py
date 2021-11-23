@@ -51,7 +51,13 @@ def collect(sqlcursorExtra, URLin = 'https://finviz.com/screener.ashx?v=340\&s=t
             col_names[c]=c.replace(' ','_').replace('>','gt').replace('<','lt')
             if c.count('Unnamed'): isUnnamed=True
         if isUnnamed:
-            table_MN.columns = ['ticker','price','perc_change','dollar_change','rating','volume','mkt_cap','p_to_e','eps','num_employees','sector']
+            if len(table_MN.columns)!=11 and len(table_MN.columns)!=12:
+                print(table_MN.columns)
+            if len(table_MN.columns)==12:
+                table_MN.columns = ['ticker','price','perc_change','dollar_change','rating','volume_times_price','volume','mkt_cap','p_to_e','eps','num_employees','sector']
+                table_MN = table_MN[['ticker','price','perc_change','dollar_change','rating','volume','mkt_cap','p_to_e','eps','num_employees','sector']]
+            else:
+                table_MN.columns = ['ticker','price','perc_change','dollar_change','rating','volume','mkt_cap','p_to_e','eps','num_employees','sector']                
             for it in  ['price','perc_change','dollar_change','volume','mkt_cap','p_to_e','eps','num_employees']:
                 table_MN[it].replace({'\%':'','M':'000000','K':'000','B':'000000000'},inplace=True,regex=True)
                 table_MN[it] = pd.to_numeric(table_MN[it],errors='coerce')
