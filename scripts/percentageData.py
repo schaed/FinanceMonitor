@@ -151,7 +151,7 @@ if __name__ == "__main__":
     #100 dma Russell 3000, R3OH
     total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3OH/cheat-sheet',tableName='R3k100MA')
     #20 dma Russell 3000, R3TW
-    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3TW/cheat-sheet',tableName='R3k20MA') 
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3TW/cheat-sheet',tableName='R3k20MA')
     
     #200 dma NYSE
     total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$MMTH/cheat-sheet',tableName='NYSE200MA')
@@ -167,8 +167,8 @@ if __name__ == "__main__":
 
     # potentially partial, but pretty good
     collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-ath/',tableName='summaryat_high',doHighLow=True)
-    collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-atl/',tableName='summaryat_low',doHighLow=True)    
-    collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-52wk-high/',tableName='summary52w_high',doHighLow=True)    
+    collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-atl/',tableName='summaryat_low',doHighLow=True)
+    collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-52wk-high/',tableName='summary52w_high',doHighLow=True)
     collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-52wk-low/',tableName='summary52w_low',doHighLow=True)
 
     # struggled to load these
