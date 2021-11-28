@@ -107,6 +107,52 @@ if __name__ == "__main__":
     total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S5OH/cheat-sheet',tableName='SPY100MA')
     #20 dma S&P 500, S5TW
     total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S5TW/cheat-sheet',tableName='SPY20MA')
+
+    #200 dma S&P 100
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S1TH/cheat-sheet',tableName='SPYonehun200MA')
+    #50 dma S&P 100, S1FI
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S1FI/cheat-sheet',tableName='SPYonehun50MA')
+    #100 dma S&P 100, S1OH
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S1OH/cheat-sheet',tableName='SPYonehun100MA')
+    #20 dma S&P 100, S1TW
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$S1TW/cheat-sheet',tableName='SPYonehun20MA')
+
+    #200 dma NASDAQ 100
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$NDTH/cheat-sheet',tableName='NASDAQonehun200MA')
+    #50 dma NASDAQ 100, NDFI
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$NDFI/cheat-sheet',tableName='NASDAQonehun50MA')
+    #100 dma NASDAQ 100, NDOH
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$NDOH/cheat-sheet',tableName='NASDAQonehun100MA')
+    #20 dma NASDAQ 100, NDTW
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$NDTW/cheat-sheet',tableName='NASDAQonehun20MA')
+
+    #200 dma Russell 1000
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R1TH/cheat-sheet',tableName='R1k200MA')
+    #50 dma Russell 1000, R1FI
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R1FI/cheat-sheet',tableName='R1k50MA')
+    #100 dma Russell 1000, R1OH
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R1OH/cheat-sheet',tableName='R1k100MA')
+    #20 dma Russell 1000, R1TW
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R1TW/cheat-sheet',tableName='R1k20MA')
+
+    #200 dma Russell 2000
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R2TH/cheat-sheet',tableName='R2k200MA')
+    #50 dma Russell 2000, R2FI
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R2FI/cheat-sheet',tableName='R2k50MA')
+    #100 dma Russell 2000, R2OH
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R2OH/cheat-sheet',tableName='R2k100MA')
+    #20 dma Russell 2000, R2TW
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R2TW/cheat-sheet',tableName='R2k20MA')
+
+    #200 dma Russell 3000
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3TH/cheat-sheet',tableName='R3k200MA')
+    #50 dma Russell 3000, R3FI
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3FI/cheat-sheet',tableName='R3k50MA')
+    #100 dma Russell 3000, R3OH
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3OH/cheat-sheet',tableName='R3k100MA')
+    #20 dma Russell 3000, R3TW
+    total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$R3TW/cheat-sheet',tableName='R3k20MA') 
+    
     #200 dma NYSE
     total_table_top_gain = collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/quotes/\$MMTH/cheat-sheet',tableName='NYSE200MA')
     #50 dma NYSE

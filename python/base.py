@@ -1008,6 +1008,9 @@ stock_list = [
     ['QS',10.0,500.0,'NYSE','Energizer Holdings Inc'], # QuantumScape is an American company that does research about solid state lithium metal batteries for electric cars
     ['ALB',10.0,500.0,'NYSE','Albemarle Corporation'], # fine chemical manufacturing company based in Charlotte, North Carolina. It operates 3 divisions: lithium, bromine specialties and catalysts.
     ['SGMA',10.0,500.0,'NASDAQ','SigmaTron International Inc'], # small junior mining...for litium
+    ['KZR',10.0,500.0,'NASDAQ','Kezar Life Sciences Inc'], #
+    ['PLBY',10.0,500.0,'NASDAQ','Playboy'], #
+    ['EYPT',10.0,500.0,'NASDAQ','Eyepoint Pharmaceuticals Inc'], #  
     #['PLS',10.0,500.0,'ASX','Pilbara Minerals Ltd'], # Pilbara Minerals is an Australian lithium and tantalite mining company
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend         
         #['SPY',60.0,90.0], # spyder large cap mutual fund
@@ -1032,7 +1035,9 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000
             ['VTWO',25.0,120.0,'NYSE','Top 2000, short is SRTY'], # Top 2000
             ['VTHR',25.0,120.0,'NYSE','Top 3000'], # Top 3000        
-            ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000 
+            ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000
+            ['OEF',90.0,150.0,'NYSEARCA','SPY100'], # S&P 100
+            ['CIBR',90.0,150.0,'NASDAQ','First Trust NASDAQ Cybersecurity ETF'], # First Trust NASDAQ Cybersecurity ETF
             ['XLE',8.0,20.0,'NYSE','Energy Select Sector SPDR Fund'], 
             ['XLF',8.0,20.0,'NYSE','Financial Select Sector SPDR Fund'],
             ['XLU',8.0,20.0,'NYSE','Utilities Select Sector SPDR Fund'],

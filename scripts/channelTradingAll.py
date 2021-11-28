@@ -507,7 +507,7 @@ def CandleStick(data, ticker):
     #     figscale=1.35
     #    )
     
-def LongTermPlot(my_stock_info,market,ticker,plttext=''):
+def LongTermPlot(my_stock_info,market,ticker,plttext='',ratioName='SPY'):
     """ Plot 5 year time window
         
          Parameters:
@@ -565,13 +565,13 @@ def LongTermPlot(my_stock_info,market,ticker,plttext=''):
         spy_daily_prices_5y   = GetTimeSlot(market, days=5*365+filter_shift_days)
         if len(spy_daily_prices_60d)>0:
             FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
-                        ticker=ticker,outname='365dsandpcomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']])
+                        ticker=ticker,outname='365dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']],ratioName=ratioName)
             FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
-                        ticker=ticker,outname='60dsandpcomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']])
+                        ticker=ticker,outname='60dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],ratioName=ratioName)
             FitWithBand(my_stock_info5y.index,my_stock_info5y[['adj_close','high','low','open','close']],
-                        ticker=ticker,outname='5ysandpcomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])
+                        ticker=ticker,outname='5ysandpcomparison'+ratioName,spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],ratioName=ratioName)
             
-def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[]):
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],ratioName='SPY'):
     """
     my_index : datetime array
     price : array of prices or values
@@ -581,6 +581,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     poly_order : int : order of polynomial to fit
     price_key : str : name of the price to entry to fit
     spy_comparison : array : array of prices to use as a reference. don't use when None
+    ratioName : str : ratio stock ticker  
 """
     prices = arr_prices[price_key]
     x = mdates.date2num(my_index)
@@ -590,11 +591,20 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     # prepare a spy comparison
     if len(spy_comparison)>0:
         arr_prices = arr_prices.copy(True)
-        spy_comparison = spy_comparison.loc[arr_prices.index,:]
-        prices /= (spy_comparison[price_key] / spy_comparison[price_key][0])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[0])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[0])
-        arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[0])
+        spy_comparison = spy_comparison.copy(True)
+        for i in [price_key,'high','low','open','close']:
+            spy_comparison[i+'_spy'] = spy_comparison[i]
+        arr_prices = arr_prices.join(spy_comparison[[price_key+'_spy','high'+'_spy','low'+'_spy','open'+'_spy','close'+'_spy']],how='left')
+        prices /= (arr_prices[price_key+'_spy'] / arr_prices[price_key+'_spy'][0])
+        arr_prices.loc[:,'high'] /= (arr_prices.high_spy / arr_prices.high_spy[0])
+        arr_prices.loc[:,'low'] /= (arr_prices.low_spy / arr_prices.low_spy[0])
+        arr_prices.loc[:,'open'] /= (arr_prices.open_spy / arr_prices.open_spy[0])
+
+        #spy_comparison = spy_comparison.loc[arr_prices.index,:]
+        #prices /= (spy_comparison[price_key] / spy_comparison[price_key][0])
+        #arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[0])
+        #arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[0])
+        #arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[0])
         
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
@@ -661,7 +671,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     plt.plot(arr_prices.low,color='cyan',label='Low')
     plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
 
-    if len(spy_comparison)>0:  cx.set_ylabel('Price / SPY')
+    if len(spy_comparison)>0:  cx.set_ylabel('Price / '+ratioName)
     else: cx.set_ylabel('Price')
     #cx.set_xlabel('Date')
     
@@ -828,6 +838,8 @@ stock_info=None
 spy=None
 sqlcursor = SQL_CURSOR()
 spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
+gld,j = ConfigTable('GLD', sqlcursor,ts,readType, hoursdelay=15)
+slv,j = ConfigTable('SLV', sqlcursor,ts,readType, hoursdelay=15)
 print('spy')
 print(spy)
 #if loadFromPickle and os.path.exists("%s.p" %ticker):
@@ -884,6 +896,9 @@ if doStocks:
             continue
         # draw before we shorten this to 1 year
         LongTermPlot(tstock_info,spy,ticker=s[0])
+        if s[0] in ['SPY','SLV','GLD' ]:
+            LongTermPlot(tstock_info,gld,ticker=s[0],ratioName='GLD')
+            LongTermPlot(tstock_info,slv,ticker=s[0],ratioName='SLV')
         #if j>2:
         #    break
         #try:
