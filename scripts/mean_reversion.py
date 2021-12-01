@@ -390,7 +390,8 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     # create an error band
     diff = prices - p4(x)
     stddev = diff.std()
-
+    
+    output_lines = '%s,%s,%s' %(diff[-1],prices[-1],stdev)
     if doRelative:
         diff /= p4(x)
         stddev = diff.std() #*p4(x).mean()
@@ -469,7 +470,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
     fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
     if not draw: plt.close()
-    
+    print('%s,%s,%s' %(ticker,outname,output_lines))
 ticker='RDUS'
 ticker='EYPT'
 ticker='GGPI'

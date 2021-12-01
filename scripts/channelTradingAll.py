@@ -1,6 +1,6 @@
 from techindicators import techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS
 import pandas as pd
 import numpy as np
 import sys
@@ -868,6 +868,14 @@ DrawPlots(spy_1year,'SPY',spy_1year)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 j=0
 cdir = os.getcwd()
+
+# Generate global market plots
+GLOBAL_MARKET_PLOTS(outdir,j)
+os.chdir(outdir)
+b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
+os.chdir(cdir)
+
+# Run individual stocks
 if doStocks:
     runList =  b.stock_list
     if args.filter!='':

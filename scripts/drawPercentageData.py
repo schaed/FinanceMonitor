@@ -98,3 +98,22 @@ for tname in table_names:
     except sqlite3.OperationalError:
         print('Could not load!')
 sc.close()
+
+
+#https://www.alphavantage.co/query?function=REAL_GDP&interval=annual&apikey=demo
+#https://www.alphavantage.co/query?function=REAL_GDP_PER_CAPITA&apikey=demo
+#https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=10year&apikey=demo
+# https://www.alphavantage.co/query?function=FEDERAL_FUNDS_RATE&interval=monthly&apikey=demo
+#ps://www.alphavantage.co/query?function=CPI&interval=monthly&apikey=demo
+#https://www.alphavantage.co/query?function=INFLATION&apikey=demo
+#https://www.alphavantage.co/query?function=INFLATION_EXPECTATION&apikey=demo
+#https://www.alphavantage.co/query?function=CONSUMER_SENTIMENT&apikey=demo
+#https://www.alphavantage.co/query?function=RETAIL_SALES&apikey=demo
+#https://www.alphavantage.co/query?function=DURABLES&apikey=demo
+#https://www.alphavantage.co/query?function=UNEMPLOYMENT&apikey=demo
+#https://www.alphavantage.co/query?function=NONFARM_PAYROLL&apikey=demo
+
+#url = 'https://www.alphavantage.co/query?function=CPI&interval=monthly&apikey=demo'
+#r = requests.get(url)
+#data = r.json()
+#print(data)
