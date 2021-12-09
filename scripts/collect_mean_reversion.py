@@ -85,11 +85,11 @@ if __name__ == "__main__":
     filter_shift_days = 0
     today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
     outFileName='News/signif_%s_%s_%s.csv' %(today.day,today.month,today.year)
-    inFileName='News/table_%s_%s_%s.csv' %(today.day-1,today.month,today.year)
+    inFileName='News/table_%s_%s_%s.csv' %(today.day-1,today.month,today.year) # HACK!!!
     df=[]
     try:
         df = pd.read_csv(inFileName)
-    except (FileNotFoundError):
+    except (FileNotFoundError) as e:
         print("Testing multiple exceptions. {}".format(e.args[-1]))
         df = []
     if debug: print(df)
@@ -121,11 +121,13 @@ if __name__ == "__main__":
     while (today.hour<23 or (today.hour==23 and today.minute<30)):
         try:
             df = pd.read_csv(inFileName)
-        except (FileNotFoundError):
+        except (FileNotFoundError) as e:
             print("Testing multiple exceptions. {}".format(e.args[-1]))
         proc_all_tickers = all_tickers
         if len(df)>0 and 'ticker' in df.columns:
-            proc_all_tickers = list(df['ticker'])+all_tickers
+            proc_all_tickers = list(df['ticker'].unique())+all_tickers
+            proc_all_tickers = set(proc_all_tickers)
+        print('Processing: %s' %len(proc_all_tickers))
         for ticker in proc_all_tickers:
             if debug: print(ticker)
             # checking if it is shortable and tradeable:
@@ -133,7 +135,7 @@ if __name__ == "__main__":
                 aapl_asset = api.get_asset(ticker)
                 #print(aapl_asset) # this is info about it being tradeable
                 #print(aapl_asset.shortable)
-            except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError):
+            except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError) as e:
                 print("Testing multiple exceptions. {}".format(e.args[-1]))
                 continue
             hour_prices_thirty=[]
@@ -146,7 +148,7 @@ if __name__ == "__main__":
                     minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
                     hour_prices_thirty_spy    = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
                     minute_prices_thirty_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-                except (alpaca_trade_api.rest.APIError):
+                except (alpaca_trade_api.rest.APIError) as e:
                     print("Testing multiple exceptions. {}".format(e.args[-1]))
                 continue
             hour_prices_10d       = GetTimeSlot(hour_prices_thirty,      days=10)
