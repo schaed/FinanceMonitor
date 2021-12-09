@@ -934,8 +934,9 @@ def GLOBAL_MARKET_PLOTS(outdir='/tmp/',j=0,debug=False):
             my_data = pd.DataFrame(data['data'])
             my_data['value'] = pd.to_numeric(my_data['value'],errors='coerce')
             my_data['date'] = pd.to_datetime(my_data['date'].astype(str), format='%Y-%m-%d')
+            fout_name_y = f.replace('&','_').replace('=','_')
             fout_name = f.replace('&','_').replace('=','_')+'_GLOBAL'
-            MakePlot(my_data.date, my_data.value, xname='Date',yname='%s' %fout_name,saveName=fout_name,outdir=outdir)
+            MakePlot(my_data.date, my_data.value, xname='Date',yname='%s' %fout_name_y,saveName=fout_name,outdir=outdir)
         else:
             print('ERROR - %s' %url)
 

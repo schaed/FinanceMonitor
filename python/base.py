@@ -1029,7 +1029,30 @@ stock_list = [
 #Alb lithium miner
 #Pls - show
 #Sgma small miner
+safe_stocks = [['KR',35.0,50.0,'NYSE','kroger'], # kroger. 1%
+        ['TGT',65.0,85.0,'NYSE','target'], # target. 3%        
+        ['CVS',80.0,120.0,'NYSE','CVS'], # CVS 1.6%
+        ['WBA',80.0,120.0,'NYSE','walgreens'], # walgreens 3.6%
+        ['COST',80.0,120.0,'NYSE','costco'], # walgreens 0.9%
+        ['FB',93.0,130.0,'NASDAQ','facebook'],
+        ['X',20.0,55.0,'NYSE','PA steel'],  # steel industry
+        ['GOOGL',640.0,805.0,'NASDAQ','google'], # google
+        ['AMZN',450.0,700.0,'NASDAQ','amazon'], # amazon
+        ['QQQ',200.0,805.0,'NYSE','qqq'], # nasdaq
+        ['SPY',200.0,805.0,'NYSE','spy'], # spy
+        ['V',65.0,100.0,'NYSE','visa'], # visa. 0.7%
+        ['JPM',65.0,120.0,'NYSE','JPM chase'], # JPM chase. 2% dividend
+        ['MSEX',23.0,35.0,'NASDAQ','NJ water company'], # NJ water company. 2.7% dividend
+        ['WTR',30.0,40.0,'NYSE','PA water company'], # PA water company
+        ['AWK',60.0,75.0,'NYSE','canada water company'], # canada water company
+        ['AWR',20.0,53.0,'NYSE','american states water company'], # american states water company
+        ['PNR',20.0,53.0,'NYSE','pentair. partial water company'], # pentair. partial water company that may grow
+        ['DUK',70.0,100.0,'NYSE','DUKE energy.'], # DUKE energy. good electric stock. 3.8% dividend
+        ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
+        ['HAS',25.0,120.0,'NYSE','hasbro'], # hasbro
+]
 
+    
 etfs = [['SPY',8.0,20.0,'NYSE','SPY'], 
             ['QQQ',8.0,20.0,'NYSE','nasdaq'],
             ['VONE',25.0,120.0,'NYSE','Top 1000'], # Top 1000

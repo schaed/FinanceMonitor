@@ -391,7 +391,9 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     diff = prices - p4(x)
     stddev = diff.std()
     
-    output_lines = '%s,%s,%s' %(diff[-1],prices[-1],stdev)
+    output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
+    if stddev!=0.0:
+        output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])    
     if doRelative:
         diff /= p4(x)
         stddev = diff.std() #*p4(x).mean()
@@ -489,7 +491,8 @@ ticker='KZR'
 ticker='GGPI'
 ticker='KTOS'
 ticker='KZR'
-ticker='PLBY'
+#ticker='PLBY'
+ticker='RENT'
 filter_shift_days = 0
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
 todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))
@@ -521,6 +524,8 @@ daily_prices_365d = GetTimeSlot(daily_prices, days=365+filter_shift_days)
 daily_prices_3y   = GetTimeSlot(daily_prices, days=3*365+filter_shift_days)
 daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
 daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
+#print('ticker,time_span,fit_difference_in_stddev,current_price,stddev')
+print('ticker,time_span,fit_expectations,stddev,fit_diff_significance,current_price')
 FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
 FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
 FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
@@ -542,7 +547,7 @@ FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','o
 FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','open','close']],
                 ticker=ticker,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])
 
-# Spy and hour minute level
+# Spy comparison as well as mintue 10day comparison for minute and hour data
 FitWithBand(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
                 ticker=ticker,outname='10dhspycomparison', price_key='close',spy_comparison = hour_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True)
 FitWithBand(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
