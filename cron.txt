@@ -5,3 +5,4 @@
 32  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/scanFinViz.sh
 30  7 */10 * * /Users/schae/testarea/finances/FinanceMonitor/macros/getEarnings.sh
 30  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runNewsTrading.sh
+1  14 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runMeanReversion.sh
