@@ -331,21 +331,28 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=
               End date of request
     """
     today=datetime.datetime.now()
+    trade_days=[]
     if timeframe==TimeFrame.Day and start==None and end==None:
         yesterday = today + datetime.timedelta(days=-1)
         d1 = yesterday.strftime("%Y-%m-%d")
         fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")
-        trade_days = api.get_bars(ticker, timeframe, fouryao, d1, 'raw',limit=limit).df
+        try:
+            trade_days = api.get_bars(ticker, timeframe, fouryao, d1, 'raw',limit=limit).df
+        except (TypeError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))
     elif start!=None and end!=None:
         #start_date = ''
-        trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw',limit=limit).df
-    if len(trade_days)>0:
+        try:
+            trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw',limit=limit).df
+        except (TypeError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))
+    if type(trade_days) is not None and len(trade_days)>0:
         trade_days.index = pd.to_datetime(trade_days.index,utc=True).tz_convert(NY)
     return trade_days
 
 #Get quotes
 def getQuotesTS(ts, ticker):
-    """ runTicker - Request data from alpaca
+    """ getQuotesTS - Request data from alpaca
 
          Parameters:
          api - alpaca API
@@ -372,7 +379,7 @@ def getQuotesTS(ts, ticker):
 
 #Get quotes
 def getQuotes(api, ticker, start=None, end=None, limit=500):
-    """ runTicker - Request data from alpaca
+    """ getQuotes - Request data from alpaca
 
          Parameters:
          api - alpaca API
@@ -401,7 +408,7 @@ def getQuotes(api, ticker, start=None, end=None, limit=500):
 #   api.get_quotes
 #   api.get_trades
 def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=None, dataType='bars'):
-    """ runTicker - Request data from alpaca for bars or other potential objects
+    """ runTickerTypes - Request data from alpaca for bars or other potential objects
 
          Parameters:
          api - alpaca API
