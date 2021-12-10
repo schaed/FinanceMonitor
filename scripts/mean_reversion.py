@@ -377,11 +377,12 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         else:
             arr_prices = arr_prices.copy(True)
             spy_comparison = spy_comparison.copy(True)
-            for i in ['high','low','open','close']:
+            for i in ['high','low','open','close',price_key]:
                 spy_comparison[i+'_spy'] = spy_comparison[i]
                 arr_prices = arr_prices.join(spy_comparison[i+'_spy'],how='left')
                 if len(arr_prices[i+'_spy'])>0:
                     arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][0])
+            prices = arr_prices[price_key]
         
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
@@ -493,6 +494,7 @@ ticker='KTOS'
 ticker='KZR'
 #ticker='PLBY'
 ticker='RENT'
+ticker='IINN'
 filter_shift_days = 0
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
 todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))

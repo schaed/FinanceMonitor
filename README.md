@@ -103,6 +103,10 @@ https://www.tensorflow.org/probability/examples/Structural_Time_Series_Modeling_
 Interesting for commodity pricing
 https://tradingeconomics.com/commodity/coffee
 
+# finish implementing the trading of mean reversion
+# downward fluctuation needs to have a volume spike, or trust this is
+# a good stock or a good start to an upward trend
+# plot the summary plots of the percentage of stocks above x average
 
 Crontab
 ```
@@ -113,4 +117,5 @@ Crontab
 32  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/scanFinViz.sh
 30  7 */10 * * /Users/schae/testarea/finances/FinanceMonitor/macros/getEarnings.sh
 30  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runNewsTrading.sh
+1  14 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runMeanReversion.sh
 ```

@@ -1,7 +1,7 @@
-import os,sys
+import os,sys,requests
+import urllib3
 import datetime
 import base
-import requests
 import pandas as pd
 import numpy as np
 from ReadData import ALPACA_REST,runTicker,ConfigTable,ALPHA_TIMESERIES,GetTimeSlot,SQL_CURSOR
@@ -11,7 +11,7 @@ import matplotlib.dates as mdates
 import pytz
 import datetime,time
 est = pytz.timezone('US/Eastern')
-debug = True
+debug = False
 
 def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],doRelative=False,doJoin=True, out_df = []):
     """
@@ -42,11 +42,12 @@ def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, pric
         else:
             arr_prices = arr_prices.copy(True)
             spy_comparison = spy_comparison.copy(True)
-            for i in ['high','low','open','close']:
+            for i in ['high','low','open','close',price_key]:
                 spy_comparison[i+'_spy'] = spy_comparison[i]
                 arr_prices = arr_prices.join(spy_comparison[i+'_spy'],how='left')
                 if len(arr_prices[i+'_spy'])>0:
                     arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][0])
+            prices = arr_prices[price_key]
 
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
@@ -129,7 +130,12 @@ if __name__ == "__main__":
 
         # check the quotes:
         if len(df_store_data)>0:
-            sns = api.get_snapshots(list(df_store_data['ticker'].unique()))
+            sns={}
+            try:
+                sns = api.get_snapshots(list(df_store_data['ticker'].unique()))
+            except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
+                    print("Testing multiple exceptions for snapshots. {}".format(e.args[-1]))
+                    continue
             curr_results = pd.DataFrame(columns=['ticker','quote_ap','quote_bp','trade','bar_close','bar_high','bar_low','bar_open'])
             
             for ticker,s in sns.items():
@@ -166,7 +172,7 @@ if __name__ == "__main__":
                     #pass
                     #print(aapl_asset) # this is info about it being tradeable
                     #print(aapl_asset.shortable)
-                except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError) as e:
+                except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
                     print("Testing multiple exceptions. {}".format(e.args[-1]))
                     continue
                 
@@ -180,7 +186,7 @@ if __name__ == "__main__":
                         minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
                         hour_prices_thirty_spy    = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
                         minute_prices_thirty_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-                    except (alpaca_trade_api.rest.APIError) as e:
+                    except (alpaca_trade_api.rest.APIError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
                         print("Testing multiple exceptions. {}".format(e.args[-1]))
                     continue
                 hour_prices_10d       = GetTimeSlot(hour_prices_thirty,      days=10)
