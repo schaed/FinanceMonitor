@@ -595,17 +595,11 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         for i in [price_key,'high','low','open','close']:
             spy_comparison[i+'_spy'] = spy_comparison[i]
         arr_prices = arr_prices.join(spy_comparison[[price_key+'_spy','high'+'_spy','low'+'_spy','open'+'_spy','close'+'_spy']],how='left')
-        prices /= (arr_prices[price_key+'_spy'] / arr_prices[price_key+'_spy'][0])
-        arr_prices.loc[:,'high'] /= (arr_prices.high_spy / arr_prices.high_spy[0])
-        arr_prices.loc[:,'low'] /= (arr_prices.low_spy / arr_prices.low_spy[0])
-        arr_prices.loc[:,'open'] /= (arr_prices.open_spy / arr_prices.open_spy[0])
+        prices /= (arr_prices[price_key+'_spy'] / arr_prices[price_key+'_spy'][-1])
+        arr_prices.loc[:,'high'] /= (arr_prices.high_spy / arr_prices.high_spy[-1])
+        arr_prices.loc[:,'low'] /= (arr_prices.low_spy / arr_prices.low_spy[-1])
+        arr_prices.loc[:,'open'] /= (arr_prices.open_spy / arr_prices.open_spy[-1])
 
-        #spy_comparison = spy_comparison.loc[arr_prices.index,:]
-        #prices /= (spy_comparison[price_key] / spy_comparison[price_key][0])
-        #arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[0])
-        #arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[0])
-        #arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[0])
-        
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)

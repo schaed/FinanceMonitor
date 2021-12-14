@@ -370,18 +370,17 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         if not doJoin:
             arr_prices = arr_prices.copy(True)
             spy_comparison = spy_comparison.loc[arr_prices.index,:]
-            prices /= (spy_comparison[price_key] / spy_comparison[price_key][0])
-            arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[0])
-            arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[0])
-            arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[0])
+            prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
         else:
             arr_prices = arr_prices.copy(True)
             spy_comparison = spy_comparison.copy(True)
+            arr_prices = arr_prices.join(spy_comparison,how='left',rsuffix='_spy')
             for i in ['high','low','open','close',price_key]:
-                spy_comparison[i+'_spy'] = spy_comparison[i]
-                arr_prices = arr_prices.join(spy_comparison[i+'_spy'],how='left')
                 if len(arr_prices[i+'_spy'])>0:
-                    arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][0])
+                    arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][-1])
             prices = arr_prices[price_key]
         
     # perform the fit
