@@ -382,7 +382,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
                 if len(arr_prices[i+'_spy'])>0:
                     arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][-1])
             prices = arr_prices[price_key]
-        
+
     # perform the fit
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)
@@ -390,7 +390,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     # create an error band
     diff = prices - p4(x)
     stddev = diff.std()
-    
+
     output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
     if stddev!=0.0:
         output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])    

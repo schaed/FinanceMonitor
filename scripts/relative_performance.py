@@ -12,8 +12,9 @@ import pytz
 import datetime,time
 est = pytz.timezone('US/Eastern')
 debug = False
+outdir=base.outdir
 
-def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],doRelative=False,doJoin=True, out_df = [],alt_ticker=''):
+def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],doRelative=False,doJoin=True, out_df = [],alt_ticker='',describe_ticker=''):
     """
     my_index : datetime array
     price : array of prices or values
@@ -24,6 +25,7 @@ def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, pric
     doRelative : bool : compute the error bands with relative changes. Bigger when there is a big change in price
     doJoin : bool : join the two arrays on matching times
     out_df : dataframe : contains the output from the fit and the significance
+    describe_ticker : str : string describing the ticker
     """
     
     start = time.time()
@@ -74,12 +76,16 @@ def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, pric
     end = time.time()
     if debug: print('Process time to get Fit data: %s' %(end - start))
     if stddev!=0.0:
+
         output_lines = '%0.3f,%0.3f,%0.3f,%s,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],alt_ticker)
-        out_arr = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],alt_ticker]    
-    if debug: print('%s,%s,%s' %(ticker,outname,output_lines))
+        out_arr = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],alt_ticker]
+        if ticker==alt_ticker:
+            output_lines = '%0.3f,%0.3f,%0.3f,%s,%s' %(p4(x)[-1],0,0,prices[-1],alt_ticker)
+            out_arr = [p4(x)[-1],0,0,prices[-1],alt_ticker]
+    if debug: print('%s,%s,%s,%s' %(ticker,describe_ticker,outname,output_lines))
     # check if stuff is filled
-    if len(out_df[(out_df['ticker']==ticker) & (out_df['time_span']==outname)])==0:
-        out_df = out_df.append(pd.DataFrame([[ticker,outname]+out_arr],columns=['ticker','time_span','fit_expectations','stddev','fit_diff_significance','current_price','alt_ticker']),ignore_index=True)
+    if len(out_df[(out_df['ticker']==ticker) & (out_df['time_span']==outname) & (out_df['alt_ticker']==alt_ticker)])==0:
+        out_df = out_df.append(pd.DataFrame([[ticker,describe_ticker,outname]+out_arr],columns=['ticker','describe','time_span','fit_expectations','stddev','fit_diff_significance','current_price','alt_ticker']),ignore_index=True)
     else:
         # decide what information to update! certainly the current price
         pass
@@ -105,14 +111,16 @@ if __name__ == "__main__":
 
     # create a dataframe to store all of the info
     curr_results = pd.DataFrame(columns=['ticker','quote','trade','bar_close','bar_high','bar_low','bar_open'])
-    df_store_data = pd.DataFrame(columns=['ticker','time_span','fit_expectations','stddev','fit_diff_significance','current_price','alt_ticker'])
+    df_store_data = pd.DataFrame(columns=['ticker','describe','time_span','fit_expectations','stddev','fit_diff_significance','current_price','alt_ticker'])
     if os.path.exists(outFileName):
         df_store_data = pd.read_csv(outFileName)
         
     # load ETFs
     all_tickers = []
+    describe_tickers = []    
     for etf in base.etfs:
         all_tickers +=[etf[0]]
+        describe_tickers+=[etf[4].strip(',')]
     # check new stocks
     proc_all_tickers = all_tickers
     if debug: print('Processing: %s' %len(proc_all_tickers))
@@ -134,11 +142,11 @@ if __name__ == "__main__":
             #if debug: print('ticker,time_span,fit_expectations,stddev,fit_diff_significance,current_price')
         
             # Run:
-            df_store_data=GetRMSData(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d',out_df = df_store_data)
-            df_store_data=GetRMSData(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d',out_df = df_store_data)
-            df_store_data=GetRMSData(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d',out_df = df_store_data)
-            df_store_data=GetRMSData(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y',out_df = df_store_data)
-            df_store_data=GetRMSData(daily_prices_5y.index,  daily_prices_5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y', doRelative=False,out_df = df_store_data)
+            df_store_data=GetRMSData(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d',out_df = df_store_data,describe_ticker = describe_tickers[iticker-1])
+            df_store_data=GetRMSData(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d',out_df = df_store_data, describe_ticker = describe_tickers[iticker-1])
+            df_store_data=GetRMSData(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d',out_df = df_store_data,describe_ticker = describe_tickers[iticker-1])
+            df_store_data=GetRMSData(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y',out_df = df_store_data,describe_ticker = describe_tickers[iticker-1])
+            df_store_data=GetRMSData(daily_prices_5y.index,  daily_prices_5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y', doRelative=False,out_df = df_store_data,describe_ticker = describe_tickers[iticker-1])
 
             # iterate through alternatives
             for alt_ticker in proc_all_tickers:
@@ -173,14 +181,39 @@ if __name__ == "__main__":
                     
                     # Correlate
                     df_store_data=GetRMSData(daily_prices_after_60d.index,daily_prices_after_60d,
-                            ticker=ticker,outname='60d'+alt_ticker+'comparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker)
+                            ticker=ticker,outname='60dcomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker,describe_ticker = describe_tickers[iticker-1])
                     df_store_data=GetRMSData(daily_prices_after_365d.index,daily_prices_after_365d,
-                            ticker=ticker,outname='365d'+alt_ticker+'comparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker)
+                            ticker=ticker,outname='365dcomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker,describe_ticker = describe_tickers[iticker-1])
                     df_store_data=GetRMSData(daily_prices_after_5y.index,daily_prices_after_5y,
-                        ticker=ticker,outname='5ys'+alt_ticker+'comparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker)
+                        ticker=ticker,outname='5yscomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],out_df = df_store_data, alt_ticker=alt_ticker,describe_ticker = describe_tickers[iticker-1])
                     end = time.time()
                     if debug: print('Process time to get RMS data: %s' %(end - start))
         
         df_store_data.to_csv(outFileName,index=False)
         #time.sleep(60)
         
+    # writing the tables of info...
+    print('DONE...writing html')
+    for i in ['60dcomparison','365dcomparison','5yscomparison','60d','180d','365d','3y','5y']:
+        base.makeHTML('%s/patterns_%s.html' %(outdir,i),'Correlations',filterPattern='NONECOR',describe=i,linkIndex=0, chartSignals=df_store_data[df_store_data['time_span']==i],float_format=lambda x: '%10.2f' % x)
+        
+    # put them all on the same table
+    df_store_data_out = df_store_data[df_store_data['time_span']=='60dcomparison'].copy(True)
+    df_store_data_out['Ticker'] = df_store_data_out['ticker']
+    df_store_data_out['Correl. Ticker'] = df_store_data_out['alt_ticker']
+    df_store_data_out = df_store_data_out.set_index(['ticker','alt_ticker'])
+    df_store_data_out = df_store_data_out[['Ticker','describe','Correl. Ticker','time_span','stddev','fit_diff_significance','current_price']]
+    for i in ['365dcomparison','5yscomparison','60d','180d','365d','3y','5y']: #'60dcomparison',
+        df_new = df_store_data[df_store_data['time_span']==i].set_index(['ticker','alt_ticker'])
+        df_store_data_out = df_store_data_out.join(df_new['fit_diff_significance'],how='left',rsuffix='_'+i)
+    df_store_data_out.rename(columns={'fit_diff_significance':'60d correl Significance','fit_diff_significance_365dcomparison':'365d correl Significance',
+                                  'fit_diff_significance_5yscomparison':'5y correl Significance','fit_diff_significance_60d':'60d Significance',
+                                  'fit_diff_significance_180d':'180d Significance','fit_diff_significance_365d':'365d Significance',
+                                  'fit_diff_significance_3y':'3y Significance','fit_diff_significance_5y':'5y Significance',
+                                  'describe':'Description'},inplace=True)
+    df_store_data_out.drop(columns=['time_span'],inplace=True)
+    base.makeHTML('%s/patterns_correlations.html' %outdir,'Correlations',filterPattern='NONECOR',describe='Corr',linkIndex=0, chartSignals=df_store_data_out,float_format=lambda x: '%10.2f' % x,add_index=False)
+    for t in df_store_data_out['Ticker'].unique():
+        base.makeHTML('%s/patterns_correlations_%s.html' %(outdir,t),'Correlations',filterPattern='NONECOR',describe='Corr',linkIndex=0, chartSignals=df_store_data_out[df_store_data_out['Ticker']==t],float_format=lambda x: '%10.2f' % x,add_index=False)    
+    print('DONE')
+    sys.stdout.flush()
