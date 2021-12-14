@@ -117,10 +117,12 @@ if __name__ == "__main__":
         
     # load ETFs
     all_tickers = []
-    describe_tickers = []    
+    describe_tickers = []
+    ticker_describe_map ={}
     for etf in base.etfs:
         all_tickers +=[etf[0]]
         describe_tickers+=[etf[4].strip(',')]
+        ticker_describe_map[etf[0]] = etf[4].strip(',')
     # check new stocks
     proc_all_tickers = all_tickers
     if debug: print('Processing: %s' %len(proc_all_tickers))
@@ -202,7 +204,10 @@ if __name__ == "__main__":
     df_store_data_out['Ticker'] = df_store_data_out['ticker']
     df_store_data_out['Correl. Ticker'] = df_store_data_out['alt_ticker']
     df_store_data_out = df_store_data_out.set_index(['ticker','alt_ticker'])
-    df_store_data_out = df_store_data_out[['Ticker','describe','Correl. Ticker','time_span','stddev','fit_diff_significance','current_price']]
+    df_store_data_out['Alt. Description'] = df_store_data_out['Correl. Ticker'].map(ticker_describe_map)
+    
+    df_store_data_out = df_store_data_out[['Ticker','describe','Correl. Ticker','Alt. Description','time_span','stddev','fit_diff_significance','current_price']]
+    
     for i in ['365dcomparison','5yscomparison','60d','180d','365d','3y','5y']: #'60dcomparison',
         df_new = df_store_data[df_store_data['time_span']==i].set_index(['ticker','alt_ticker'])
         df_store_data_out = df_store_data_out.join(df_new['fit_diff_significance'],how='left',rsuffix='_'+i)
