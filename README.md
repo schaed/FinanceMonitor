@@ -5,7 +5,8 @@ FinanceMonitor - various functionality from html tables to plotting market indic
 ```pip3 install alpaca_trade_api
 pip3 install numpy
 pip3 install pandas matplotlib mplfinance numpy_ext watchdog
-pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk cython zigzag --user
+pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk cython zigzag lxml statsmodels pmdarima wget spacy nltk talib --user
+python3 -m spacy download en_core_web_sm
 ```
 
 Running machine learning requires some specific tensorflow+numpy libraries
