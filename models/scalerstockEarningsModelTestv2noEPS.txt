@@ -1,0 +1,15 @@
+no eps. no vix to remove any problems
+
+precision    recall  f1-score   support
+
+           0       0.84      0.17      0.29     18957
+           1       0.32      0.61      0.42     10437
+           2       0.18      0.56      0.28      2844
+
+    accuracy                           0.35     32238
+   macro avg       0.45      0.45      0.33     32238
+weighted avg       0.61      0.35      0.33     32238
+
+[[ 3276 12209  3472]
+ [  576  6318  3543]
+ [   40  1219  1585]]
