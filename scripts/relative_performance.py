@@ -167,8 +167,14 @@ if __name__ == "__main__":
                 end = time.time()
                 if debug: print('Process time to read SQL or ask API: %s' %(end - start))
                 start = time.time()
+                if type(spy)==type([]):
+                    print('ERROR loading %s...skipping' %alt_ticker)
+                    continue
                 if filter_shift_days>0:
                     spy  = GetTimeSlot(spy, days=6*365, startDate=todayFilter)
+                if type(spy)==type([]):
+                    print('ERROR loading %s...skipping' %alt_ticker)
+                    continue                    
                 spy_daily_prices_60d  = GetTimeSlot(spy, days=60+filter_shift_days)
                 spy_daily_prices_365d = GetTimeSlot(spy, days=365+filter_shift_days)
                 spy_daily_prices_5y   = GetTimeSlot(spy, days=5*365+filter_shift_days)
