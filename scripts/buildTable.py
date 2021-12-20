@@ -17,6 +17,7 @@ doStocks=True
 loadFromPickle=False
 loadSQL = True
 readType='full'
+import zigzag
 from zigzag import *
 
 sqlcursorShort = SQL_CURSOR(db_name='stocksShort.db')
@@ -73,8 +74,8 @@ def AddInfo(stock,market):
     stock['chosc']=techindicators.chosc(stock['high'],stock['low'],stock['close'],stock['volume'],3,10)
     stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']
     #stock['max_drawdown'] = stock['adj_close'].rolling(250).apply(max_drawdown)
-    day365 = GetTimeSlot(stock,365)
-    stock['max_drawdown'] = max_drawdown(day365['adj_close'].values)
+    day365 = GetTimeSlot(stock,365)    
+    stock['max_drawdown'] = zigzag.max_drawdown(day365['adj_close'].values)
     #print(stock.max_drawdown)
     
 def nearest(items, pivot):
@@ -155,6 +156,11 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     for j in input_list:
         info_list += [stock[j][entry]]
     for j in ['alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10diff','corr14','max_drawdown']:
+        if j not in stock:
+            print('Error could not find %s' %j)
+            #print(stock.columns)
+            print(ticker)
+            stock[j] = stock['alpha']
         info_list += [b.colorHTML(stock[j][entry],'black',4)]
     info_list+=list(readShortInfo(ticker))
     return info_list

@@ -733,7 +733,8 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
 
     # plot the zigzag
     start = time.time()
-    plot_pivots(my_stock_info.index, my_stock_info.adj_close, saveName='zigzag%s_%s' %(plttext,ticker), xname='Date', yname='Closing Price')
+    if len(my_stock_info.adj_close)>1:
+        plot_pivots(my_stock_info.index, my_stock_info.adj_close, saveName='zigzag%s_%s' %(plttext,ticker), xname='Date', yname='Closing Price')
     end = time.time()
     if debug: print('Process time to find pivots: %s' %(end - start))
     

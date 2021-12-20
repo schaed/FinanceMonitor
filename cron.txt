@@ -1,9 +1,7 @@
-30 14 * * * /Users/schae/testarea/finances/googlefinance/getPrice.sh
-58 14 * * * /Users/schae/testarea/finances/yahoo-finance/getPriceAll.sh
-30  7 * * * /Users/schae/testarea/finances/FinanceMonitor/macros/getNews.sh
-31  7 * * 2-6 /Users/schae/testarea/finances/FinanceMonitor/macros/getSummaryData.sh
-32  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/scanFinViz.sh
-30  7 */10 * * /Users/schae/testarea/finances/FinanceMonitor/macros/getEarnings.sh
-30  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runNewsTrading.sh
-1  14 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runMeanReversion.sh
-30 13 * * 2-6 lxplus /afs/cern.ch/user/s/schae/testarea/FinanceMonitor/run/runCorrelation.sh
+30  7 * * *    /home/schae/testarea/FinanceMonitor/run/getNews.sh
+31  7 * * 2-6  /home/schae/testarea/FinanceMonitor/run/getSummaryData.sh
+32  15 * * 1-5 /home/schae/testarea/FinanceMonitor/run/scanFinViz.sh
+30  7 */10 * * /home/schae/testarea/FinanceMonitor/run/getEarnings.sh
+30  15 * * 1-5 /home/schae/testarea/FinanceMonitor/run/runNewsTrading.sh
+1  14 * * 1-5  /home/schae/testarea/FinanceMonitor/run/runMeanReversion.sh
+30 13 * * 2-6  /home/schae/testarea/FinanceMonitor/run/runCorrelation.sh

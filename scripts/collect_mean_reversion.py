@@ -129,7 +129,7 @@ if __name__ == "__main__":
         try:
             df = pd.read_csv(inFileName)
         except (FileNotFoundError) as e:
-            print("Testing multiple exceptions. {}".format(e.args[-1]))
+            print("Testing multiple exceptions to read the csv. {}".format(e.args[-1]))
 
         # check the quotes:
         if len(df_store_data)>0:
@@ -176,7 +176,7 @@ if __name__ == "__main__":
                     #print(aapl_asset) # this is info about it being tradeable
                     #print(aapl_asset.shortable)
                 except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
-                    print("Testing multiple exceptions. {}".format(e.args[-1]))
+                    print("Testing multiple exceptions for alpaca api. {}".format(e.args[-1]))
                     continue
                 
                 hour_prices_thirty=[]
