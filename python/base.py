@@ -951,6 +951,10 @@ stock_list = [
          ['XM',50.0,70.0,'NASDAQ','qualtrics international software'],
          ['HZO',50.0,70.0,'NYSE','Marine Max florida provider of boat parts'],
          ['SKLZ',50.0,70.0,'NYSE','Skillz is an online mobile multiplayer competition platform'],
+         ['CRWD',50.0,70.0,'NASDAQ','Crowdstike'],
+         ['SSNC',50.0,70.0,'NASDAQ','finacial tech stock - SS&C Technologies Holdings, Inc.'],
+         ['SNV',50.0,70.0,'NYSE','finacial services - Synovus Financial Corp.'],
+         ['AZEK',50.0,70.0,'NYSE','Azek Company Inc'],
     #['SWHC',10.0,30.0,'NASDAQ','smith and wessin'], # smith and wessin
          ['RGR',40.0,70.0,'NYSE','ruger'], # ruger 2.5% dividend
          ['SWBI',40.0,70.0,'NYSE','Smith and wessin'], # ruger 2.5% dividend
@@ -1060,6 +1064,11 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['VTHR',25.0,120.0,'NYSE','Top 3000'], # Top 3000        
             ['VTI',25.0,120.0,'NYSE','Top 5000: total market'], # Top 5000
             ['OEF',90.0,150.0,'NYSEARCA','SPY100'], # S&P 100
+            #['GBTC',90.0,150.0,'OTCMKTS','Bitcoin'], # S&P 100
+            ['BITO',90.0,150.0,'NYSEARCA','bitcoin futures tracking ETF'], # S&P 100
+            ['ARKK',90.0,150.0,'NYSEARCA','ARK Innovation ETF'], # S&P 100
+            ['ARKW',90.0,150.0,'NYSEARCA','ARK Next Generation Internet ETF'], # S&P 100
+            ['ARKF',90.0,150.0,'NYSEARCA','ARK Financial tech ETF'], # S&P 100
             ['CIBR',90.0,150.0,'NASDAQ','First Trust NASDAQ Cybersecurity ETF'], # First Trust NASDAQ Cybersecurity ETF
             ['XLE',8.0,20.0,'NYSE','Energy Select Sector SPDR Fund'], 
             ['XLF',8.0,20.0,'NYSE','Financial Select Sector SPDR Fund'],
@@ -1144,13 +1153,13 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['SH',8.0,20.0,'NYSE','Short SPY, 3x is SPXS'],
             ['UPRO',8.0,20.0,'NYSE','3x SPY Long, also see 3x SPXL. SPUU, SSO are 2x'],
             ['SPXU',8.0,20.0,'NYSE','3x SPY short, also see 3x SPXL. SPUU, SSO are 2x'],
-            ['LABU',8.0,20.0,'NYSE','3x biomedical BIB, short is LABD'],            
+            ['LABU',8.0,20.0,'NYSE','3x biomedical BIB, short is LABD'],
             ['BIB',8.0,20.0,'NYSE','Nasdaq Biomedical tech'],
-            ['FAZ',8.0,20.0,'NYSE','Direxion Daily Financial Bear 3X Shares'],                        
-            ['KOLD',8.0,20.0,'NYSE','Proshare short natural gas'],                        
-            ['SCO',8.0,20.0,'NYSE','Short Crude oil'],                        
-            ['UDN',8.0,20.0,'NYSE','Short US dollar'],                        
-            ['TWM',8.0,20.0,'NYSE','Short Russell 2000'],                        
+            ['FAZ',8.0,20.0,'NYSE','Direxion Daily Financial Bear 3X Shares'],
+            ['KOLD',8.0,20.0,'NYSE','Proshare short natural gas'],
+            ['SCO',8.0,20.0,'NYSE','Short Crude oil'],
+            ['UDN',8.0,20.0,'NYSE','Short US dollar'],
+            ['TWM',8.0,20.0,'NYSE','Short Russell 2000'],
             ['FREL',8.0,20.0,'NYSE','Fidelity MSCI Real Estate ETF'],
             ['FSTA',8.0,20.0,'NYSE','Fidelity MSCI Consumer Staples ETF'],
             ['FENY',8.0,20.0,'NYSE','Fidelity MSCI Energy ETF'],
@@ -1164,7 +1173,10 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['FDIS',8.0,20.0,'NYSE','Fidelity MSCI Consumer Discret ETF'],
             ['FINX',8.0,20.0,'NASDAQ','Global X FinTech ETF'],
             ['CLOU',8.0,20.0,'NASDAQ','Global X Cloud Computing ETF'],
+            ['INDS',8.0,20.0,'NYSEARCA','Pacer Benchmark Industrial Real Estate SCTR ETF'],
+            ['PPTY',8.0,20.0,'NYSEARCA','US Diversified Real Estate ETF'],
             ['FIVG',8.0,20.0,'NYSEARCA','Defiance Next Gen Connectivity ETF'],
+            ['VPN',8.0,20.0,'NASDAQ','Global X Data Center REITs & Digital Infrastructure ETF'],            
             ['FCOM',8.0,20.0,'NYSE','Fidelity MSCI Communication Services ETF'],
             ['ICLN',8.0,20.0,'NYSE','iShares Global Clean Energy ETF'],
             ['SIVR',8.0,20.0,'NYSE','Aberdeen Standard Phys Silver Shrs ETF'],
@@ -1191,6 +1203,7 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['PDP',8.0,20.0,'NASDAQ','Invesco DWA Momentum ETF'],
             ['PTF',8.0,20.0,'NASDAQ','Invesco DWA Technology Momentum ETF'],
             ['VTV',8.0,20.0,'NYSE','Vanguard Value ETF'],
+            ['VPU',75.0,125.0,'NYSE','vanguard utilities'], # vanguard utilities, 3.3% dividend
             ['VBR',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Value Index Fund ETF'],
             ['VBK',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Growth Index Fund ETF'],
             ['VGT',90.0,150.0,'NYSEARCA','Vanguard information tech'], # Vanguard information tech. 1.4% dividend
