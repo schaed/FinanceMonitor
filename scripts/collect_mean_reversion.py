@@ -125,6 +125,7 @@ if __name__ == "__main__":
     for etf in base.etfs:
         all_tickers +=[etf[0]]
     while (today.hour<23 or (today.hour==23 and today.minute<30)):
+        today = datetime.datetime.now(tz=est)
         try:
             df = pd.read_csv(inFileName)
         except (FileNotFoundError) as e:
@@ -191,12 +192,21 @@ if __name__ == "__main__":
                     except (alpaca_trade_api.rest.APIError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
                         print("Testing multiple exceptions. {}".format(e.args[-1]))
                     continue
+                if type(hour_prices_thirty) == type([]) or type(minute_prices_thirty) == type([]):
+                    print('ERROR - got a list for %s' %ticker)
+                    continue
+                if type(hour_prices_thirty_spy) == type([])  or type(minute_prices_thirty_spy) == type([]):
+                    print('ERROR - got a list for SPY')
+                    continue
                 hour_prices_10d       = GetTimeSlot(hour_prices_thirty,      days=10)
                 minute_prices_10d     = GetTimeSlot(minute_prices_thirty,    days=10)
                 hour_prices_spy_10d   = GetTimeSlot(hour_prices_thirty_spy,  days=10)
                 minute_prices_spy_10d = GetTimeSlot(minute_prices_thirty_spy,days=10)
         
                 daily_prices,j    = ConfigTable(ticker, sqlcursor,ts,'full',hoursdelay=18)
+                if type(daily_prices) == type([]):
+                    print('ERROR - got a list for %s' %ticker)
+                    continue
                 if filter_shift_days>0:
                     daily_prices  = GetTimeSlot(daily_prices, days=6*365, startDate=todayFilter)
                 daily_prices_60d  = GetTimeSlot(daily_prices, days=60+filter_shift_days)
