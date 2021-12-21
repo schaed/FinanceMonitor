@@ -120,4 +120,7 @@ Crontab
 30  15 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runNewsTrading.sh
 1  14 * * 1-5 /Users/schae/testarea/finances/FinanceMonitor/macros/runMeanReversion.sh
 30 13 * * 2-6 lxplus /afs/cern.ch/user/s/schae/testarea/FinanceMonitor/run/runCorrelation.sh
+1 7 * * 2-6 lxplus /afs/cern.ch/user/s/schae/testarea/FinanceMonitor/run/table.sh 
+30 9 * * 2-6 lxplus /afs/cern.ch/user/s/schae/testarea/FinanceMonitor/run/plots.sh
+
 ```

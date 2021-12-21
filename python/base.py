@@ -8,6 +8,7 @@ out_path = '/Users/schae/testarea/finances/yahoo-finance'
 out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
 outdir = '/tmp/'
+outdir = '/home/schae/web/'
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
