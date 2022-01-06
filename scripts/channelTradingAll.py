@@ -23,6 +23,7 @@ my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
 my_parser.add_argument('--filter', default='', type=str) # filter by ticker
 my_parser.add_argument('--add', default='', type=str) # filter by ticker
+my_parser.add_argument('--skip', default=False, action='store_true') # filter by ticker
 args = my_parser.parse_args()
 
 draw=False
@@ -507,7 +508,7 @@ def CandleStick(data, ticker):
     #     figscale=1.35
     #    )
     
-def LongTermPlot(my_stock_info,market,ticker,plttext='',ratioName='SPY'):
+def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
     """ Plot 5 year time window
         
          Parameters:
@@ -518,8 +519,8 @@ def LongTermPlot(my_stock_info,market,ticker,plttext='',ratioName='SPY'):
          plttext - string
                 Label for the plot
     """
-    GetMonthlyReturns(my_stock_info,ticker)
-    
+    GetMonthlyReturns(my_stock_info_cp,ticker)
+    my_stock_info = my_stock_info_cp.copy(True)
     date_diff = 5*365
     my_stock_info5y = GetTimeSlot(my_stock_info, days=date_diff)
     market5y = GetTimeSlot(market, days=date_diff)
@@ -835,6 +836,11 @@ sqlcursor = SQL_CURSOR()
 spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
 gld,j = ConfigTable('GLD', sqlcursor,ts,readType, hoursdelay=15)
 slv,j = ConfigTable('SLV', sqlcursor,ts,readType, hoursdelay=15)
+labu,j = ConfigTable('LABU', sqlcursor,ts,readType, hoursdelay=15)
+labd,j = ConfigTable('LABD', sqlcursor,ts,readType, hoursdelay=15)
+bib,j = ConfigTable('BIB', sqlcursor,ts,readType, hoursdelay=15)
+gush,j = ConfigTable('GUSH', sqlcursor,ts,readType, hoursdelay=15)
+drip,j = ConfigTable('DRIP', sqlcursor,ts,readType, hoursdelay=15)
 print('spy')
 print(spy)
 #if loadFromPickle and os.path.exists("%s.p" %ticker):
@@ -865,10 +871,11 @@ j=0
 cdir = os.getcwd()
 
 # Generate global market plots
-GLOBAL_MARKET_PLOTS(outdir,j)
-os.chdir(outdir)
-b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
-os.chdir(cdir)
+if not args.skip:
+    GLOBAL_MARKET_PLOTS(outdir,j)
+    os.chdir(outdir)
+    b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
+    os.chdir(cdir)
 
 # Run individual stocks
 if doStocks:
@@ -902,6 +909,19 @@ if doStocks:
         if s[0] in ['SPY','SLV','GLD' ]:
             LongTermPlot(tstock_info,gld,ticker=s[0],ratioName='GLD')
             LongTermPlot(tstock_info,slv,ticker=s[0],ratioName='SLV')
+        if s[0] in ['LABD' ]:
+            LongTermPlot(tstock_info,bib,ticker=s[0],ratioName='BIB')
+            LongTermPlot(tstock_info,labu,ticker=s[0],ratioName='LABU')
+        if s[0] in ['LABU' ]:
+            LongTermPlot(tstock_info,bib,ticker=s[0],ratioName='BIB')
+            LongTermPlot(tstock_info,labd,ticker=s[0],ratioName='LABD')
+        if s[0] in ['BIB' ]:
+            LongTermPlot(tstock_info,labd,ticker=s[0],ratioName='LABD')
+            LongTermPlot(tstock_info,labu,ticker=s[0],ratioName='LABU')            
+        if s[0] in ['GUSH' ]:
+            LongTermPlot(tstock_info,drip,ticker=s[0],ratioName='DRIP')
+        if s[0] in ['DRIP' ]:
+            LongTermPlot(tstock_info,gush,ticker=s[0],ratioName='GUSH')            
         #if j>2:
         #    break
         #try:
