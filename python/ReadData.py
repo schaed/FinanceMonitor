@@ -138,7 +138,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             try:
                 stockCompact=runTickerAlpha(ts,ticker,'compact')
                 j+=1
-            except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError) as e:
+            except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError) as e:
                 print("Testing multiple exceptions. {}".format(e.args[-1]))
                 print('%s could not load compact....' %ticker)
                 j+=1
@@ -161,7 +161,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
         try:
             stock=runTickerAlpha(ts,ticker,'full')
             j+=1
-        except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError) as e:
+        except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError) as e:
             print("Testing multiple exceptions. {}".format(e.args[-1]))
             j+=1
             print('%s could not load....' %ticker)
@@ -561,9 +561,12 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
     stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
     if len(stock)>2:
+        #indicators = []
         for ky in talib.__dict__.keys():
             if 'CDL' in ky and not 'stream' in ky:
                 stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
+                #indicators+=[talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])]
+        #pd.concat(indicators,axis=1)
     end = time.time() 
 
     if AddSupport and  len(stock_1y['adj_close'])>0:

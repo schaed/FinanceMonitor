@@ -23,6 +23,7 @@ my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
 my_parser.add_argument('--filter', default='', type=str) # filter by ticker
 my_parser.add_argument('--add', default='', type=str) # filter by ticker
+my_parser.add_argument('--skip', default=False, action='store_true' ) # filter by ticker
 args = my_parser.parse_args()
 
 draw=False
@@ -865,10 +866,11 @@ j=0
 cdir = os.getcwd()
 
 # Generate global market plots
-GLOBAL_MARKET_PLOTS(outdir,j)
-os.chdir(outdir)
-b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
-os.chdir(cdir)
+if not args.skip:
+    GLOBAL_MARKET_PLOTS(outdir,j)
+    os.chdir(outdir)
+    b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
+    os.chdir(cdir)
 
 # Run individual stocks
 if doStocks:

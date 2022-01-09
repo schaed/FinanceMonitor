@@ -9,6 +9,8 @@ out_file_type = 'png'
 outdir = '/eos/atlas/user/s/schae/fcsvalidation/FUN/'
 outdir = '/tmp/'
 outdir = '/home/schae/web/'
+outdir = '/var/www/html/FUN/'
+
 
 def colorHTML(text, color='red',roundN=2):
     if roundN==2:
@@ -1006,7 +1008,7 @@ stock_list = [
     ['SABR',10.0,500.0,'NASDAQ','Sabre Corp'], # Sabre Corporation is a travel technology company 
     ['JCI',10.0,500.0,'NYSE','Johnson Controls International PLC'], # produces fire, HVAC, and security equipment for buildings
     ['NIO',10.0,500.0,'NYSE','Nio Inc - ADR'], # Shanghai, China - mining company
-    ['SQM',10.0,500.0,'Sociedad Quimica y Minera de Chile'], # Chilean chemical company and a supplier of plant nutrients, iodine, lithium and industrial chemicals
+    ['SQM',10.0,500.0,'NYSE','Sociedad Quimica y Minera de Chile'], # Chilean chemical company and a supplier of plant nutrients, iodine, lithium and industrial chemicals
     ['LAC',10.0,500.0,'NYSE','Lithium Americas Corp'], # Vancouver, Canada - lithium company
     ['LTHM',10.0,500.0,'NYSE','Livent Corp'], # Philly Chemical manufacturing company
     ['ENR',10.0,500.0,'NYSE','Energizer Holdings Inc'], # American manufacturer and one of the world's largest manufacturers of batteries
@@ -1072,7 +1074,7 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['ARKF',90.0,150.0,'NYSEARCA','ARK Financial tech ETF'], # S&P 100
             ['CIBR',90.0,150.0,'NASDAQ','First Trust NASDAQ Cybersecurity ETF'], # First Trust NASDAQ Cybersecurity ETF
             ['XLE',8.0,20.0,'NYSE','Energy Select Sector SPDR Fund'], 
-            ['XLF',8.0,20.0,'NYSE','Financial Select Sector SPDR Fund'],
+            #['XLF',8.0,20.0,'NYSE','Financial Select Sector SPDR Fund'],
             ['XLU',8.0,20.0,'NYSE','Utilities Select Sector SPDR Fund'],
             ['XLI',8.0,20.0,'NYSE','Industrial Select Sector SPDR Fund'],
             ['GDX',8.0,20.0,'NYSE','VanEck Vectors Gold Miners ETF'],
