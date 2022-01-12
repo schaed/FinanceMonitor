@@ -30,6 +30,10 @@ def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, pric
     #xx = np.linspace(x.min(), x.max(), 1000)
     #dd = mdates.num2date(xx)
 
+    if len(x)<1:
+        print('ERROR not enough dates to process for %s' %ticker)
+        return out_df
+    
     # prepare a spy comparison
     if len(spy_comparison)>0:
         if not doJoin:
