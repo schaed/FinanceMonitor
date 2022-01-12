@@ -75,7 +75,7 @@ def AddInfo(stock,market):
     stock['vwap10diff'] = (stock['adj_close'] - stock['vwap10'])/stock['adj_close']
     #stock['max_drawdown'] = stock['adj_close'].rolling(250).apply(max_drawdown)
     day365 = GetTimeSlot(stock,365)    
-    stock['max_drawdown'] = zigzag.max_drawdown(day365['adj_close'].values)
+    stock['max_drawdown'] = np.ones(len(stocks))*zigzag.max_drawdown(day365['adj_close'].values)
     #print(stock.max_drawdown)
     
 def nearest(items, pivot):

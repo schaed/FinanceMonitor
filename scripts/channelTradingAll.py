@@ -12,7 +12,9 @@ import os
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('Agg') 
+#matplotlib.use('Agg')
+#matplotlib.use('GTK3Agg')
+matplotlib.use('cairo') 
 import mplfinance as mpf
 import argparse
 from zigzag import *
@@ -44,6 +46,7 @@ def GetMonthlyReturns(stockdatain,ticker):
     if len(stockdatain)==0:
         print('ERROR - empy info %s' %ticker)
 
+    startMR = time.time()        
     stockdata = stockdatain.copy(True)
     stockdata['daily_return']=stockdata['adj_close'].pct_change(periods=1)+1
     stockdata['openclosepct'] = (stockdata.close-stockdata.open)/stockdata.open+1
@@ -57,12 +60,20 @@ def GetMonthlyReturns(stockdatain,ticker):
     stockdata['weekofyear']=stockdata.index.isocalendar().week
     stockdata['is_month_end']=stockdata.index.is_month_end
     if debug: print(stockdata[['open','close','daily_return','adj_close','openclosepct','closeopenpct']])
+    endMR = time.time()
+    if debug: print('Process time to GetMonthlyReturns preprocessing: %s' %(endMR - startMR))
     
     # compute monthly returns
+    startMR = time.time()    
     stockdata_month_grouped = stockdata.groupby(['year','month'])
     end_of_month_idx = stockdata_month_grouped.day.transform(max) == stockdata['day']
     stockdata_end_of_month = stockdata[end_of_month_idx].copy(True)
+    endMR = time.time()
+    if debug: print('Process time to GetMonthlyReturns groupby: %s' %(endMR - startMR))    
+    startMR = time.time()
     MakePlotMulti(stockdata_end_of_month.index, yaxis=[(stockdata_month_grouped['openclosepct']).apply(gmean)-1,(stockdata_month_grouped['closeopenpct']).apply(gmean)-1,(stockdata_month_grouped['daily_return']).apply(gmean)-1], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_monthly_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    endMR = time.time()
+    if debug: print('Process time to GetMonthlyReturns draw: %s' %(endMR - startMR))
     
     stockdata_end_of_month.loc[:,'monthly_return'] = stockdata_end_of_month.adj_close.pct_change(periods=1)
     stockdata_end_of_month_avg = stockdata_end_of_month.groupby('month').mean()
@@ -93,6 +104,7 @@ def GetMonthlyReturns(stockdatain,ticker):
     stockdata_end_of_week_avg = stockdata_end_of_week.groupby('weekofyear').mean()
     stockdata_end_of_week_std = stockdata_end_of_week.groupby('weekofyear').std()
     stockdata_end_of_week_avg['signif'] = stockdata_end_of_week_avg.weekly_return / stockdata_end_of_week_std.weekly_return
+
     
     MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.weekly_return, xname='Week of year',yname='Avg. Weekly Returns',saveName='RETURNS_avg_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     MakePlot(stockdata_end_of_week_std.index, stockdata_end_of_week_std.weekly_return, xname='Week of year',yname='Std Dev. Weekly Returns',saveName='RETURNS_stddev_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
@@ -107,31 +119,37 @@ def GetMonthlyReturns(stockdatain,ticker):
     MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_avg.signif, xname='Day of week',yname='Signif. Daily Returns',saveName='RETURNS_signif_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     
     # compute day of month return.
+    startMR = time.time()
     stockdata_day_of_month_avg = stockdata.groupby('day').mean()
     stockdata_day_of_month_std = stockdata.groupby('day').std()
     stockdata_day_of_month_avg['signif'] = stockdata_day_of_month_avg.daily_return / stockdata_day_of_month_std.daily_return
     MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg.daily_return, xname='Day of month',yname='Avg. Daily Returns',saveName='RETURNS_avg_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     MakePlot(stockdata_day_of_month_std.index, stockdata_day_of_month_std.daily_return, xname='Day of month',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg['signif'], xname='Day of month',yname='Signif. Daily Returns',saveName='RETURNS_signif_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    endMR = time.time()
+    if debug: print('Process time to GetMonthlyReturns plots day of month: %s' %(endMR - startMR))
     
-    # overnight vs daily
+    # overnight vs daily ...gmean is slow, so could be improved!
+    startMR = time.time()
     stockdata['openclosepctma20'] = ((stockdata['openclosepct']+1).rolling(20).apply(gmean)-1)
     stockdata['closeopenpctma20'] = ((stockdata['closeopenpct']+1).rolling(20).apply(gmean)-1)
     stockdata['daily_returnma20'] = ((stockdata['daily_return']+1).rolling(20).apply(gmean)-1)
-    stockdata['openclosepctmavg20'] = stockdata['openclosepct'].rolling(20).mean()
-    stockdata['closeopenpctmavg20'] = stockdata['closeopenpct'].rolling(20).mean()
-    stockdata['daily_returnmavg20'] = stockdata['daily_return'].rolling(20).mean()
-    stockdata['openclosepctma5'] = ((stockdata['openclosepct']+1).rolling(5).apply(gmean)-1)
-    stockdata['closeopenpctma5'] = ((stockdata['closeopenpct']+1).rolling(5).apply(gmean)-1)
-    stockdata['daily_returnma5'] = ((stockdata['daily_return']+1).rolling(5).apply(gmean)-1)
-    stockdata['openclosepctmag5'] = stockdata['openclosepct'].rolling(5).mean()
-    stockdata['closeopenpctmag5'] = stockdata['closeopenpct'].rolling(5).mean()
-    stockdata['daily_returnmag5'] = stockdata['daily_return'].rolling(5).mean()
-    
+    #stockdata['openclosepctma5'] = ((stockdata['openclosepct']+1).rolling(5).apply(gmean)-1)
+    #stockdata['closeopenpctma5'] = ((stockdata['closeopenpct']+1).rolling(5).apply(gmean)-1)
+    #stockdata['daily_returnma5'] = ((stockdata['daily_return']+1).rolling(5).apply(gmean)-1)
+    endMR = time.time()
+    if debug: print('Process time to GetMonthlyReturns gmean: %s' %(endMR - startMR))
+    #stockdata['openclosepctmavg20'] = stockdata['openclosepct'].rolling(20).mean()
+    #stockdata['closeopenpctmavg20'] = stockdata['closeopenpct'].rolling(20).mean()
+    #stockdata['daily_returnmavg20'] = stockdata['daily_return'].rolling(20).mean()
+    #stockdata['openclosepctmag5'] = stockdata['openclosepct'].rolling(5).mean()
+    #stockdata['closeopenpctmag5'] = stockdata['closeopenpct'].rolling(5).mean()
+    #stockdata['daily_returnmag5'] = stockdata['daily_return'].rolling(5).mean()
+
     stockdata_1y = GetTimeSlot(stockdata, days=365)
     MakePlotMulti(stockdata.index, yaxis=[stockdata['openclosepctma20'],stockdata['closeopenpctma20'],stockdata['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma20'],stockdata_1y['closeopenpctma20'],stockdata_1y['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_oneyear_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma5'],stockdata_1y['closeopenpctma5'],stockdata_1y['daily_returnma5']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA5',saveName='RETURNS_returns_daynight_oneyear_ma5_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    #MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma5'],stockdata_1y['closeopenpctma5'],stockdata_1y['daily_returnma5']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA5',saveName='RETURNS_returns_daynight_oneyear_ma5_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     
     MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepct'],stockdata_1y['closeopenpct'],stockdata_1y['daily_return']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_oneyear_noMA_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
     
@@ -519,7 +537,11 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
          plttext - string
                 Label for the plot
     """
+    startM = time.time()    
     GetMonthlyReturns(my_stock_info_cp,ticker)
+    endM = time.time()
+    if debug: print('Process time to process LongTermPlots Monthly returns: %s' %(endM - startM))
+    startM = time.time()        
     my_stock_info = my_stock_info_cp.copy(True)
     date_diff = 5*365
     my_stock_info5y = GetTimeSlot(my_stock_info, days=date_diff)
@@ -554,6 +576,9 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
     daily_prices_180d = GetTimeSlot(my_stock_info, days=180)
     daily_prices_365d = GetTimeSlot(my_stock_info, days=365)
     daily_prices_3y   = GetTimeSlot(my_stock_info, days=3*365)
+    endM = time.time()
+    if debug: print('Process time to process LongTermPlots draw: %s' %(endM - startM))
+    startM = time.time()
     if len(daily_prices_60d)>10:
         FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
         FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
@@ -571,7 +596,8 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
                         ticker=ticker,outname='60dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],ratioName=ratioName)
             FitWithBand(my_stock_info5y.index,my_stock_info5y[['adj_close','high','low','open','close']],
                         ticker=ticker,outname='5ysandpcomparison'+ratioName,spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],ratioName=ratioName)
-            
+    endM = time.time()
+    if debug: print('Process time to process LongTermPlots bands: %s' %(endM - startM))
 def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],ratioName='SPY'):
     """
     my_index : datetime array
@@ -584,11 +610,15 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     spy_comparison : array : array of prices to use as a reference. don't use when None
     ratioName : str : ratio stock ticker  
 """
+    startBa = time.time()    
     prices = arr_prices[price_key]
     x = mdates.date2num(my_index)
-    xx = np.linspace(x.min(), x.max(), 1000)
+    xx = np.linspace(x.min(), x.max(), min(200,len(arr_prices)))
     dd = mdates.num2date(xx)
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand line space: %s' %(endBa - startBa))
 
+    startBa = time.time()
     # prepare a spy comparison
     if len(spy_comparison)>0:
         arr_prices = arr_prices.copy(True)
@@ -600,20 +630,29 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         arr_prices.loc[:,'high'] /= (arr_prices.high_spy / arr_prices.high_spy[-1])
         arr_prices.loc[:,'low'] /= (arr_prices.low_spy / arr_prices.low_spy[-1])
         arr_prices.loc[:,'open'] /= (arr_prices.open_spy / arr_prices.open_spy[-1])
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand normalization: %s' %(endBa - startBa))
 
     # perform the fit
+    startBa = time.time()    
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand fit: %s' %(endBa - startBa))
 
     # create an error band
     diff = prices - p4(x)
     stddev = diff.std()
 
+    startBa = time.time()
     pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
     pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
     pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
     pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
     pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand bands: %s' %(endBa - startBa))
+    startBa = time.time()        
     if len(diff)>0:
         if debug: print('Time period: %s for ticker: %s' %(outname,ticker))
         coverage_txt='Percent covered\n'
@@ -623,40 +662,47 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         for i in range(0,5):
             if debug: print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
             coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand bands array: %s' %(endBa - startBa))
 
+    startBa = time.time()        
     fig, cx = plt.subplots()
 
     cx.errorbar(dd, p4(xx),
              np.ones(len(dd))*2.0*stddev,
-             #color='k',
+             color='y',
              ecolor='y',
              alpha=0.05,
+                elinewidth=xx[1]-xx[0],
              #label="4 sigma "
                     )
     cx.errorbar(dd, p4(xx),
              np.ones(len(dd))*1.5*stddev,
-             #color='k',
+             color='y',
              ecolor='y',
              alpha=0.1,
+                elinewidth=xx[1]-xx[0],
              #label="3 sigma "
                     )
     cx.errorbar(dd, p4(xx),
              np.ones(len(dd))*1.0*stddev,
              marker='.',
-             color='k',
+             color='g',
              ecolor='g',
              alpha=0.15,
              markerfacecolor='b',
              #label="2 sigma",
              capsize=0,
+                elinewidth=xx[1]-xx[0],
              linestyle='')
     cx.errorbar(dd, p4(xx),
              np.ones(len(dd))*0.5*stddev,
              marker='.',
-             color='k',
+             color='g',
              ecolor='g',
              alpha=0.2,
              markerfacecolor='b',
+                elinewidth=xx[1]-xx[0],
              #label="1 sigma",
              capsize=0,
              linestyle='')
@@ -681,6 +727,8 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
     fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
     if not draw: plt.close()
+    endBa = time.time()
+    if debug: print('Process time to process FitWithBand drawing: %s' %(endBa - startBa))    
         
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     """ DrawPlots - Draw all plots of the stock along with market comparisons
@@ -697,9 +745,12 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
 
     if not draw:
         plt.ioff()
-
+    startC = time.time()    
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info,title='Support Lines')
+    startE = time.time()    
     MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve')
+    endE = time.time()
+    if debug: print('Process time to copp: %s' %(endE - startE))
     MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker),title='Sharpe Ratio')
     MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker),title='Beta')
     MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title='Alpha')
@@ -726,19 +777,23 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
         MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['bullPower'],my_stock_info['bearPower']], colors=['green','red'], labels=['Bull Power','Bear Power'], xname='Date',yname='Bull/Bear Power',saveName='bullbear%s_%s' %(plttext,ticker),title='Bull/Bear Power')
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20'],my_stock_info['BolLower'],my_stock_info['BolUpper']], colors=['red','blue','green','magenta','cyan','cyan'], labels=['Close Price','VWAP10','VWAP14','VWAP20','VWAPBol-','VWAPBol+'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic')
-
+    endC = time.time()
+    if debug: print('Process time to start plots: %s' %(endC - startC))
+    startC = time.time()
     # plot volume
     PlotVolume(my_stock_info, ticker)
     # Plot timing indicators
     PlotTiming(my_stock_info, ticker)
-
+    endC = time.time()
+    if debug: print('Process time to volume: %s' %(endC - startC))
+    
     # plot the zigzag
     start = time.time()
     if len(my_stock_info.adj_close)>1:
         plot_pivots(my_stock_info.index, my_stock_info.adj_close, saveName='zigzag%s_%s' %(plttext,ticker), xname='Date', yname='Closing Price')
     end = time.time()
     if debug: print('Process time to find pivots: %s' %(end - start))
-    
+    startC = time.time()        
     # plot Ichimoku Cloud
     plt.cla()
     # Plot closing price and parabolic SAR
@@ -781,8 +836,12 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if doPDFs: plt.savefig(outdir+'monthlymarket%s_%s.pdf' %(plttext,ticker))
     plt.savefig(outdir+'monthlymarket%s_%s.png' %(plttext,ticker))
     if not draw: plt.close()
-        
+    endC = time.time()
+    if debug: print('Process time to draw monthy: %s' %(endC - startC))        
+    startC = time.time()        
     CandleStick(my_stock_info,ticker)
+    endC = time.time()
+    if debug: print('Process time to candlestick: %s' %(endC - startC))    
     # collect all of the chart signals
     chartSignals = []
     if len(my_stock_info)>0:
@@ -858,12 +917,12 @@ if len(spy)==0:
     print('ERROR - empy info %s' %ticker)
 spy['daily_return']=spy['adj_close'].pct_change(periods=1)
 try:
-    AddInfo(spy, spy)
+    spy = AddInfo(spy, spy)
 except ValueError:
     print('cleaning table')
     sqlcursor.cursor().execute('DROP TABLE SPY')
     spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
-    AddInfo(spy, spy)
+    spy = AddInfo(spy, spy)
 spy_1year = GetTimeSlot(spy)
 DrawPlots(spy_1year,'SPY',spy_1year)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
@@ -888,6 +947,7 @@ if doStocks:
         for at in addt:
             runList+=[[at,0,0,'NYSE','']]
     for s in runList:
+        startT = time.time()
         if args.filter!='':
             if s[0]!=args.filter:
                 continue
@@ -899,13 +959,22 @@ if doStocks:
             time.sleep(56)
         print(s[0])
         sys.stdout.flush()
-        
-        tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j, hoursdelay=15)
 
+        startR = time.time()
+        tstock_info,j=ConfigTable(s[0], sqlcursor,ts,readType, j, hoursdelay=15)
+        endR = time.time()
+        if debug: print('Process time to read SQL: %s' %(endR - startR))
+        
         if len(tstock_info)==0:
             continue
+        # shorten the info
+        #tstock_info = GetTimeSlot(tstock_info, days=6*365)
+        
         # draw before we shorten this to 1 year
+        startL = time.time()
         LongTermPlot(tstock_info,spy,ticker=s[0])
+        endL = time.time()
+        if debug: print('Process time to add long term info: %s' %(endL - startL))
         if s[0] in ['SPY','SLV','GLD' ]:
             LongTermPlot(tstock_info,gld,ticker=s[0],ratioName='GLD')
             LongTermPlot(tstock_info,slv,ticker=s[0],ratioName='SLV')
@@ -943,7 +1012,7 @@ if doStocks:
         print(tstock_info)
         try:
             start = time.time()
-            AddInfo(tstock_info, spy)
+            tstock_info = AddInfo(tstock_info, spy, debug=debug)
             end = time.time()
             if debug: print('Process time to add info: %s' %(end - start))
         except (ValueError,KeyError):
@@ -959,7 +1028,8 @@ if doStocks:
             chartSignals = chartSignals.groupby(chartSignals['Chart Signal']).sum().reset_index()
 
         end = time.time()
-        print('Process time to add draw: %s' %(end - start))
+        if debug: print('Process time to add draw: %s' %(end - start))
+        print('Process time to add process: %s' %(end - startT))        
         os.chdir(outdir)
         b.makeHTML('%s.html' %s[0],s[0],filterPattern='*_%s' %s[0],describe=s[4], chartSignals=chartSignals)
         os.chdir(cdir)    
@@ -997,7 +1067,7 @@ if doETFs:
 
         try:
             start = time.time()
-            AddInfo(estock_info, spy)
+            estock_info = AddInfo(estock_info, spy)
             end = time.time()
             if debug: print('Process time to add info: %s' %(end - start))
         except ValueError:

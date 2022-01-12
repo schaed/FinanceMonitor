@@ -516,7 +516,10 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     stock['mfi_bill_ana']=techindicators.mfi_bill_ana(stock.high,stock.low,stock.volume)
     end = time.time() 
     if debug: print('Process time to mfi bill: %s' %(end - start))
+    start = time.time()    
     stock['sharpe']=techindicators.sharpe(stock['daily_return'],30) # generally above 1 is good
+    end = time.time() 
+    if debug: print('Process time to sharpe: %s' %(end - start))    
     start = time.time()
     stock['cci']=techindicators.cci(stock['high'],stock['low'],stock['close'],20) 
     stock['jaws'],stock['teeth'],stock['lips']=techindicators.alligator(stock['adj_close'],5,8,13)
@@ -526,6 +529,9 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     stock['macd'],stock['macdsignal']=techindicators.macd(stock['adj_close'],12,26,9)
     stock['bop']=techindicators.bop(stock['high'],stock['low'],stock['close'],stock['open'],14)
     #stock['pdmd'],stock['ndmd'],stock['adx']=techindicators.adx(stock['high'],stock['low'],stock['close'],14)
+    end = time.time() 
+    if debug: print('Process time to bop etc: %s' %(end - start))
+    start = time.time()
     stock['HT_DCPERIOD']=talib.HT_DCPERIOD(stock['adj_close']) 
     stock['HT_DCPHASE']=talib.HT_DCPHASE(stock['adj_close']) 
     stock['HT_TRENDMODE']=talib.HT_TRENDMODE(stock['adj_close']) 
@@ -534,10 +540,16 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
     stock['willr']=talib.WILLR(stock['high'],stock['low'],stock['close'],14) 
     stock['ultosc']=talib.ULTOSC(stock['high'],stock['low'],stock['close'],timeperiod1=7, timeperiod2=14, timeperiod3=28) 
-    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14) 
+    stock['adx']=talib.ADX(stock['high'],stock['low'],stock['close'],14)
+    stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)    
+    end = time.time()
+    if debug: print('Process time to talib: %s' %(end - start))
+    start = time.time()
     stock['aroonUp'],stock['aroonDown'],stock['aroon']=techindicators.aroon(stock['high'],stock['low'],25)
-    stock['senkou_spna_A'],stock['senkou_spna_B'],stock['chikou_span']=techindicators.IchimokuCloud(stock['high'],stock['low'],stock['adj_close'],9,26,52)
-    stock['SAR'] = talib.SAR(stock.high, stock.low, acceleration=0.02, maximum=0.2)
+    end = time.time()
+    if debug: print('Process time to aroon: %s' %(end - start))
+    start = time.time()
+    stock['senkou_spna_A'],stock['senkou_spna_B'],stock['chikou_span']=techindicators.IchimokuCloud(stock['high'],stock['low'],stock['adj_close'],9,26,52)    
     stock['vwap14']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],14)
     stock['vwap10']=techindicators.vwap(stock['high'],stock['low'],stock['close'],stock['volume'],10)
     # centering on the date in question
@@ -559,16 +571,25 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
         stock['yearly_return']=stock['adj_close']
     else:
         stock['yearly_return']=stock['adj_close']/stock_1y['adj_close'][0]-1
-    stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
+    end = time.time()
+    if debug: print('Process time to other: %s' %(end - start))        
+    #dfnew = pd.DataFrame(talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0),columns=['CDLABANDONEDBABY'])
+    #stock = pd.concat([stock,dfnew],axis=1)
+    #stock.update(dfnew)
+    #print(stock)
+    #stock['CDLABANDONEDBABY']=talib.CDLABANDONEDBABY(stock['open'],stock['high'],stock['low'],stock['close'], penetration=0)
+    start = time.time()    
     if len(stock)>2:
-        #indicators = []
+        indicators = []
         for ky in talib.__dict__.keys():
             if 'CDL' in ky and not 'stream' in ky:
-                stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
-                #indicators+=[talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])]
-        #pd.concat(indicators,axis=1)
-    end = time.time() 
-
+                #stock[ky]=talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close'])
+                indicators+=[pd.DataFrame(talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close']),columns=[ky])]
+                #stock.update(pd.DataFrame(talib.__dict__[ky](stock['open'],stock['high'],stock['low'],stock['close']),columns=[ky]))
+        stock=pd.concat([stock]+indicators,axis=1)
+    end = time.time()
+    if debug: print('Process time to talib: %s' %(end - start))
+    start = time.time()
     if AddSupport and  len(stock_1y['adj_close'])>0:
         # compute the last years support levels
         stock['downSL']=0
@@ -584,9 +605,11 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
             a = np.array(tech_levels,dtype=float)/adj_close-1.0
             stock.loc[stock.index==i,['downSL']] = np.max(a[a<0.0],initial=-0.25)
             stock.loc[stock.index==i,['upSL']] = np.min(a[a>0.0],initial=0.25)
-    
-    if debug: print('Process time to new: %s' %(end - start))
-
+    end = time.time()    
+    if debug: print('Process time to support lines: %s' %(end - start))
+    #print(stock)
+    #print(stock.columns)
+    return stock
 # collect the upcoming earnings info
 # fd in the fundamentals data api
 # ReDownload: newly downloads the file when True.
@@ -702,9 +725,9 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
         return []
     try:
         if ticker=='SPY':
-            AddInfo(tstock_info,tstock_info,debug=debug)
+            tstock_info = AddInfo(tstock_info,tstock_info,debug=debug)
         else:
-            AddInfo(tstock_info,spy,debug=debug)
+            tstock_info = AddInfo(tstock_info,spy,debug=debug)
     except (ValueError,KeyError) as e:
         print("Testing multiple exceptions. {}".format(e.args[-1]))
         print('Error getting info for %s' %ticker)
@@ -737,10 +760,12 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
                     estimateEPS = prev_earnings[prev_earnings['ticker']==ticker]['estimatedEPS'].dropna().values[-1]
             except:
                 pass
-    
-    for a in ['open', 'high', 'low', 'close', 'adj_close', 'volume', 'dividendamt', 'splitcoef', 'pos_volume', 'neg_volume', 'sma10', 'sma20', 'sma50', 'sma100', 'sma200', 'rstd10', 'rsi10', 'cmf', 'BolLower', 'BolCenter', 'BolUpper', 'KeltLower', 'KeltCenter', 'KeltUpper', 'copp','daily_return_stddev14', 'beta', 'alpha', 'rsquare', 'sharpe', 'cci', 'stochK', 'stochD', 'obv', 'force', 'macd', 'macdsignal', 'bop', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE', 'HT_SINE', 'HT_SINElead', 'HT_PHASORphase', 'HT_PHASORquad', 'adx', 'willr', 'ultosc', 'aroonUp', 'aroonDown', 'aroon', 'senkou_spna_A', 'senkou_spna_B', 'chikou_span', 'SAR', 'vwap14', 'vwap10', 'vwap20', 'chosc', 'market', 'corr14']:
-        tstock_info[a+'_daybefore'] = tstock_info[a].shift(1)
 
+    extrainfo = []
+    for a in ['open', 'high', 'low', 'close', 'adj_close', 'volume', 'dividendamt', 'splitcoef', 'pos_volume', 'neg_volume', 'sma10', 'sma20', 'sma50', 'sma100', 'sma200', 'rstd10', 'rsi10', 'cmf', 'BolLower', 'BolCenter', 'BolUpper', 'KeltLower', 'KeltCenter', 'KeltUpper', 'copp','daily_return_stddev14', 'beta', 'alpha', 'rsquare', 'sharpe', 'cci', 'stochK', 'stochD', 'obv', 'force', 'macd', 'macdsignal', 'bop', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE', 'HT_SINE', 'HT_SINElead', 'HT_PHASORphase', 'HT_PHASORquad', 'adx', 'willr', 'ultosc', 'aroonUp', 'aroonDown', 'aroon', 'senkou_spna_A', 'senkou_spna_B', 'chikou_span', 'SAR', 'vwap14', 'vwap10', 'vwap20', 'chosc', 'market', 'corr14']:
+        #tstock_info[a+'_daybefore'] = tstock_info[a].shift(1)
+        extrainfo+=[pd.DataFrame(tstock_info[a].shift(1),columns=[a+'_daybefore'])]
+        
     # compute the last years support levels
     tstock_info['downSL']=0
     tstock_info['upSL']=0
@@ -757,8 +782,8 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
         a = np.array(tech_levels,dtype=float)/adj_close-1.0
         tstock_info.loc[tstock_info.index==i,['downSL']] = np.max(a[a<0.0],initial=-0.25)
         tstock_info.loc[tstock_info.index==i,['upSL']] = np.min(a[a>0.0],initial=0.25)
-    tstock_info['estimatedEPS'] = estimateEPS
-
+    #extrainfo+=[pd.DataFrame(estimateEPS,columns=['estimatedEPS'])]
+    tstock_info['estimatedEPS']=estimateEPS
     # If true, then we drop all of the older earnings and add positive and negative variations of the adj_close. I think this can be iterpreted as what a buy in would be.
     if addRangeOpens:
         tstock_info = tstock_info[-1:]
@@ -780,10 +805,12 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
     
     # add some extra info
     for c in ['sma50','sma20','sma200']:
-        tstock_info[c+'r']=tstock_info.adj_close/tstock_info[c]
+        #tstock_info[c+'r']=tstock_info.adj_close/tstock_info[c]
+        extrainfo+=[pd.DataFrame(tstock_info.adj_close/tstock_info[c],columns=[c+'r'])]
     for c in ['fiveday_prior_vix','thrday_prior_vix','twoday_prior_vix','SAR','estimatedEPS']:
-        tstock_info[c+'r']=tstock_info[c]/tstock_info.adj_close
-    
+        #tstock_info[c+'r']=tstock_info[c]/tstock_info.adj_close
+        extrainfo+=[pd.DataFrame(tstock_info[c]/tstock_info.adj_close,columns=[c+'r'])]
+    tstock_info = pd.concat([tstock_info]+extrainfo,axis=1)
     return tstock_info
 
 

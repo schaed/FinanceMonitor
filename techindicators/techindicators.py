@@ -7,6 +7,8 @@ import matplotlib.dates as mpl_dates
 from numpy_ext import rolling_apply
 import scipy as sp
 import scipy.fftpack
+import numba
+
 #
 # Simple Moving Average
 # a is an array of prices, b is a period for averaging
@@ -494,8 +496,10 @@ def adx(a,b,c,d, sameSize=True):
     
     return p,n,adx
 
+@numba.jit
 def getmaxposition(j):
     return len(j) - np.argmax(j) -1
+@numba.jit
 def getminposition(j):
     return len(j) - np.argmin(j) -1
 # 
@@ -503,8 +507,8 @@ def getminposition(j):
 # a is array of high prices, b is array of low prices
 # c is number of periods for calculation
 def aroon(a,b,c, sameSize=True):
-    up   = 100.0*(1.0 - (a.rolling(c).apply(getmaxposition))/c)
-    down = 100.0*(1.0 - (a.rolling(c).apply(getminposition))/c)
+    up   = 100.0*(1.0 - (a.rolling(c).apply(getmaxposition,engine='numba',raw=True))/c)
+    down = 100.0*(1.0 - (a.rolling(c).apply(getminposition,engine='numba',raw=True))/c)
     if not sameSize:
         up = up[c:]
         down = down[c:]
