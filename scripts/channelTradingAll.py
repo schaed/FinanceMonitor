@@ -667,45 +667,64 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
 
     startBa = time.time()        
     fig, cx = plt.subplots()
-
-    cx.errorbar(dd, p4(xx),
-             np.ones(len(dd))*2.0*stddev,
-             color='y',
-             ecolor='y',
-             alpha=0.05,
-                elinewidth=xx[1]-xx[0],
-             #label="4 sigma "
-                    )
-    cx.errorbar(dd, p4(xx),
-             np.ones(len(dd))*1.5*stddev,
-             color='y',
-             ecolor='y',
-             alpha=0.1,
-                elinewidth=xx[1]-xx[0],
-             #label="3 sigma "
-                    )
-    cx.errorbar(dd, p4(xx),
-             np.ones(len(dd))*1.0*stddev,
-             marker='.',
-             color='g',
-             ecolor='g',
-             alpha=0.15,
-             markerfacecolor='b',
-             #label="2 sigma",
-             capsize=0,
-                elinewidth=xx[1]-xx[0],
-             linestyle='')
-    cx.errorbar(dd, p4(xx),
-             np.ones(len(dd))*0.5*stddev,
-             marker='.',
-             color='g',
-             ecolor='g',
-             alpha=0.2,
-             markerfacecolor='b',
-                elinewidth=xx[1]-xx[0],
-             #label="1 sigma",
-             capsize=0,
-             linestyle='')
+    #looks nice but very slow 
+    plt.fill_between(dd, p4(xx), p4(xx)+ np.ones(len(dd))*2.0*stddev,
+                 color='y', alpha=0.25)
+    plt.fill_between(dd, p4(xx), p4(xx)- np.ones(len(dd))*2.0*stddev,
+                 color='y', alpha=0.25)
+    plt.fill_between(dd, p4(xx), p4(xx)+ np.ones(len(dd))*1.5*stddev,
+                 color='y', alpha=0.45)
+    plt.fill_between(dd, p4(xx), p4(xx)- np.ones(len(dd))*1.5*stddev,
+                 color='y', alpha=0.45)
+    plt.fill_between(dd, p4(xx), p4(xx)+ np.ones(len(dd))*1.0*stddev,
+                 color='g', alpha=0.25)
+    plt.fill_between(dd, p4(xx), p4(xx)- np.ones(len(dd))*1.0*stddev,
+                 color='g', alpha=0.25)
+    plt.fill_between(dd, p4(xx), p4(xx)+ np.ones(len(dd))*0.5*stddev,
+                 color='g', alpha=0.45)
+    plt.fill_between(dd, p4(xx), p4(xx)- np.ones(len(dd))*0.5*stddev,
+                 color='g', alpha=0.45)
+   #linescale=1.0
+    #if len(dd)<100:
+    #    linescale=10.0
+    #cx.errorbar(dd, p4(xx),
+    #         np.ones(len(dd))*2.0*stddev,
+    #         color='y',
+    #         ecolor='y',
+    #         alpha=0.05,
+    #            elinewidth=linescale*(xx[1]-xx[0]),
+    #         #label="4 sigma "
+    #                )
+    #cx.errorbar(dd, p4(xx),
+    #         np.ones(len(dd))*1.5*stddev,
+    #         color='y',
+    #         ecolor='y',
+    #         alpha=0.1,
+    #            elinewidth=linescale*(xx[1]-xx[0]),
+    #         #label="3 sigma "
+    #                )
+    #cx.errorbar(dd, p4(xx),
+    #         np.ones(len(dd))*1.0*stddev,
+    #         marker='.',
+    #         color='g',
+    #         ecolor='g',
+    #         alpha=0.15,
+    #         markerfacecolor='b',
+    #         #label="2 sigma",
+    #         capsize=0,
+    #            elinewidth=linescale*(xx[1]-xx[0]),
+    #         linestyle='')
+    #cx.errorbar(dd, p4(xx),
+    #         np.ones(len(dd))*0.5*stddev,
+    #         marker='.',
+    #         color='g',
+    #         ecolor='g',
+    #         alpha=0.2,
+    #         markerfacecolor='b',
+    #            elinewidth=linescale*(xx[1]-xx[0]),
+    #         #label="1 sigma",
+    #         capsize=0,
+    #         linestyle='')
     cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
 
     plt.plot(arr_prices.high,color='red',label='High')

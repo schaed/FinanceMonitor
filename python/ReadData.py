@@ -338,13 +338,13 @@ def runTicker(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, limit=
         fouryao = (today + datetime.timedelta(days=-364*4.5)).strftime("%Y-%m-%d")
         try:
             trade_days = api.get_bars(ticker, timeframe, fouryao, d1, 'raw',limit=limit).df
-        except (TypeError) as e:
+        except (TypeError,requests.exceptions.HTTPError) as e:
             print("Testing multiple exceptions. {}".format(e.args[-1]))
     elif start!=None and end!=None:
         #start_date = ''
         try:
             trade_days = api.get_bars(ticker, timeframe, start=start, end=end, adjustment='raw',limit=limit).df
-        except (TypeError) as e:
+        except (TypeError,requests.exceptions.HTTPError) as e:
             print("Testing multiple exceptions. {}".format(e.args[-1]))
     if type(trade_days) is not None and len(trade_days)>0:
         trade_days.index = pd.to_datetime(trade_days.index,utc=True).tz_convert(NY)

@@ -129,7 +129,8 @@ ticker='SPY'
 #ticker='GLD'
 #ticker='HAL'
 #ticker='GUSH'
-ticker='AVCT'
+#ticker='AVCT'
+#ticker='RZV'
 spy = runTicker(api,ticker)
 stock_info=None
 spy=None
@@ -157,13 +158,21 @@ spy['weekofyear']=spy.index.isocalendar().week
 spy['is_month_end']=spy.index.is_month_end
 print(spy[['open','close','daily_return','adj_close','openclosepct','closeopenpct']])
 
+# returns near the holiday
+spy_december = spy[spy.month==12]
+print(spy_december.groupby('day')['daily_return'].apply(gmean)-1)
+
 # compute monthly returns
-spy_month_grouped = spy.groupby(['year','month'])
-end_of_month_idx = spy_month_grouped.day.transform(max) == spy['day']
-spy_end_of_month = spy[end_of_month_idx]
+spy_sixth = spy[spy.day<10]
+spy_month_grouped = spy_sixth.groupby(['year','month'])
+
+#spy_month_grouped = spy.groupby(['year','month'])
+end_of_month_idx = spy_month_grouped.day.transform(max) == spy_sixth['day']
+spy_end_of_month = spy_sixth[end_of_month_idx]
 MakePlotMulti(spy_end_of_month.index, yaxis=[(spy_month_grouped['openclosepct']).apply(gmean)-1,(spy_month_grouped['closeopenpct']).apply(gmean)-1,(spy_month_grouped['daily_return']).apply(gmean)-1], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName=ticker+'_returns_daynight_monthly', hlines=[],title='',doSupport=False,my_stock_info=None)
 
 spy_end_of_month['monthly_return'] = spy_end_of_month.adj_close.pct_change(periods=1)
+print(spy_end_of_month)
 spy_end_of_month_avg = spy_end_of_month.groupby('month').mean()
 spy_end_of_month_std = spy_end_of_month.groupby('month').std()
 spy_end_of_month_avg['signif'] = spy_end_of_month_avg.monthly_return / spy_end_of_month_std.monthly_return

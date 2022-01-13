@@ -190,7 +190,7 @@ print(spy)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 spy_info = GetPastPerformance(spy)
 # build html table
-columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','Max DrawDown','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','Pred','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Insider Own','Inst Own','Short Float','Rel Volume']
+columns = ['Ticker','% Change','% Change 30d','% Change 180d','% Change 1y','% Change 30d-SPY','% Change 1y-SPY','Corr. w/SPY','close','rsi10','CMF','sma10','sma20','sma100','sma200','rstd10','CCI','ChaikinOsc','Force Idx','Pred','alpha','beta','sharpe','daily_return_stddev14','rsquare','vwap10','SPY Corr 14d','Max DrawDown','Insider Own','Inst Own','Short Float','Rel Volume']
 entries=[]
 entries+=[formatInput(spy, 'SPY',spy_info,spy=spy)]
 j=0
