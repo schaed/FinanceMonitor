@@ -140,7 +140,7 @@ if __name__ == "__main__":
             sns={}
             try:
                 sns = api.get_snapshots(list(df_store_data['ticker'].unique()))
-            except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
+            except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError,requests.exceptions.ReadTimeout) as e:
                     print("Testing multiple exceptions for snapshots. {}".format(e.args[-1]))
                     continue
             curr_results = pd.DataFrame(columns=['ticker','quote_ap','quote_bp','trade','bar_close','bar_high','bar_low','bar_open'])
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                     #pass
                     #print(aapl_asset) # this is info about it being tradeable
                     #print(aapl_asset.shortable)
-                except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
+                except (alpaca_trade_api.rest.APIError,requests.exceptions.HTTPError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError,requests.exceptions.ReadTimeout) as e:
                     print("Testing multiple exceptions for alpaca api. {}".format(e.args[-1]))
                     continue
                 
@@ -193,7 +193,7 @@ if __name__ == "__main__":
                         minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
                         hour_prices_thirty_spy    = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
                         minute_prices_thirty_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-                    except (alpaca_trade_api.rest.APIError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError) as e:
+                    except (alpaca_trade_api.rest.APIError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError,requests.exceptions.ReadTimeout) as e:
                         print("Testing multiple exceptions. {}".format(e.args[-1]))
                     continue
                 if type(hour_prices_thirty) == type([]) or type(minute_prices_thirty) == type([]):

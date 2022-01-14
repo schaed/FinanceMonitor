@@ -94,7 +94,7 @@ def makeHTML(outFileName,title,filterPattern='*',describe='',linkIndex=0, chartS
         outFile.write("</html>")
         
 #-----------------------------------------------------
-def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[], linkIndex=0):
+def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[], linkIndex=0,corrIndex=-1):
     
     with open(outFileName, 'w') as outFile:
         # write HTML header
@@ -165,7 +165,16 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         outFile.write("""<p>Last updated: {date}</p>
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
-        line='    	<div class="container">\n'
+        line=' <p><a href="patterns_correlations.html">All Correlations</a></p>\n'
+        line+=' <p><a href="patterns_correlations_60d.html">60day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_180d.html">180day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_365d.html">365day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_3y.html">3year significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_5y.html">5year significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_60dcomparison.html">60day ratio to SPY relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_365dcomparison.html">1year ratio to SPY relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_correlations_5yscomparison.html">5year ratio to SPY relative to the trend</a></p>\n'
+        line+='    	<div class="container">\n'
         line+='    	<h3>\n'
         line+='    	    <span>Stock/ETF Info Search</span>\n'
         line+='    	    <input type="search" placeholder="Search..." class="form-control search-input" data-table="customers-list"/>\n'
@@ -175,6 +184,8 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         # generate the title
         line+='   <tr>\n'
         my_map ={'alpha':'An alpha of 1.0 means the fund has outperformed its benchmark index by 1. Correspondingly, an alpha of -1.0 would indicate an underperformance of 1. For investors, the higher the alpha the better.',
+                 'Description':'Link to the trending significance compared to other sectors',
+                 'Ticker':'The ticker symbol',
                      'beta':'A beta of 1.0 indicates that the investments price will move in lock-step with the market. A beta of less than 1.0 indicates that the investment will be less volatile than the market. Correspondingly, a beta of more than 1.0 indicates that the investments price will be more volatile than the market. For example, if a fund portfolios beta is 1.2, it is theoretically 20 more volatile than the market.',
                      'sharpe':'Sharpe Ratios above 1.00 are generally considered good, as this would suggest that the portfolio is offering excess returns relative to its volatility. Having said that, investors will often compare the Sharpe Ratio of a portfolio relative to its peers. Therefore, a portfolio with a Sharpe Ratio of 1.00 might be considered inadequate if the competitors in its peer group have an average Sharpe Ratio above 1.00.',
                      'rsquare':'R squared: 85 and 100 is like ETF, 70 is not like ETF, The R2 is a measure of how well the the returns of a stock is explained by the returns of the benchmark. If your investment goal is to track a particular benchmark, then you should chose stocks that show a high R2 with respect to the benchmark. The R2 value of 1 means that the benchmark completely explains the stock returns, while a value of 0 means that the benchmark does not explain the stock returns.',
@@ -207,6 +218,8 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
                 except:
                     if ij==linkIndex:
                         line+='    <td><a href="%s.html">%s</a></td>\n' %(i,i)
+                    elif ij==corrIndex and len(e)>2:
+                        line+='    <td><a href="patterns_correlations_%s.html">%s</a></td>\n' %(e[1],i)
                     else:
                         line+='    <td>%s</td>\n' %(i)
                 ij+=1

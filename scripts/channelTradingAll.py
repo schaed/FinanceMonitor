@@ -63,8 +63,14 @@ def GetMonthlyReturns(stockdatain,ticker):
     endMR = time.time()
     if debug: print('Process time to GetMonthlyReturns preprocessing: %s' %(endMR - startMR))
     
-    # compute monthly returns
-    startMR = time.time()    
+    # compute monthly returns first for the mid month
+    startMR = time.time()
+    stockdata15 = stockdata[stockdata.day<16]
+    stockdata15_month_grouped = stockdata15.groupby(['year','month'])
+    end_of_month15_idx = stockdata15_month_grouped.day.transform(max) == stockdata15['day']
+    stockdata15_end_of_month = stockdata15[end_of_month15_idx].copy(True)
+    stockdata15_end_of_month.loc[:,'monthly_return'] = stockdata15_end_of_month.adj_close.pct_change(periods=1)
+    # for the first of the month
     stockdata_month_grouped = stockdata.groupby(['year','month'])
     end_of_month_idx = stockdata_month_grouped.day.transform(max) == stockdata['day']
     stockdata_end_of_month = stockdata[end_of_month_idx].copy(True)
@@ -85,7 +91,8 @@ def GetMonthlyReturns(stockdatain,ticker):
     
     # scatter plot
     MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_scatter_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
-    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_box_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
+    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month on the 1st',yname='Monthly Returns',saveName='RETURNS_box_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
+    MakePlot(stockdata15_end_of_month.month, stockdata15_end_of_month.monthly_return, xname='Month on the 15th',yname='Monthly Returns',saveName='RETURNS_box_monthly15_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
     
     ## remove unity
     stockdata['daily_return'] -=1

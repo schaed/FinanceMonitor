@@ -222,7 +222,7 @@ if __name__ == "__main__":
                                   'fit_diff_significance_180d':'180d Significance','fit_diff_significance_365d':'365d Significance',
                                   'fit_diff_significance_3y':'3y Significance','fit_diff_significance_5y':'5y Significance',
                                   'describe':'Description'},inplace=True)
-    df_store_data_out.drop(columns=['time_span'],inplace=True)
+    df_store_data_out.drop(columns=['time_span','5y Significance','3y Significance','365d Significance','60d Significance','180d Significance'],inplace=True)
     base.makeHTML('%s/patterns_correlations.html' %outdir,'Correlations',filterPattern='NONECOR',describe='Corr',linkIndex=0, chartSignals=df_store_data_out,float_format=lambda x: '%10.2f' % x,add_index=False)
     for t in df_store_data_out['Ticker'].unique():
         base.makeHTML('%s/patterns_correlations_%s.html' %(outdir,t),'Correlations',filterPattern='NONECOR',describe='Corr',linkIndex=0, chartSignals=df_store_data_out[df_store_data_out['Ticker']==t],float_format=lambda x: '%10.2f' % x,add_index=False)    

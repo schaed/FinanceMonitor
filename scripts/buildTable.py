@@ -267,4 +267,4 @@ for s in b.etfs:
     #    continue
     entries+=[[s[4]]+formatInput(stock, s[0],spy_info, spy=spy)]
     del stock;
-b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries,linkIndex=1)
+b.makeHTMLTable(outdir+'sectorinfo.html',title='Sector Performance',columns=columns,entries=entries,linkIndex=1,corrIndex=0)
