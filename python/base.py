@@ -166,14 +166,14 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
         line=' <p><a href="patterns_correlations.html">All Correlations</a></p>\n'
-        line+=' <p><a href="patterns_correlations_60d.html">60day significance relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_180d.html">180day significance relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_365d.html">365day significance relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_3y.html">3year significance relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_5y.html">5year significance relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_60dcomparison.html">60day ratio to SPY relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_365dcomparison.html">1year ratio to SPY relative to the trend</a></p>\n'
-        line+=' <p><a href="patterns_correlations_5yscomparison.html">5year ratio to SPY relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_60d.html">60day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_180d.html">180day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_365d.html">365day significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_3y.html">3year significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_5y.html">5year significance relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_60dcomparison.html">60day ratio to SPY relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_365dcomparison.html">1year ratio to SPY relative to the trend</a></p>\n'
+        line+=' <p><a href="patterns_5yscomparison.html">5year ratio to SPY relative to the trend</a></p>\n'
         line+='    	<div class="container">\n'
         line+='    	<h3>\n'
         line+='    	    <span>Stock/ETF Info Search</span>\n'
@@ -1030,7 +1030,7 @@ stock_list = [
     ['SGMA',10.0,500.0,'NASDAQ','SigmaTron International Inc'], # small junior mining...for litium
     ['KZR',10.0,500.0,'NASDAQ','Kezar Life Sciences Inc'], #
     ['PLBY',10.0,500.0,'NASDAQ','Playboy'], #
-    ['EYPT',10.0,500.0,'NASDAQ','Eyepoint Pharmaceuticals Inc'], #  
+    #['EYPT',10.0,500.0,'NASDAQ','Eyepoint Pharmaceuticals Inc'], #  
     #['PLS',10.0,500.0,'ASX','Pilbara Minerals Ltd'], # Pilbara Minerals is an Australian lithium and tantalite mining company
          #['NTDOY',30.0,80.0,'OTCMKTS'], # viacom 3.7% dividend         
         #['SPY',60.0,90.0], # spyder large cap mutual fund
@@ -1223,4 +1223,6 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['VBR',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Value Index Fund ETF'],
             ['VBK',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Growth Index Fund ETF'],
             ['VGT',90.0,150.0,'NYSEARCA','Vanguard information tech'], # Vanguard information tech. 1.4% dividend
+        ['JNYAX',90.0,150.0,'NASDAQ','JPM retirement fund'],
             ]
+#VFIFX - vanguard 2050 return

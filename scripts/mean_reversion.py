@@ -585,3 +585,4 @@ FitWithBand(minute_prices_10d.index,minute_prices_10d[['high','low','open','clos
 #### could try to do a local fit or look for a volume spike to look for a max or min, but this could be a 2nd step. decide what time period matters?
 # how do you know if the news matters?
 # 
+#JNYAX

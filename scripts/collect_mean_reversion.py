@@ -189,10 +189,10 @@ if __name__ == "__main__":
                 minute_prices_thirty_spy=[]
                 while len(hour_prices_thirty)==0 and len(minute_prices_thirty)==0 and len(hour_prices_thirty_spy)==0 and len(minute_prices_thirty_spy)==0:
                     try:
-                        hour_prices_thirty    = runTicker(api, ticker, timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
-                        minute_prices_thirty  = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
-                        hour_prices_thirty_spy    = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
-                        minute_prices_thirty_spy  = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
+                        hour_prices_thirty       = runTicker(api, ticker, timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
+                        minute_prices_thirty     = runTicker(api, ticker, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
+                        hour_prices_thirty_spy   = runTicker(api, 'SPY', timeframe=TimeFrame.Hour, start=thirty_days, end=d1)
+                        minute_prices_thirty_spy = runTicker(api, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
                     except (alpaca_trade_api.rest.APIError,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.ProtocolError,ConnectionResetError,requests.exceptions.ConnectionError,requests.exceptions.ReadTimeout) as e:
                         print("Testing multiple exceptions. {}".format(e.args[-1]))
                     continue
@@ -237,14 +237,16 @@ if __name__ == "__main__":
                         ticker=ticker,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],out_df = df_store_data)
         
                 # Spy comparison as well as mintue 10day comparison for minute and hour data
-                df_store_data=GetRMSData(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
-                        ticker=ticker,outname='10dhspycomparison', price_key='close',spy_comparison = hour_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True,out_df = df_store_data)
-                df_store_data=GetRMSData(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
-                        ticker=ticker,outname='10dh', price_key='close',out_df = df_store_data)
-                df_store_data=GetRMSData(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
-                        ticker=ticker,outname='10dmspycomparison', price_key='close',spy_comparison = minute_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True,out_df = df_store_data)
-                df_store_data=GetRMSData(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
-                    ticker=ticker,outname='10dm', price_key='close',out_df = df_store_data)
+                if len(hour_prices_10d)>0 and 'high' in hour_prices_10d:
+                    df_store_data=GetRMSData(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
+                                             ticker=ticker,outname='10dhspycomparison', price_key='close',spy_comparison = hour_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True,out_df = df_store_data)
+                    df_store_data=GetRMSData(hour_prices_10d.index,hour_prices_10d[['high','low','open','close','vwap','volume']],
+                                             ticker=ticker,outname='10dh', price_key='close',out_df = df_store_data)
+                if len(minute_prices_10d)>0 and 'high' in minute_prices_10d:
+                    df_store_data=GetRMSData(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
+                                         ticker=ticker,outname='10dmspycomparison', price_key='close',spy_comparison = minute_prices_spy_10d[['high','low','open','close','vwap','volume']],doJoin=True,out_df = df_store_data)
+                    df_store_data=GetRMSData(minute_prices_10d.index,minute_prices_10d[['high','low','open','close','vwap','volume']],
+                                             ticker=ticker,outname='10dm', price_key='close',out_df = df_store_data)
                 if debug: print(df_store_data)
             else: # if already loaded, then let's get the historical data
                 #sns = api.get_snapshots(['GOOGL','SPY','X'])

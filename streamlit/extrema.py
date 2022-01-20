@@ -13,23 +13,215 @@ from matplotlib.patches import StepPatch
 from matplotlib.backends.backend_agg import RendererAgg
 
 # collect data
-from ReadData import ALPACA_REST,runTicker
+from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot
 from alpaca_trade_api.rest import TimeFrame
 import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
+from plotly.subplots import make_subplots
+
+import matplotlib.dates as mdates
 
 import pytz
 import datetime
 est = pytz.timezone('US/Eastern')
 api = ALPACA_REST()
+ts = ALPHA_TIMESERIES()
+sqlcursor = SQL_CURSOR()
 
 matplotlib.use("agg")
 sns.set_style('darkgrid')
 
 _lock = RendererAgg.lock
+
+
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[], doRelative=False, doJoin=True, debug=False):
+    """
+    my_index : datetime array
+    price : array of prices or values
+    doMarker : bool : draw markers or if false draw line
+    ticker : str : ticker symbol name
+    outname : str : name of histogram to save as
+    poly_order : int : order of polynomial to fit
+    price_key : str : name of the price to entry to fit
+    spy_comparison : array : array of prices to use as a reference. don't use when None
+    doRelative : bool : compute the error bands with relative changes. Bigger when there is a big change in price
+    doJoin : bool : join the two arrays on matching times
+"""
+    prices = arr_prices[price_key]
+    x = mdates.date2num(my_index)
+    xx = np.linspace(x.min(), x.max(), 1000)
+    dd = mdates.num2date(xx)
+
+    # prepare a spy comparison
+    ylabelPlot='Price for %s' %ticker 
+    if len(spy_comparison)>0:
+        ylabelPlot='Price for %s / SPY' %ticker
+           
+        if not doJoin:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.loc[arr_prices.index,:]
+            prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        else:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.copy(True)
+            arr_prices = arr_prices.join(spy_comparison,how='left',rsuffix='_spy')
+            for i in ['high','low','open','close',price_key]:
+                if len(arr_prices[i+'_spy'])>0:
+                    arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][-1])
+            prices = arr_prices[price_key]
+
+    # perform the fit
+    z4 = np.polyfit(x, prices, poly_order)
+    p4 = np.poly1d(z4)
+
+    # create an error band
+    diff = prices - p4(x)
+    stddev = diff.std()
+
+    output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
+    if stddev!=0.0:
+        output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])    
+    if doRelative:
+        diff /= p4(x)
+        stddev = diff.std() #*p4(x).mean()
+        
+    pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
+    pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
+    pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
+    pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
+    pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
+    if len(diff)>0:
+        if debug: print('Time period: %s for ticker: %s' %(outname,ticker))
+        coverage_txt='Percent covered\n'
+        coverage = [100.0*pos_count_1sigma/len(diff) , 100.0*pos_count_2sigma/len(diff),
+                        100.0*pos_count_3sigma/len(diff) , 100.0*pos_count_4sigma/len(diff),
+                        100.0*pos_count_5sigma/len(diff) ]
+        for i in range(0,5):
+            if debug: print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
+            coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
+    if doRelative:
+        stddev *= p4(x).mean()
+
+    fig = go.Figure([
+        go.Scatter(
+            name='Price',
+            x=my_index,
+            y=p4(x),
+            mode='lines',
+            line=dict(color='rgb(31, 119, 180)'),
+        ),
+        go.Scatter(
+            name='1 sigma',
+            x=my_index,
+            y=p4(x)+0.5*stddev,
+            mode='lines',
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            showlegend=True
+        ),
+        go.Scatter(
+            name='-1sigma',
+            x=my_index,
+            y=p4(x)-0.5*stddev,
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            mode='lines',
+            fillcolor='rgba(68, 68, 68, 0.3)',
+            fill='tonexty',
+            showlegend=False
+        ),        go.Scatter(
+            name='2 sigma',
+            x=my_index,
+            y=p4(x)+1.0* stddev,
+            mode='lines',
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            showlegend=True
+        ),
+        go.Scatter(
+            name='-2sigma',
+            x=my_index,
+            y=p4(x)-1.0*stddev,
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            mode='lines',
+            fillcolor='rgba(68, 68, 68, 0.2)',
+            fill='tonexty',
+            showlegend=False
+        ),        go.Scatter(
+            name='3 sigma',
+            x=my_index,
+            y=p4(x)+1.5* stddev,
+            mode='lines',
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            showlegend=True
+        ),
+        go.Scatter(
+            name='-3sigma',
+            x=my_index,
+            y=p4(x)-1.5*stddev,
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            mode='lines',
+            fillcolor='rgba(68, 68, 68, 0.2)',
+            fill='tonexty',
+            showlegend=False
+        ),        go.Scatter(
+            name='4 sigma',
+            x=my_index,
+            y=p4(x)+2.0* stddev,
+            mode='lines',
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            showlegend=True
+        ),
+        go.Scatter(
+            name='-4sigma',
+            x=my_index,
+            y=p4(x)-2.0*stddev,
+            marker=dict(color="#444"),
+            line=dict(width=0),
+            mode='lines',
+            fillcolor='rgba(68, 68, 68, 0.2)',
+            fill='tonexty',
+            showlegend=False
+        ),
+        go.Candlestick(x=my_index,
+                       open=arr_prices.open,
+                       high=arr_prices.high,
+                       low=arr_prices.low,
+                       close=arr_prices.close,name='Price')
+        #go.Scatter(
+        #    x=my_index,
+        #    y=arr_prices.open,
+        #    name='price',
+        #    error_y=dict(
+        #        type='data',
+        #        symmetric=False,
+        #        array=arr_prices.high-arr_prices.open,
+        #        arrayminus=arr_prices.open-arr_prices.low))
+    ])
+    fig.update_layout(xaxis_rangeslider_visible=False,
+                      xaxis_title='Date',
+                      yaxis_title=ylabelPlot,
+                      title='Mean reversion %s' %outname,
+                      hovermode="x")
+
+    #cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
+    #plt.plot(arr_prices.high,color='red',label='High')
+    #plt.plot(arr_prices.low,color='cyan',label='Low')
+    #plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
+
+    #if len(spy_comparison)>0:  cx.set_ylabel('Price / SPY')
+    #else: cx.set_ylabel('Price')
+    return fig
 
 # Fit linear regression on close
 # Return the t-statistic for a given parameter estimate.
@@ -90,23 +282,94 @@ def collect_latest_trades(apiA,df_blah):
     df_blah['price_when_added']  = df_blah['current_price']
     df_blah['signif_when_added'] = df_blah['fit_diff_significance']
     df_blah['current_price'] = 0
+    df_blah['shortable'] = False
     tickersA = df_blah['ticker'].unique()
     try:
         trade_map = apiA.get_latest_trades(tickersA)
         for t in tickersA:
+            asset_info = apiA.get_asset(t)
             if t in trade_map:
                 df_blah.loc[df_blah.ticker==t,['current_price']] = trade_map[t].p
+                df_blah.loc[df_blah.ticker==t,['shortable']] = asset_info.shortable
         df_blah['fit_diff_significance'] = (df_blah['current_price'] - df_blah['fit_expectations']) / df_blah.stddev
     except:
         pass
     return df_blah
 
+def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
+    """generateMeanRevFigure:
+       apiA - alpaca api
+       sqlA - mysql cursor
+       tsA - time series api
+       tickerA - str - ticker
+       doRelativeToSpy - bool - compute the ratio to SPY for performance
+    """
+    figs=[]
+
+    today = datetime.datetime.now(tz=est) 
+    d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
+    d1_set = today.strftime("%Y-%m-%d")
+    #d1_set = "2022-01-19"
+    twelve_hours = (today + datetime.timedelta(hours=-12)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+    minute_prices  = runTicker(apiA, tickerA, timeframe=TimeFrame.Minute, start=twelve_hours, end=d1)
+
+    daily_prices,j    = ConfigTable(tickerA, sqlA,tsA,'full',hoursdelay=18)
+
+    # add todays numbers if available
+    if len(minute_prices)>0:
+        df_today = pd.DataFrame([[minute_prices['open'][0],
+                                             minute_prices['high'].max(),
+                                             minute_prices['low'].min(),
+                                             minute_prices['close'][-1],
+                                             minute_prices['close'][-1],
+                                             minute_prices['volume'].sum(),0.0,1.0]],
+                                           columns=['open','high','low','close','adj_close','volume','dividendamt','splitcoef'],index=[d1_set])#index=[minute_prices.index[-1]])
+        df_today.index = pd.to_datetime(df_today.index)
+        if len(daily_prices)==0 or daily_prices.index[-1]<df_today.index[0]:
+            daily_prices = pd.concat([daily_prices,df_today])
+            daily_prices = daily_prices.sort_index()
+        
+    #st.table(daily_prices.tail())
+    filter_shift_days = 0
+    if filter_shift_days>0:
+        daily_prices  = GetTimeSlot(daily_prices, days=6*365, startDate=todayFilter)
+    daily_prices_60d  = GetTimeSlot(daily_prices, days=60+filter_shift_days)
+    daily_prices_180d = GetTimeSlot(daily_prices, days=180+filter_shift_days)
+    daily_prices_365d = GetTimeSlot(daily_prices, days=365+filter_shift_days)
+    daily_prices_3y   = GetTimeSlot(daily_prices, days=3*365+filter_shift_days)
+    daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
+    daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
+
+    figs+=[FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=tickerA,outname='60d')]
+    figs+=[FitWithBand(daily_prices_180d.index, daily_prices_180d [['adj_close','high','low','open','close']],ticker=tickerA,outname='180d')]
+    figs+=[FitWithBand(daily_prices_365d.index, daily_prices_365d [['adj_close','high','low','open','close']],ticker=tickerA,outname='365d')]
+    figs+=[FitWithBand(daily_prices_3y.index, daily_prices_3y [['adj_close','high','low','open','close']],ticker=tickerA,outname='3y')]
+    figs+=[FitWithBand(daily_prices_5y.index, daily_prices_5y [['adj_close','high','low','open','close']],ticker=tickerA,outname='5y')]
+
+    # Compute relative to spy
+    if doRelativeToSpy:
+        spy,j    = ConfigTable('SPY', sqlA,tsA,'full',hoursdelay=18)
+        if filter_shift_days>0:
+            spy  = GetTimeSlot(spy, days=6*365, startDate=todayFilter)
+        spy_daily_prices_60d  = GetTimeSlot(spy, days=60+filter_shift_days)
+        spy_daily_prices_365d = GetTimeSlot(spy, days=365+filter_shift_days)
+        spy_daily_prices_5y   = GetTimeSlot(spy, days=5*365+filter_shift_days)
+
+        figs+=[FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
+                           ticker=tickerA,outname='365dspycomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']])]
+        figs+=[FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
+                           ticker=tickerA,outname='60dspycomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']])]
+        figs+=[FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','open','close']],
+                           ticker=tickerA,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])] 
+    return figs
+
 def generateFigure(apiA,tickerA):
-    """collect_latest_trades:
+    """generateFigure:
        apiA - alpaca api
        tickerA - str - ticker
     """
-    fig=None
+    figs=[]
+    doSPYComparison=False
     today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
     d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
     thirty_days = (today + datetime.timedelta(days=-13)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
@@ -114,9 +377,26 @@ def generateFigure(apiA,tickerA):
     try:
         minute_prices_thirty  = runTicker(apiA, tickerA, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
         AddData(minute_prices_thirty)
-
+        minute_prices_spy=[]
+        if doSPYComparison:
+            minute_prices_spy  = runTicker(apiA, 'SPY', timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
+            AddData(minute_prices_spy)
+            minute_prices_spy['signif_volume_spy'] = minute_prices_spy.signif_volume
+            minute_prices_spy['change_spy'] = minute_prices_spy.change
+            minute_prices_spy['minute_diffHL_spy'] = minute_prices_spy.minute_diffHL
+            minute_prices_spy['minute_diff_spy'] = minute_prices_spy.minute_diff
+            
+            minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.signif_volume_spy,how='left')
+            minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.change_spy,how='left')
+            minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.minute_diff_spy,how='left')
+            minute_prices_thirty = minute_prices_thirty.join(minute_prices_spy.minute_diffHL_spy,how='left')
+            minute_prices_thirty['signif_volume_over_spy'] = minute_prices_thirty.signif_volume / minute_prices_thirty.signif_volume_spy
+            minute_prices_thirty['change_over_spy'] = minute_prices_thirty.change - minute_prices_thirty.change_spy
+            minute_prices_thirty['signif_volume_over_spy'].where(minute_prices_thirty['signif_volume_over_spy']<150.0,150.0,inplace=True)
+            minute_prices_thirty['signif_volume_over_spy'].where(minute_prices_thirty['signif_volume_over_spy']>-150.0,-150.0,inplace=True)
+        # draw figures
         fig = go.Figure(data=go.Scatter(
-            x=minute_prices_thirty['time'],
+            x=minute_prices_thirty['i'],
             y=minute_prices_thirty['close'],
             error_y=dict(
                 type='data',
@@ -124,13 +404,72 @@ def generateFigure(apiA,tickerA):
                 array=minute_prices_thirty.high-minute_prices_thirty.close,
                 arrayminus=minute_prices_thirty.close-minute_prices_thirty.low)
         ))
+        fig.update_layout(xaxis_title="Minute Bars",yaxis_title="%s Price" %tickerA)
+        figs +=[ fig ]
 
+        fig = go.Figure(data=[go.Candlestick(x=minute_prices_thirty['i'],
+                                             open=minute_prices_thirty['open'],
+                                             high=minute_prices_thirty['high'],
+                                             low=minute_prices_thirty['low'],
+                                             close=minute_prices_thirty['close'])])
+        figs +=[ fig ]
 
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        # Add traces
+        fig.add_trace(  go.Scatter(x=minute_prices_thirty['i'],
+                                   y=minute_prices_thirty['close'],name='price'),
+            secondary_y=False)
+        if doSPYComparison:
+            fig.add_trace(  go.Scatter(x=minute_prices_thirty['i'],
+                                       y=minute_prices_thirty['signif_volume_over_spy'],name='volume sigificance/SPY'),secondary_y=True)
+                            
+        
+        fig.add_trace(  go.Scatter(x=minute_prices_thirty['i'],
+                                   y=minute_prices_thirty['slope'],name='slope'),
+                        secondary_y=True)
+        fig.add_trace(  go.Scatter(x=minute_prices_thirty['i'],
+                                   y=minute_prices_thirty['signif_volume'],name='volume sigificance'),
+                        secondary_y=True)
+
+        # Set x-axis title
+        fig.update_xaxes(title_text="Minute Bars")
+
+        # Set y-axes titles
+        fig.update_yaxes(title_text="Price", secondary_y=False)
+        fig.update_yaxes(title_text="Slope", secondary_y=True)
+        figs+=[fig]
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(go.Scatter(
+            x=minute_prices_thirty['time'],
+            y=minute_prices_thirty['close'],
+            name='price',
+            error_y=dict(
+                type='data',
+                symmetric=False,
+                array=minute_prices_thirty.high-minute_prices_thirty.close,
+                arrayminus=minute_prices_thirty.close-minute_prices_thirty.low)),
+            secondary_y=False)
+        fig.add_trace(  go.Scatter(x=minute_prices_thirty['time'],
+                                   y=minute_prices_thirty['slope'],name='slope'),
+                        secondary_y=True)
+        fig.add_trace(  go.Scatter(x=minute_prices_thirty['time'],
+                                   y=minute_prices_thirty['signif_volume'],name='volume sigificance'),
+                        secondary_y=True)
+
+        # Set x-axis title
+        fig.update_layout(xaxis_title="Date",yaxis_title="%s Price" %tickerA)
+
+        # Set y-axes titles
+        fig.update_yaxes(title_text="Price", secondary_y=False)
+        fig.update_yaxes(title_text="Slope", secondary_y=True)
+
+        figs +=[ fig ]
         
     except:
         pass
 
-    return minute_prices_thirty,fig
+    return minute_prices_thirty,figs
 
 def load_lottieurl(url: str):
     r = requests.get(url)
@@ -153,7 +492,13 @@ my_days = []
 tickers_plus = []
 tickers_min = []
 with row2_1:
-    title = st.text_input('Stock Ticker ', 'SPY')
+
+    clearTicker=False
+    titleStart='Select'
+    if st.button("Clear"):
+        clearTicker=True
+        titleStart='Select'
+    title = st.text_input('Stock Ticker ', titleStart)
     st.write('The current ticker is', title)
 
     today = datetime.datetime.now(tz=est)
@@ -163,6 +508,28 @@ with row2_1:
         if new_date.weekday()<5:
             my_days+=[new_date]
     st.write('The current ticker is %s and number of days checked: %i' %(today,len(my_days)))
+    #st.table(pd.DataFrame(list(api.get_asset(title)._raw.items())))
+
+    doRelativeToSpyAll = st.checkbox('Show relative to SPY',key='relTitleSpy')
+    
+    if title!='Select':
+        # Print a table of stock information on Alpaca
+        st.json(api.get_asset(title)._raw)
+
+        # Collect figures
+        fig_table,figs_minute_price = generateFigure(api,title)
+
+        # Plot!
+        for fig_minute_price in figs_minute_price:
+            st.plotly_chart(fig_minute_price)
+
+        mean_figs = generateMeanRevFigure(api,sqlcursor,ts,title,doRelativeToSpyAll)
+        st.markdown('Number of entries: %s' %len(mean_figs))
+        for mean_fig in mean_figs:
+            st.plotly_chart(mean_fig)
+        
+        if st.button("Show table"):
+            st.table(fig_table)
     
 st.write('')
 row3_space1, row3_1, row3_space2, row3_2, row3_space3 = st.columns((.1, 1, .1, 1, .1))
@@ -177,6 +544,7 @@ with row3_1, _lock:
     if st.button("Show file names"):
         st.subheader('List input files:')
         downloadFiles=True
+        
     # Loop over recent days to find which stocks to look up
     df=[]
     for d in my_days:
@@ -189,12 +557,29 @@ with row3_1, _lock:
                 df = df_part
             else:
                 df = pd.concat([df,df_part])
-                
+
+
     if len(df)>0:
+        add_10dm = st.checkbox('Add 10 day by minute checks')
+        add_10dh = st.checkbox('Add 10 day by hour checks')
+        require_shortable = st.checkbox('Require shortable')
+
+        keys_for_list = list(df['time_span'].unique())
+        if not add_10dm:
+            keys_for_list.remove('10dm')
+            keys_for_list.remove('10dmspycomparison')
+        if not add_10dh:
+            keys_for_list.remove('10dh')
+            keys_for_list.remove('10dhspycomparison')        
+        df = df[df['time_span'].isin(keys_for_list)]
+                                     
         st.markdown("Greater than %ssigma or overbought!" %signif)
         df = df[df.stddev>0.000001]
         df_plus = df[df.fit_diff_significance>signif]
         df_plus = collect_latest_trades(api,df_plus)
+        if require_shortable:
+            df_plus = df_plus[df_plus.shortable]
+
         st.table(df_plus.assign(sortkey = df_plus.groupby(['ticker'])['fit_diff_significance'].transform('max')).sort_values(['sortkey','fit_diff_significance'],ascending=[False,False]).drop('sortkey', axis=1))
 
         # Generating an option to draw plots
@@ -205,6 +590,8 @@ with row3_1, _lock:
         st.markdown("Greater than -%ssigma or oversold!" %signif)
         df_min = df[df.fit_diff_significance<(-1*signif)]
         df_min = collect_latest_trades(api,df_min)
+        if require_shortable:
+            df_min = df_min[df_min.shortable]
         tickers_min = df_min['ticker'].unique()
 
         st.table(df_min.assign(sortkey = df_min.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1))
@@ -216,15 +603,25 @@ st.write('')
 row4_space1, row4_1, row4_space2, row4_2, row4_space3 = st.columns((.1, 1, .1, 1, .1))
 with row4_1, _lock:
     st.subheader('Select plotting - overbought')
+    doRelativeToSpy = st.checkbox('Show relative to SPY',key='maxRelSpy')
     optionPlus = st.selectbox('Is there a stock to evaluate for overbought?',np.array(['Select']+list(tickers_plus)),key='maxTick')
     st.write('You selected:', optionPlus)
 
     if optionPlus!='Select':
-        fig_table,fig_minute_price = generateFigure(api,optionPlus)
+        fig_table,figs_minute_price = generateFigure(api,optionPlus)
 
+        # Print a table of stock information on Alpaca
+        st.json(api.get_asset(optionPlus)._raw)
+        
         # Plot!
-        st.plotly_chart(fig_minute_price)
+        for fig_minute_price in figs_minute_price:
+            st.plotly_chart(fig_minute_price)
         #st.plotly_chart(fig)
+
+        mean_figs = generateMeanRevFigure(api,sqlcursor,ts,optionPlus,doRelativeToSpy)
+        st.markdown('Number of entries: %s' %len(mean_figs))
+        for mean_fig in mean_figs:
+            st.plotly_chart(mean_fig)
         
         if st.button("Show table"):
             st.table(fig_table)
@@ -235,17 +632,25 @@ st.write('')
 row5_space1, row5_1, row5_space2, row5_2, row5_space3 = st.columns((.1, 1, .1, 1, .1))
 with row5_1, _lock:
     st.subheader('Select plotting - oversold')
+    doRelativeToSpy = st.checkbox('Show relative to SPY',key='minRelSpy')
     optionMin = st.selectbox('Is there a stock to evaluate for oversold?',np.array(['Select']+list(tickers_min)),key='minTick')
     st.write('You selected:', optionMin)
 
     if optionMin!='Select':
-        fig_table,fig_minute_price = generateFigure(api,optionMin)
+        fig_table,figs_minute_price = generateFigure(api,optionMin)
 
-        group_labels = ['Group 1', 'Group 2',]
-        
+        # Print a table of stock information on Alpaca
+        st.json(api.get_asset(optionMin)._raw)
+
         # Plot!
-        st.plotly_chart(fig_minute_price)
-        
+        for fig_minute_price in figs_minute_price:
+            st.plotly_chart(fig_minute_price)
+
+        mean_figs = generateMeanRevFigure(api,sqlcursor,ts,optionMin,doRelativeToSpy)
+        for mean_fig in mean_figs:
+            st.plotly_chart(mean_fig)
+
+            
         if st.button("Show table"):
             st.table(fig_table)
 
