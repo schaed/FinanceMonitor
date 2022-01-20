@@ -124,3 +124,6 @@ Crontab
 30 9 * * 2-6 lxplus /afs/cern.ch/user/s/schae/testarea/FinanceMonitor/run/plots.sh
 
 ```
+
+It is worth comparing spy to the Baltic dry index for inflation and spy. BDI could be a leading indicator..
+https://www.tradingview.com/chart/?symbol=INDEX%3ABDI

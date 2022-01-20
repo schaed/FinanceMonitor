@@ -155,7 +155,12 @@ if __name__ == "__main__":
             #print(df_store_data_curr.sort_values('fit_diff_significance'))
 
             # update the significance
-            df_store_data_curr['signif_quote_ap'] = (df_store_data_curr['quote_ap'] - df_store_data_curr['fit_expectations']) / df_store_data_curr['stddev']
+            df_store_data_curr['signif_quote_ap']=0
+            try:
+                df_store_data_curr['signif_quote_ap'] = (df_store_data_curr['quote_ap'] - df_store_data_curr['fit_expectations']) / df_store_data_curr['stddev']
+            except (ZeroDivisionError) as e:
+                print("Testing multiple exceptions for division. {}".format(e.args[-1]))
+                pass
             if debug: print(df_store_data_curr[df_store_data_curr['signif_quote_ap']>5.0].to_string())
             if debug: print(df_store_data_curr[df_store_data_curr['signif_quote_ap']<-5.0].to_string())
         # check new stocks

@@ -36,6 +36,8 @@ sns.set_style('darkgrid')
 
 _lock = RendererAgg.lock
 
+def clear_form():
+    st.session_state["tickerKey"] = "Select"
 
 def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[], doRelative=False, doJoin=True, debug=False):
     """
@@ -493,12 +495,9 @@ tickers_plus = []
 tickers_min = []
 with row2_1:
 
-    clearTicker=False
     titleStart='Select'
-    if st.button("Clear"):
-        clearTicker=True
-        titleStart='Select'
-    title = st.text_input('Stock Ticker ', titleStart)
+    st.button("Clear",on_click=clear_form)
+    title = st.text_input('Stock Ticker ', titleStart,key='tickerKey')
     st.write('The current ticker is', title)
 
     today = datetime.datetime.now(tz=est)
@@ -529,7 +528,7 @@ with row2_1:
             st.plotly_chart(mean_fig)
         
         if st.button("Show table"):
-            st.table(fig_table)
+            st.dataframe(fig_table)
     
 st.write('')
 row3_space1, row3_1, row3_space2, row3_2, row3_space3 = st.columns((.1, 1, .1, 1, .1))
@@ -560,6 +559,7 @@ with row3_1, _lock:
 
 
     if len(df)>0:
+        do_static_table = st.checkbox('Draw static table')
         add_10dm = st.checkbox('Add 10 day by minute checks')
         add_10dh = st.checkbox('Add 10 day by hour checks')
         require_shortable = st.checkbox('Require shortable')
@@ -580,7 +580,15 @@ with row3_1, _lock:
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
 
-        st.table(df_plus.assign(sortkey = df_plus.groupby(['ticker'])['fit_diff_significance'].transform('max')).sort_values(['sortkey','fit_diff_significance'],ascending=[False,False]).drop('sortkey', axis=1))
+        df_plus = df_plus.assign(sortkey = df_plus.groupby(['ticker'])['fit_diff_significance'].transform('max')).sort_values(['sortkey','fit_diff_significance'],ascending=[False,False]).drop('sortkey', axis=1)
+        if do_static_table:
+            #df_plus.style.hide_index()
+            try:
+                st.table(df_plus.style.highlight_max(axis=0))
+            except:
+                st.table(df_plus)
+        else:
+            st.dataframe(df_plus,500,500)
 
         # Generating an option to draw plots
         tickers_plus = df_plus['ticker'].unique()
@@ -594,8 +602,15 @@ with row3_1, _lock:
             df_min = df_min[df_min.shortable]
         tickers_min = df_min['ticker'].unique()
 
-        st.table(df_min.assign(sortkey = df_min.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1))
-
+        df_min = df_min.assign(sortkey = df_min.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1)
+        if do_static_table:
+            #df_min.style.hide_index()
+            try:
+                st.table(df_min.style.highlight_max(axis=0))
+            except:
+                st.table(df_min)                
+        else:
+            st.dataframe(df_min,500,500)
 #
 # now to make plots max
 #
@@ -624,7 +639,7 @@ with row4_1, _lock:
             st.plotly_chart(mean_fig)
         
         if st.button("Show table"):
-            st.table(fig_table)
+            st.dataframe(fig_table)
 #
 # now to make plots min
 #
@@ -652,7 +667,7 @@ with row5_1, _lock:
 
             
         if st.button("Show table"):
-            st.table(fig_table)
+            st.dataframe(fig_table)
 
 
     #x1 = np.random.normal(5, 3, 5000)
