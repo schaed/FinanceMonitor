@@ -411,6 +411,7 @@ if True:
     minute_prices_thirty['change_over_spy'] = minute_prices_thirty.change - minute_prices_thirty.change_spy
     minute_prices_thirty['change_over_spy'] *=10.0
     minute_prices_thirty['change_over_spy'] -=1.0
+    
     # get the last 5 days
     minute_prices = GetTimeSlot(minute_prices_thirty,days=7)
     minute_prices_spy_10d = GetTimeSlot(minute_prices_spy,days=10)

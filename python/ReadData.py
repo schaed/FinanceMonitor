@@ -148,6 +148,13 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             if len(stockCompact)>0 and len(stock)>0 and stockCompact.index[-1]!=stock.index[-1]:
                 UpdateTable(stockCompact, ticker, sqlcursor, index_label=index_label)
                 stock = pd.concat([stock,stockCompact])
+
+                # Let's check if the stock entries that we added had any splits. If so, drop the table and reload
+                if 'splitcoef' in stockCompact and len(stockCompact[stockCompact.splitcoef!=1.0])>0:
+                    print('Stock split was found for %s' %ticker)
+                    sqlcursor.cursor().execute('DROP TABLE %s' %ticker)
+                    NewEntry=True
+                    sys.stdout.flush()
             stock = stock.sort_index()
             before_len = len(stock)
             stock.drop_duplicates(inplace=True)

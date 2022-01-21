@@ -608,7 +608,7 @@ with row3_1, _lock:
             try:
                 st.table(df_min.style.highlight_max(axis=0))
             except:
-                st.table(df_min)                
+                st.table(df_min)
         else:
             st.dataframe(df_min,500,500)
 #
