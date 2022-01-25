@@ -22,7 +22,7 @@ for iin in all_stocks:
         continue
     print(i)
     stock=None
-    Load=True    
+    Load=True
     try:
         stock = pd.read_sql('SELECT * FROM %s' %i, sqlcursorExtra) #,index_col='Date')
         #print(stock.columns)
@@ -30,15 +30,15 @@ for iin in all_stocks:
         stock['LogDate']=pd.to_datetime(stock['LogDate'])
         stock = stock.set_index('LogDate')
         stock = stock.sort_index()
-
-        if len(stock)>0 and (stock.index[-1]-todayDateTime)<datetime.timedelta(days=0,hours=12):
+        #print(stock.index[-1])
+        if len(stock)>0 and (todayDateTime - stock.index[-1])<datetime.timedelta(days=0,hours=12):
             print('already loaded!')
             Load=False
     except pd.io.sql.DatabaseError:
         pass
     if Load:
         URL = 'https://finviz.com/quote.ashx?t=%s' %i
-        filename = '%s.html' %i
+        filename = '/tmp/%sQUOTE.html' %i
         os.system('wget -O %s %s' %(filename,URL))
         table_MN=None
         try:
@@ -64,12 +64,13 @@ for iin in all_stocks:
             #print(df)
             #print(dataFMap.keys())
             sys.stdout.flush()
-            UpdateTable(df,i,sqlcursorExtra)
+            UpdateTable(df,i,sqlcursorExtra) #,index_label='LogDate')
         os.system('rm %s' %filename )
 
 
     URL = 'https://www.marketbeat.com/stocks/%s/%s/short-interest/' %(iin[3],i)
-    filename = '%sv2.html' %i
+    filename = '/tmp/%sv2QUOTE.html' %i
+    #print(URL)
     os.system('wget -q -O %s %s' %(filename,URL))
     table_MN=None
     try:
@@ -103,9 +104,12 @@ for iin in all_stocks:
     
             # cleaning
             m= t.drop(t[t['Report Date'].str.contains('adsbygoogle')].index)
+            m= t.drop(t[t['Report Date'].str.contains('Get the Latest')].index)
+            #m= t.drop(t[t['Report Date'].str.strip().contains(' ')].index)
             mi = m['Change from Previous Report'].str.contains('No Change')
             m.loc[mi,'Change from Previous Report'] = 0
-            m['Report Date'] = pd.to_datetime(m['Report Date'])
+            m['Report Date'] = pd.to_datetime(m['Report Date'],errors='coerce')
+            m.dropna(subset=['Report Date'],inplace=True)
             for n in t.columns:
                 if n.count('Unnamed'):
                     del m[n]
@@ -142,5 +146,5 @@ for iin in all_stocks:
             UpdateTable(m,i,sqlcursor)
     
 os.system('rm wget-log*')
-os.system('rm *html')
+os.system('rm *QUOTE.html')
 print('DONE')

@@ -19,6 +19,7 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sid = SentimentIntensityAnalyzer()
 import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
+import AnaSignal
 
 api = ALPACA_REST()
 inputTxt='Honest Company reports Q1 EPS (13c) vs. 1c last year'
@@ -34,8 +35,13 @@ inputTxt='Molecular Partners indicated to open at $20, IPO priced at $21.25'
 #inputTxt='Bassett Furniture reports Q2 EPS 60c, two est. 35c'
 #inputTxt='Royal Caribbean reports Q2 adjusted EPS ($5.06), consensus ($4.40)'
 #inputTxt='UroGen Pharma reports Q2 EPS ($1.17), consensus ($1.27)'
-
-s.Parse(inputTxt,'Honest Company', 'HON', sid=sid, nlp=nlp, is_earnings=False)
+is_earnings=True
+#s.Parse(inputTxt,'Honest Company', 'HON', sid=sid, nlp=nlp, is_earnings=False)
+inputTxt='Bank of Hawaii reports Q4 EPS $1.55, consensus $1.35'
+s.Parse(inputTxt,'Bank of Hawaii', 'BOH', sid=sid, nlp=nlp, is_earnings=False)
+if len(s.PassEarnings())>0:
+    AnaSignal.GenerateSignal(s.ticker,'out_earnings_instructions.csv',s.PassEarnings())
+     
 #s.Sentiment(sid=sid,nlp=nlp,is_earnings=is_earnings)
 print(s)
 

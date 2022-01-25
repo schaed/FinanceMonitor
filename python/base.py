@@ -166,7 +166,9 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         </div>
         """.format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
         line=' <p><a href="GLOBAL.html">Global Indicators</a></p>\n'
-        line+=' <p><a href="https://www.tradingview.com/chart/?symbol=INDEX%3ABDI">Baltic dry index indicator of inflation and spy</a></p>\n' 
+        line+=' <p><a href="POSITION.html">Percentage in exhcange above moving averages</a></p>\n'
+        line+=' <p><a href="https://www.tradingview.com/chart/?symbol=INDEX%3ABDI">Baltic dry index indicator of inflation and spy</a></p>\n'
+        line+=' <p><a href="https://www.aia.org/resources/10046-architecture-billings-index-abi">Architecture billing index for small business updates. gives regional info</a></p>\n'
         line+=' <p><a href="patterns_correlations.html">All Correlations</a></p>\n'
         line+=' <p><a href="patterns_60d.html">60day significance relative to the trend</a></p>\n'
         line+=' <p><a href="patterns_180d.html">180day significance relative to the trend</a></p>\n'

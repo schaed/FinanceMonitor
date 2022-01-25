@@ -1,6 +1,6 @@
 from techindicators import techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS,MakePlotMulti,MakePlot,POS_MARKET_PLOTS
 import pandas as pd
 import numpy as np
 import sys
@@ -77,7 +77,7 @@ def GetMonthlyReturns(stockdatain,ticker):
     endMR = time.time()
     if debug: print('Process time to GetMonthlyReturns groupby: %s' %(endMR - startMR))    
     startMR = time.time()
-    MakePlotMulti(stockdata_end_of_month.index, yaxis=[(stockdata_month_grouped['openclosepct']).apply(gmean)-1,(stockdata_month_grouped['closeopenpct']).apply(gmean)-1,(stockdata_month_grouped['daily_return']).apply(gmean)-1], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_monthly_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlotMulti(stockdata_end_of_month.index, yaxis=[(stockdata_month_grouped['openclosepct']).apply(gmean)-1,(stockdata_month_grouped['closeopenpct']).apply(gmean)-1,(stockdata_month_grouped['daily_return']).apply(gmean)-1], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_monthly_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     endMR = time.time()
     if debug: print('Process time to GetMonthlyReturns draw: %s' %(endMR - startMR))
     
@@ -85,14 +85,14 @@ def GetMonthlyReturns(stockdatain,ticker):
     stockdata_end_of_month_avg = stockdata_end_of_month.groupby('month').mean()
     stockdata_end_of_month_std = stockdata_end_of_month.groupby('month').std()
     stockdata_end_of_month_avg.loc[:,'signif'] = stockdata_end_of_month_avg.monthly_return / stockdata_end_of_month_std.monthly_return
-    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.monthly_return, xname='Month',yname='Avg. Monthly Returns',saveName='RETURNS_avg_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_end_of_month_std.index, stockdata_end_of_month_std.monthly_return, xname='Month',yname='Std Dev. Monthly Returns',saveName='RETURNS_stddev_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.signif, xname='Month',yname='Signif. Monthly Returns',saveName='RETURNS_signif_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.monthly_return, xname='Month',yname='Avg. Monthly Returns',saveName='RETURNS_avg_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_end_of_month_std.index, stockdata_end_of_month_std.monthly_return, xname='Month',yname='Std Dev. Monthly Returns',saveName='RETURNS_stddev_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_end_of_month_avg.index, stockdata_end_of_month_avg.signif, xname='Month',yname='Signif. Monthly Returns',saveName='RETURNS_signif_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
     # scatter plot
-    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_scatter_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
-    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month on the 1st',yname='Monthly Returns',saveName='RETURNS_box_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
-    MakePlot(stockdata15_end_of_month.month, stockdata15_end_of_month.monthly_return, xname='Month on the 15th',yname='Monthly Returns',saveName='RETURNS_box_monthly15_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True)
+    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month',yname='Monthly Returns',saveName='RETURNS_scatter_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_end_of_month.month, stockdata_end_of_month.monthly_return, xname='Month on the 1st',yname='Monthly Returns',saveName='RETURNS_box_monthly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata15_end_of_month.month, stockdata15_end_of_month.monthly_return, xname='Month on the 15th',yname='Monthly Returns',saveName='RETURNS_box_monthly15_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doBox=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
     ## remove unity
     stockdata['daily_return'] -=1
@@ -113,26 +113,26 @@ def GetMonthlyReturns(stockdatain,ticker):
     stockdata_end_of_week_avg['signif'] = stockdata_end_of_week_avg.weekly_return / stockdata_end_of_week_std.weekly_return
 
     
-    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.weekly_return, xname='Week of year',yname='Avg. Weekly Returns',saveName='RETURNS_avg_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_end_of_week_std.index, stockdata_end_of_week_std.weekly_return, xname='Week of year',yname='Std Dev. Weekly Returns',saveName='RETURNS_stddev_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.signif, xname='Week of year',yname='Signif. Weekly Returns',saveName='RETURNS_signif_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.weekly_return, xname='Week of year',yname='Avg. Weekly Returns',saveName='RETURNS_avg_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_end_of_week_std.index, stockdata_end_of_week_std.weekly_return, xname='Week of year',yname='Std Dev. Weekly Returns',saveName='RETURNS_stddev_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_end_of_week_avg.index, stockdata_end_of_week_avg.signif, xname='Week of year',yname='Signif. Weekly Returns',saveName='RETURNS_signif_weekly_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
     # compute day of week return.
     stockdata_day_of_week_avg = stockdata.groupby('dayofweek').mean()
     stockdata_day_of_week_std = stockdata.groupby('dayofweek').std()
     stockdata_day_of_week_avg['signif'] = stockdata_day_of_week_avg.daily_return / stockdata_day_of_week_std.daily_return
-    MakePlot(stockdata_day_of_week_avg.index, stockdata_day_of_week_avg.daily_return, xname='Day of week',yname='Avg. Daily Returns',saveName='RETURNS_avg_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_std.daily_return, xname='Day of week',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_avg.signif, xname='Day of week',yname='Signif. Daily Returns',saveName='RETURNS_signif_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_week_avg.index, stockdata_day_of_week_avg.daily_return, xname='Day of week',yname='Avg. Daily Returns',saveName='RETURNS_avg_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_std.daily_return, xname='Day of week',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_day_of_week_std.index, stockdata_day_of_week_avg.signif, xname='Day of week',yname='Signif. Daily Returns',saveName='RETURNS_signif_daily_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
     # compute day of month return.
     startMR = time.time()
     stockdata_day_of_month_avg = stockdata.groupby('day').mean()
     stockdata_day_of_month_std = stockdata.groupby('day').std()
     stockdata_day_of_month_avg['signif'] = stockdata_day_of_month_avg.daily_return / stockdata_day_of_month_std.daily_return
-    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg.daily_return, xname='Day of month',yname='Avg. Daily Returns',saveName='RETURNS_avg_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_day_of_month_std.index, stockdata_day_of_month_std.daily_return, xname='Day of month',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg['signif'], xname='Day of month',yname='Signif. Daily Returns',saveName='RETURNS_signif_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg.daily_return, xname='Day of month',yname='Avg. Daily Returns',saveName='RETURNS_avg_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_day_of_month_std.index, stockdata_day_of_month_std.daily_return, xname='Day of month',yname='Std Dev. Daily Returns',saveName='RETURNS_stddev_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_day_of_month_avg.index, stockdata_day_of_month_avg['signif'], xname='Day of month',yname='Signif. Daily Returns',saveName='RETURNS_signif_day_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     endMR = time.time()
     if debug: print('Process time to GetMonthlyReturns plots day of month: %s' %(endMR - startMR))
     
@@ -154,20 +154,20 @@ def GetMonthlyReturns(stockdatain,ticker):
     #stockdata['daily_returnmag5'] = stockdata['daily_return'].rolling(5).mean()
 
     stockdata_1y = GetTimeSlot(stockdata, days=365)
-    MakePlotMulti(stockdata.index, yaxis=[stockdata['openclosepctma20'],stockdata['closeopenpctma20'],stockdata['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma20'],stockdata_1y['closeopenpctma20'],stockdata_1y['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_oneyear_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
-    #MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma5'],stockdata_1y['closeopenpctma5'],stockdata_1y['daily_returnma5']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA5',saveName='RETURNS_returns_daynight_oneyear_ma5_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlotMulti(stockdata.index, yaxis=[stockdata['openclosepctma20'],stockdata['closeopenpctma20'],stockdata['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma20'],stockdata_1y['closeopenpctma20'],stockdata_1y['daily_returnma20']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA20',saveName='RETURNS_returns_daynight_oneyear_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    #MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepctma5'],stockdata_1y['closeopenpctma5'],stockdata_1y['daily_returnma5']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns Geo MA5',saveName='RETURNS_returns_daynight_oneyear_ma5_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
-    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepct'],stockdata_1y['closeopenpct'],stockdata_1y['daily_return']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_oneyear_noMA_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None)
+    MakePlotMulti(stockdata_1y.index, yaxis=[stockdata_1y['openclosepct'],stockdata_1y['closeopenpct'],stockdata_1y['daily_return']], colors=['black','green','red'], labels=['trading hours','overnight','close to close'], xname='Date',yname='Returns',saveName='RETURNS_returns_daynight_oneyear_noMA_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
     
     # Compare returns
     if debug:
         print(stockdata[['openclosepct','closeopenpct','open','close']])
         print(stockdata_1y[['openclosepct','daily_return','closeopenpct','afterhourspct']].describe())
         print(stockdata_1y[['openclosepct','daily_return','closeopenpct','afterhourspct']].corr())
-    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['afterhourspct'], xname='During trading hours',yname='After hours night after',saveName='RETURNS_trading_vs_nightafter_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
-    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['closeopenpct'], xname='During trading hours',yname='After hours night before',saveName='RETURNS_trading_vs_nightbefore_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
-    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['daily_return'], xname='During trading hours',yname='Returns',saveName='RETURNS_trading_vs_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True)
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['afterhourspct'], xname='During trading hours',yname='After hours night after',saveName='RETURNS_trading_vs_nightafter_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['closeopenpct'], xname='During trading hours',yname='After hours night before',saveName='RETURNS_trading_vs_nightbefore_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(stockdata_1y['openclosepct'], stockdata_1y['daily_return'], xname='During trading hours',yname='Returns',saveName='RETURNS_trading_vs_returns_'+ticker, hlines=[],title='',doSupport=False,my_stock_info=None,doScatter=True,draw=draw,doPDFs=doPDFs,outdir=outdir)
 
 # https://www.investopedia.com/terms/z/zig_zag_indicator.asp
 def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',title='ZigZag'):
@@ -251,110 +251,6 @@ def plot_pivots(xaxis, yaxis, saveName='zigzag', xname='Date', yname='Beta',titl
     if not draw: plt.close()
     plt.close()
     
-def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None, doScatter=False,doBox=False):
-    """ Generic plotting with option to show support lines
-         
-         Parameters:
-         xaxis : numpy array
-            Date of stock value
-         yaxis : numpy array
-            Closing stock value
-         xname : str
-            x-axis name
-         yname : str
-            y-axis name
-         saveName : str
-            Saved file name
-         hlines : array of horizontal lines drawn in matplotlib
-         title : str
-            Title of plot
-         doSupport : bool
-            Request generation of support lines on the fly
-         my_stock_info : pandas data frame of stock timing and adj_close
-         doScatter : bool - draw a scatter plot
-         doBox : bool - draw a box plot for unique x-values
-     """
-    # plotting
-    plt.clf()
-    ax7=None
-    fig7=None
-    if doScatter:
-        plt.scatter(xaxis,yaxis)
-    elif doBox: 
-        fig7, ax7 = plt.subplots()
-        d1=[]
-        for m in np.unique(xaxis.values):
-            d1+=[yaxis.loc[xaxis==m].dropna()]
-        bp = ax7.boxplot(d1,whis=[5,95],showmeans=True,notch=True)
-        ax7.grid(True)
-        ax7.legend([bp['medians'][0], bp['means'][0]],['median','mean'],loc="upper left")
-        plt.title(saveName.replace('_',' '))
-    else:
-        plt.plot(xaxis,yaxis)
-    plt.gcf().autofmt_xdate()
-    plt.ylabel(yname)
-    plt.xlabel(xname)
-    if title!="":
-        plt.title(title, fontsize=30)
-    for h in hlines:
-        plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
-    if doSupport:
-        techindicators.supportLevels(my_stock_info)
-    if draw and ax7!=None: fig7.show()
-    elif draw: plt.show()
-    if doPDFs and ax7!=None: fig7.savefig(outdir+'%s.pdf' %(saveName))
-    elif doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
-    if ax7!=None: fig7.savefig(outdir+'%s.png' %(saveName))
-    else: plt.savefig(outdir+'%s.png' %(saveName))
-    if not draw: plt.close()
-    plt.close()
-
-def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None):
-    """ Generic plotting option for multiple plots 
-         
-         Parameters:
-         xaxis : numpy array
-            Date of stock value
-         yaxis : numpy array
-            Closing stock value
-         xname : str
-            x-axis name
-         colors : array of strings
-            colors compatible with matplotlib
-         labels : array of str
-            legend names
-         yname : str
-            y-axis name
-         saveName : str
-            Saved file name
-         hlines : array of horizontal lines drawn in matplotlib
-         title : str
-            Title of plot    
-         doSupport : bool
-            Request generation of support lines on the fly
-         my_stock_info : pandas data frame of stock timing and adj_close
-    """
-    # plotting
-    j=0
-    plt.clf()
-    for y in yaxis:
-        plt.plot(xaxis,y,color=colors[j],label=labels[j])
-        j+=1
-    plt.gcf().autofmt_xdate()
-    plt.ylabel(yname)
-    plt.xlabel(xname)
-    if title!="":
-        plt.title(title, fontsize=30)
-    for h in hlines:
-        plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
-    plt.legend(loc="upper left")
-    if doSupport:
-        techindicators.supportLevels(my_stock_info)
-    if draw: plt.show()
-    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
-    plt.savefig(outdir+'%s.png' %(saveName))
-    if not draw: plt.close()
-
 # Draw the timing indices
 def PlotTiming(data, ticker):
     """ Plot timing indicators including moving averages as well as Fourier Transforms
@@ -772,37 +668,37 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     if not draw:
         plt.ioff()
     startC = time.time()    
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info,title='Support Lines')
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info,title='Support Lines',draw=draw,doPDFs=doPDFs,outdir=outdir)
     startE = time.time()    
-    MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve')
+    MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve',draw=draw,doPDFs=doPDFs,outdir=outdir)
     endE = time.time()
     if debug: print('Process time to copp: %s' %(endE - startE))
-    MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker),title='Sharpe Ratio')
-    MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker),title='Beta')
-    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title='Alpha')
-    MakePlot(my_stock_info.index, my_stock_info['adx'], xname='Date',yname='ADX',saveName='adx%s_%s' %(plttext,ticker), hlines=[(25.0,'black','dotted')],title='ADX')
-    MakePlot(my_stock_info.index, my_stock_info['willr'], xname='Date',yname='Will %R',saveName='willr%s_%s' %(plttext,ticker), hlines=[(-20.0,'red','dotted'),(-80.0,'green','dotted')],title='Will %R')
-    MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title='Ultimate Oscillator')
-    MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')],title='R-squared')
-    MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')],title='Chaikin Money Flow')
-    MakePlot(my_stock_info.index, my_stock_info['mfi_bill_ana'], xname='Date',yname='MFI = 4 is buy',saveName='mfi_bill_ana%s_%s' %(plttext,ticker), hlines=[(4.0,'green','dotted'),(0.0,'black','dotted'),(3.0,'red','dotted')],title='Market Fluctuation index')
-    MakePlot(my_stock_info.index, my_stock_info['mfi'], xname='Date',yname='MFI',saveName='mfi%s_%s' %(plttext,ticker), hlines=[(20.0,'green','dotted'),(50.0,'black','-'),(80.0,'red','dotted')],title='Money Flow Index')
-    MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker),title='Commodity Channel Index')
-    MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker),title='On Balanced Volume')    
-    MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker),title='Force Index')
-    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')],title='Balance of Power')
-    MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker),title='Chaikin Oscillator')
-    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')],title='14d Correlation with SPY')
+    MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker),title='Sharpe Ratio',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['beta'], xname='Date',yname='Beta',saveName='beta%s_%s' %(plttext,ticker),title='Beta',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['alpha'], xname='Date',yname='Alpha',saveName='alpha%s_%s' %(plttext,ticker), hlines=[(0.0,'black','-')],title='Alpha',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['adx'], xname='Date',yname='ADX',saveName='adx%s_%s' %(plttext,ticker), hlines=[(25.0,'black','dotted')],title='ADX',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['willr'], xname='Date',yname='Will %R',saveName='willr%s_%s' %(plttext,ticker), hlines=[(-20.0,'red','dotted'),(-80.0,'green','dotted')],title='Will %R',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['ultosc'], xname='Date',yname='Ultimate Oscillator',saveName='ultosc%s_%s' %(plttext,ticker), hlines=[(30.0,'green','dotted'),(70.0,'green','dotted')],title='Ultimate Oscillator',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['rsquare'], xname='Date',yname='R-squared',saveName='rsquare%s_%s' %(plttext,ticker), hlines=[(0.7,'black','-')],title='R-squared',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['cmf'], xname='Date',yname='CMF',saveName='cmf%s_%s' %(plttext,ticker), hlines=[(0.2,'green','dotted'),(0.0,'black','-'),(-0.2,'red','dotted')],title='Chaikin Money Flow',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['mfi_bill_ana'], xname='Date',yname='MFI = 4 is buy',saveName='mfi_bill_ana%s_%s' %(plttext,ticker), hlines=[(4.0,'green','dotted'),(0.0,'black','dotted'),(3.0,'red','dotted')],title='Market Fluctuation index',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['mfi'], xname='Date',yname='MFI',saveName='mfi%s_%s' %(plttext,ticker), hlines=[(20.0,'green','dotted'),(50.0,'black','-'),(80.0,'red','dotted')],title='Money Flow Index',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['cci'], xname='Date',yname='Commodity Channel Index',saveName='cci%s_%s' %(plttext,ticker),title='Commodity Channel Index',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['obv'], xname='Date',yname='On Balanced Volume',saveName='obv%s_%s' %(plttext,ticker),title='On Balanced Volume',draw=draw,doPDFs=doPDFs,outdir=outdir)    
+    MakePlot(my_stock_info.index, my_stock_info['force'], xname='Date',yname='Force Index',saveName='force%s_%s' %(plttext,ticker),title='Force Index',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['bop'], xname='Date',yname='Balance of Power',saveName='bop%s_%s' %(plttext,ticker),  hlines=[(0.0,'black','dotted')],title='Balance of Power',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['chosc'], xname='Date',yname='Chaikin Oscillator',saveName='chosc%s_%s' %(plttext,ticker),title='Chaikin Oscillator',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlot(my_stock_info.index, my_stock_info['corr14'], xname='Date',yname='14d Correlation with SPY',saveName='corr%s_%s' %(plttext,ticker),hlines=[(0.0,'black','dotted')],title='14d Correlation with SPY',draw=draw,doPDFs=doPDFs,outdir=outdir)
 
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker),title='MACD')
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['macd'],my_stock_info['macdsignal']], colors=['red','blue'], labels=['MACD','Signal'], xname='Date',yname='MACD',saveName='macd%s_%s' %(plttext,ticker),title='MACD',draw=draw,doPDFs=doPDFs,outdir=outdir)
     if 'aroon' in my_stock_info:
-        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker),title='AROON')
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['aroonUp'],my_stock_info['aroonDown']], colors=['red','blue'], labels=['Up','Down'], xname='Date',yname='AROON',saveName='aroon%s_%s' %(plttext,ticker),title='AROON',draw=draw,doPDFs=doPDFs,outdir=outdir)
     if 'jaws' in my_stock_info:
-        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['jaws'],my_stock_info['teeth'],my_stock_info['lips']], colors=['black','blue','red','green'], labels=['Closing','Jaws','teeth','lips'], xname='Date',yname='Closing Price',saveName='alligator%s_%s' %(plttext,ticker),title='Alligator')
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['jaws'],my_stock_info['teeth'],my_stock_info['lips']], colors=['black','blue','red','green'], labels=['Closing','Jaws','teeth','lips'], xname='Date',yname='Closing Price',saveName='alligator%s_%s' %(plttext,ticker),title='Alligator',draw=draw,doPDFs=doPDFs,outdir=outdir)
     if 'bullPower' in my_stock_info:
-        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['bullPower'],my_stock_info['bearPower']], colors=['green','red'], labels=['Bull Power','Bear Power'], xname='Date',yname='Bull/Bear Power',saveName='bullbear%s_%s' %(plttext,ticker),title='Bull/Bear Power')
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20'],my_stock_info['BolLower'],my_stock_info['BolUpper']], colors=['red','blue','green','magenta','cyan','cyan'], labels=['Close Price','VWAP10','VWAP14','VWAP20','VWAPBol-','VWAPBol+'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP')
-    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic')
+        MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['bullPower'],my_stock_info['bearPower']], colors=['green','red'], labels=['Bull Power','Bear Power'], xname='Date',yname='Bull/Bear Power',saveName='bullbear%s_%s' %(plttext,ticker),title='Bull/Bear Power',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['vwap10'],my_stock_info['vwap14'],my_stock_info['vwap20'],my_stock_info['BolLower'],my_stock_info['BolUpper']], colors=['red','blue','green','magenta','cyan','cyan'], labels=['Close Price','VWAP10','VWAP14','VWAP20','VWAPBol-','VWAPBol+'], xname='Date',yname='Price',saveName='vwap10%s_%s' %(plttext,ticker),title='Volume Weighted AP',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['stochK'],my_stock_info['stochD']], colors=['red','blue'], labels=['%K','%D'], hlines=[(80.0,'green','dotted'),(20.0,'red','dotted')], xname='Date',yname='Price',saveName='stoch%s_%s' %(plttext,ticker),title='Stochastic',draw=draw,doPDFs=doPDFs,outdir=outdir)
     endC = time.time()
     if debug: print('Process time to start plots: %s' %(endC - startC))
     startC = time.time()
@@ -961,6 +857,10 @@ if not args.skip:
     os.chdir(outdir)
     b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
     os.chdir(cdir)
+POS_MARKET_PLOTS(outdir,debug,doPDFs)
+os.chdir(outdir)
+b.makeHTML('POSITION.html' ,'POSITION',filterPattern='*POSITION_exchange_*',describe='Position of stocks relative to moving averages')
+os.chdir(cdir)    
 
 # Run individual stocks
 if doStocks:

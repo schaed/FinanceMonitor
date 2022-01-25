@@ -631,10 +631,22 @@ def GetUpcomingEarnings(fd,ReDownload):
     if os.path.exists('stockEarnings.csv') and not ReDownload:
         my_3month_calendar = pd.read_csv('stockEarnings.csv')
     else:
-        my_3month_calendar = fd.get_earnings_calendar('3month')
-        if len(my_3month_calendar)>0:
-            my_3month_calendar = my_3month_calendar[0]
-            my_3month_calendar.to_csv('stockEarnings.csv')
+        import csv
+        CSV_URL = 'https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=3month&apikey=demo'
+        with requests.Session() as s:
+            download = s.get(CSV_URL)
+            decoded_content = download.content.decode('utf-8')
+            cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+            filename='stockEarnings.csv'
+            with open(filename, 'w') as csvfile: 
+                # creating a csv writer object 
+                csvwriter = csv.writer(csvfile)
+                csvwriter.writerows(cr)
+        my_3month_calendar = pd.read_csv('stockEarnings.csv')
+        #my_3month_calendar = fd.get_earnings_calendar('3month')
+        #if len(my_3month_calendar)>0:
+        #    my_3month_calendar = my_3month_calendar[0]
+        #    my_3month_calendar.to_csv('stockEarnings.csv')
     
     # clean up
     my_3month_calendar['reportDate']=pd.to_datetime(my_3month_calendar['reportDate'])
@@ -776,6 +788,7 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
     # compute the last years support levels
     tstock_info['downSL']=0
     tstock_info['upSL']=0
+    #extrainfo+=[pd.DataFrame(np.zeros(len(tstock_info)),columns=['downSL'])]
     prior_year_tstock_infoR = GetTimeSlot(tstock_info,800,startDate=None)
     #prior_year_tstock_infoR.index = pd.to_datetime(prior_year_tstock_infoR.index)
     for i in prior_year_tstock_infoR.index.values:
@@ -884,6 +897,59 @@ def GetNNSelection(ticker, ts, connectionCal, sqlcursor, spy, debug=False,j=0,
     if debug: print(stock_info[['adj_close','open','pred','sma50r','sma20r','sma200r','downSL','upSL']])
     return stock_info,j
 
+def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None,draw=False,doPDFs=False,outdir='/tmp/',doIterX=False):
+    """ Generic plotting option for multiple plots 
+         
+         Parameters:
+         xaxis : numpy array
+            Date of stock value
+         yaxis : numpy array
+            Closing stock value
+         xname : str
+            x-axis name
+         colors : array of strings
+            colors compatible with matplotlib
+         labels : array of str
+            legend names
+         yname : str
+            y-axis name
+         saveName : str
+            Saved file name
+         hlines : array of horizontal lines drawn in matplotlib
+         title : str
+            Title of plot    
+         doSupport : bool
+            Request generation of support lines on the fly
+         my_stock_info : pandas data frame of stock timing and adj_close
+         draw : bool - draw and wait at each figure
+         doPDFs : bool - save as a PDF
+         outdir : str - path to save file
+         doIterX : bool - iterate over the x axis because they are not the same 
+    """
+    # plotting
+    j=0
+    plt.clf()
+    for y in yaxis:
+        if doIterX:
+            plt.plot(xaxis[j],y,color=colors[j],label=labels[j])
+        else:
+            plt.plot(xaxis,y,color=colors[j],label=labels[j])
+        j+=1
+    plt.gcf().autofmt_xdate()
+    plt.ylabel(yname)
+    plt.xlabel(xname)
+    if title!="":
+        plt.title(title, fontsize=30)
+    for h in hlines:
+        plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
+    plt.legend(loc="upper left")
+    if doSupport:
+        techindicators.supportLevels(my_stock_info)
+    if draw: plt.show()
+    if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
+    plt.savefig(outdir+'%s.png' %(saveName))
+    if not draw: plt.close()
+
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None, doScatter=False,doBox=False,doPDFs=False,draw=False,outdir='/tmp/'):
     """ Generic plotting with option to show support lines
          
@@ -906,6 +972,9 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
          my_stock_info : pandas data frame of stock timing and adj_close
          doScatter : bool - draw a scatter plot
          doBox : bool - draw a box plot for unique x-values
+         draw : bool - draw and wait at each figure
+         doPDFs : bool - save as a PDF
+         outdir : str - path to save file
      """
     # plotting
     plt.clf()
@@ -942,6 +1011,62 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     if not draw: plt.close()
     plt.close()
 
+def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False):
+    """ Reads global market indicators read in from an sql database for percentage of stocks over a given MA
+         outdir - string - of the directory to same
+         debug - bool - print extra info to see if something is broken
+         doPDFs - bool - save the PDFs
+         draw - bool - draw and wait at each figure
+         """
+    sqlcursor = SQL_CURSOR(db_name='stocksPerfHistory.db')
+    sc= sqlcursor.cursor()
+    table_names = sc.execute("SELECT name from sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';").fetchall()
+    table_names_str=[]
+    for tname in table_names: table_names_str+=[tname[0]]
+    stockList200=[]
+    stockList50=[]
+    exchanges = ['SPY','NYSE','SPYonehun','NASDAQonehun','R1k','R2k','R3k']
+    for exchange in exchanges:
+        stockList=[]
+        for MA in ['20MA','50MA','100MA','200MA']:
+            tableName=exchange+MA
+            if tableName not in table_names_str:
+                print('Missing expected table: %s' %tableName)
+                continue
+            # Reading the SQL database
+            stock = pd.read_sql('SELECT * FROM %s' %tableName, sqlcursor) #,index_col='Date')
+            stock['Date']=pd.to_datetime(stock.Date.astype(str), format='%Y-%m-%d')
+            stock['Date']=pd.to_datetime(stock['Date'])
+            stock = stock.set_index('Date')
+            stock = stock.sort_index()
+            stockList+=[stock]
+            if MA=="200MA":
+                stockList200+=[stock]
+            if MA=="50MA":
+                stockList50+=[stock]
+            
+        # interesting values Low,Previous_Close,High,Last
+        if len(stockList)>0:
+            plotYs = []
+            for s in stockList:
+                plotYs+=[s['Last']]
+            MakePlotMulti(stockList[0].index, yaxis=plotYs, colors=['black','green','red','cyan'], labels=['20MA','50MA','100MA','200MA'], xname='Date',yname='Percent of stocks in %s above MA' %exchange,saveName='POSITION_exchange_'+exchange, hlines=[],title=exchange,doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+        # Now compare with the same MA but different exchanges
+        if len(stockList200)>0:
+            plotXs=[]
+            plotYs = []
+            for s in stockList200:
+                plotXs+=[s.index]                
+                plotYs+=[s['Last']]            
+            MakePlotMulti(plotXs, yaxis=plotYs, colors=['black','green','red','cyan','yellow','blue','magenta'], labels=exchanges, xname='Date',yname='Percent of stocks above 200DMA',saveName='POSITION_exchange_200MA', hlines=[],title='Perc above 200DMA',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir,doIterX=True)
+        if len(stockList50)>0:
+            plotXs=[]
+            plotYs = []
+            for s in stockList50:
+                plotXs+=[s.index]
+                plotYs+=[s['Last']]
+            MakePlotMulti(plotXs, yaxis=plotYs, colors=['black','green','red','cyan','yellow','blue','magenta'], labels=exchanges, xname='Date',yname='Percent of stocks about 50DMA',saveName='POSITION_exchange_50MA', hlines=[],title='Perc above 50DMA',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir,doIterX=True)
+            
 def GLOBAL_MARKET_PLOTS(outdir='/tmp/',j=0,debug=False):
     """ Reads global market indicators as json files and makes a simple plot of them
          outdir - string - of the directory to same

@@ -29,7 +29,8 @@ import datetime
 est = pytz.timezone('US/Eastern')
 api = ALPACA_REST()
 ts = ALPHA_TIMESERIES()
-sqlcursor = SQL_CURSOR()
+STOCK_DB_PATH = os.getenv('STOCK_DB_PATH')
+sqlcursor = SQL_CURSOR('%s/stocksAV.db' %STOCK_DB_PATH)
 
 matplotlib.use("agg")
 sns.set_style('darkgrid')
@@ -488,6 +489,16 @@ row0_1.title('Monitoring stocks hitting extreme values')
 row1_spacer1, row1_1, row1_spacer2 = st.columns((.1, 3.2, .1))
 with row1_1:
     st.markdown("This looks at stocks on finviz and our hopefully more stable list to look for excesses. We probe the last 10 days for all that exceeded limits to search for very significant excesses.")
+
+    loadEarnings = st.checkbox('Load upcoming earnings',key='loadEarnings')
+    if loadEarnings:
+        today = datetime.datetime.now(tz=est)
+        future = datetime.datetime.now(tz=est)+datetime.timedelta(days=5)
+        stock_earnings = pd.read_csv(STOCK_DB_PATH+'/stockEarnings.csv')
+        stock_earnings['reportDate']=pd.to_datetime(stock_earnings['reportDate'])
+        stock_earnings = stock_earnings[(stock_earnings.reportDate < '%s-%s-%s' %(future.year,future.month,future.day)) & (stock_earnings.reportDate >= '%s-%s-%s' %(today.year,today.month,today.day)) ]
+        st.dataframe(stock_earnings)
+        
 st.write('')
 row2_spacer1, row2_1, row2_spacer2 = st.columns((.1, 3.2, .1))
 my_days = []
@@ -618,7 +629,7 @@ st.write('')
 row4_space1, row4_1, row4_space2, row4_2, row4_space3 = st.columns((.1, 1, .1, 1, .1))
 with row4_1, _lock:
     st.subheader('Select plotting - overbought')
-    doRelativeToSpy = st.checkbox('Show relative to SPY',key='maxRelSpy')
+    doRelativeToSpy = st.checkbox('Show relative to SPY',key='maxRelSpyBought')
     optionPlus = st.selectbox('Is there a stock to evaluate for overbought?',np.array(['Select']+list(tickers_plus)),key='maxTick')
     st.write('You selected:', optionPlus)
 
@@ -647,7 +658,7 @@ st.write('')
 row5_space1, row5_1, row5_space2, row5_2, row5_space3 = st.columns((.1, 1, .1, 1, .1))
 with row5_1, _lock:
     st.subheader('Select plotting - oversold')
-    doRelativeToSpy = st.checkbox('Show relative to SPY',key='minRelSpy')
+    doRelativeToSpy = st.checkbox('Show relative to SPY',key='minRelSpySold')
     optionMin = st.selectbox('Is there a stock to evaluate for oversold?',np.array(['Select']+list(tickers_min)),key='minTick')
     st.write('You selected:', optionMin)
 
@@ -669,23 +680,52 @@ with row5_1, _lock:
         if st.button("Show table"):
             st.dataframe(fig_table)
 
+#
+# now load the earnings lists and other interesting news stories
+#
+st.write('')
+row6_space1, row6_1, row6_space2, row6_2, row6_space3 = st.columns((.1, 1, .1, 1, .1))
+with row6_1, _lock:
+    st.subheader('News analysis')
+    showNewsTable = st.checkbox('Show tables',key='newTables')
+    doRelativeToSpy = st.checkbox('Show relative to SPY',key='minRelSpyNews')
+    for istory in [STOCK_DB_PATH+'/Instructions/out_earnings_instructions.csv',
+                   STOCK_DB_PATH+'/Instructions/out_bull_instructions.csv',
+                   STOCK_DB_PATH+'/Instructions/out_target_instructions.csv',
+                   STOCK_DB_PATH+'/Instructions/out_pharmaphase_instructions.csv',
+                   STOCK_DB_PATH+'/Instructions/out_upgrade_instructions.csv',]:
+        if os.path.exists(istory):
+            news_type = istory[istory.find('out_')+4:-len('_instructions.csv')]
+            st.markdown('**%s**' %news_type)
+            itable = pd.read_csv(istory,sep=' ')
+            if showNewsTable:
+                 st.table(itable)
+            news_tickers = []
+            if 'ticker' in itable.columns:
+                 news_tickers = itable['ticker'].unique()
 
-    #x1 = np.random.normal(5, 3, 5000)
-    #x2 = x1-2.0
-    #hist_data = [x1, x2]
-    #group_labels = ['Group 1', 'Group 2',]
-    #
-    ## Create distplot with custom bin_size
-    #fig = ff.create_distplot(
-    # hist_data, group_labels, bin_size=[.1, .25, .5])
-    #
+            optionNews = st.selectbox('Select Ticker',np.array(['Select']+list(news_tickers)),key='select_%s' %news_type)
+            st.write('You selected:', optionNews)
 
+            if optionNews!='Select':
+                 fig_table,figs_minute_price = generateFigure(api,optionNews)
 
+                 # Print a table of stock information on Alpaca
+                 st.json(api.get_asset(optionNews)._raw)
+        
+                 # Plot!
+                 for fig_minute_price in figs_minute_price:
+                     st.plotly_chart(fig_minute_price)
+
+                 mean_figs = generateMeanRevFigure(api,sqlcursor,ts,optionNews,doRelativeToSpy)
+                 st.markdown('Number of entries: %s' %len(mean_figs))
+                 for mean_fig in mean_figs:
+                     st.plotly_chart(mean_fig)
         
 if st.button("Download"):
     with row3_1, _lock:
         st.subheader('Generate a random plot')
-        
+
         fig = Figure()
         ax = fig.subplots()
         sns.histplot(np.random.normal(5, 3, 5000),binrange=(0,20.0),ax=ax)

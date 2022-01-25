@@ -1,4 +1,4 @@
-import alpaca_trade_api as tradeapi
+#!/usr/bin/python
 import requests
 import time
 from ta import macd
@@ -6,22 +6,18 @@ import numpy as np
 from datetime import datetime, timedelta
 from pytz import timezone
 
-# Replace these with your API connection info from the dashboard
-base_url = 'Your API URL'
-api_key_id = 'Your API Key'
-api_secret = 'Your API Secret'
+from ReadData import ALPACA_REST,ALPACA_STREAM
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
-api = tradeapi.REST(
-    base_url=base_url,
-    key_id=api_key_id,
-    secret_key=api_secret
-)
+# Load API
+api = ALPACA_REST()
 
 session = requests.session()
 
 # We only consider stocks with per-share prices inside this range
 min_share_price = 2.0
-max_share_price = 13.0
+max_share_price = 70.0
 # Minimum previous-day dollar volume for a stock we might consider
 min_last_dv = 500000
 # Stop limit to default to
@@ -29,6 +25,42 @@ default_stop = .95
 # How much of our portfolio to allocate to any one position
 risk = 0.001
 
+
+# Creates trades when requested
+class  MyHandler(FileSystemEventHandler):
+    def __init__(self, fleet,api,stream):
+        FileSystemEventHandler.__init__(self)
+        self.fleet = fleet # save a link to all of the trades
+    def on_moved(self, event):
+        print(f'event type: {event.event_type} path : {event.src_path}')
+    def  on_modified(self,  event):
+        #print(f'event type: {event.event_type} path : {event.src_path}')
+        file_list=['Instructions/out_target_instructions.csv',
+                       'Instructions/out_upgrade_instructions.csv',
+                       #'Instructions/out_bull_instructions.csv',
+                       'Instructions/out_pharmaphase_instructions.csv']
+        # if boolean, then load them all. otherwise, see if the file was modified
+        if type(event)==type(True):
+            for ifile_name in file_list:
+                self._read_csv(in_file_name=ifile_name)
+        else:
+            for ifile_name in file_list:
+                if event.src_path==ifile_name:
+                    self._read_csv(in_file_name=ifile_name)
+                    
+    def  on_created(self,  event):
+        print(f'event type: {event.event_type} path : {event.src_path}')
+    def  on_deleted(self,  event):
+        print(f'event type: {event.event_type} path : {event.src_path}')
+
+    def _read_csv(self, in_file_name='Instructions/out_target_instructions.csv'):
+        """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
+        Inputs:
+        in_file_name - str - input csv file path like Instructions/out_bull_instructions_test.csv
+        """
+        if not os.path.exists(in_file_name):
+            print(f'File path does not exist! {in_file_name}. Skipping...')
+            return
 
 def get_1000m_history_data(symbols):
     print('Getting historical data...')
@@ -46,7 +78,8 @@ def get_1000m_history_data(symbols):
 
 def get_tickers():
     print('Getting current ticker data...')
-    tickers = api.polygon.all_tickers()
+    out_dir_name='Instructions/out_momentum_instructions.csv'
+    #tickers = api.polygon.all_tickers()
     print('Success.')
     assets = api.list_assets()
     symbols = [asset.symbol for asset in assets if asset.tradable]
@@ -72,7 +105,7 @@ def find_stop(current_value, minute_history, now):
 
 def run(tickers, market_open_dt, market_close_dt):
     # Establish streaming connection
-    conn = tradeapi.StreamConn(base_url=base_url, key_id=api_key_id, secret_key=api_secret)
+    conn = ALPACA_STREAM(data_feed='sip')    
 
     # Update initial state with information from tickers
     volume_today = {}
@@ -386,6 +419,13 @@ if __name__ == "__main__":
     )
     market_close = market_close.astimezone(nyc)
 
+    # reading in stocks
+    # checking for trades to execute!
+    event_handler = MyHandler(fleet,api,stream)
+    observer = Observer(timeout=1)
+    observer.schedule(event_handler,  path='/Users/schae/testarea/finances/FinanceMonitor/Instructions/',  recursive=True)
+    observer.start()        
+    
     # Wait until just before we might want to trade
     current_dt = datetime.today().astimezone(nyc)
     since_market_open = current_dt - market_open
@@ -394,3 +434,6 @@ if __name__ == "__main__":
         since_market_open = current_dt - market_open
 
     run(get_tickers(), market_open, market_close)
+    
+    observer.stop()
+    observer.join()

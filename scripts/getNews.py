@@ -211,8 +211,8 @@ if __name__ == "__main__":
     today = datetime.datetime.today()
     
     # all news stories from today and load yesterday if it exists
-    total_news_map ={}
-    total_recs_map ={}
+    total_news_map = {}
+    total_recs_map = {}
     outFileName='News/News_%s_%s_%s.p' %(today.day,today.month,today.year)
     #outFileName='Newstoday.p'
     if os.path.exists(outFileName): # and False:

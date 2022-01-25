@@ -443,7 +443,7 @@ class BullishAlgo:
 
 
 def main(args):
-    stream = ALPACA_STREAM(data_feed='iex')
+    stream = ALPACA_STREAM(data_feed='sip')
     api = ALPACA_REST()
     fleet = {}
 

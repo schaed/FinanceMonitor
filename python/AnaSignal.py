@@ -362,8 +362,8 @@ def GenerateSignal(ticker, out_file_name = 'out_bull_instructions.csv',price_tar
             ntry+=1;
     # may want to restrict to NYSE open times
     try:
-        AddInfo(spy, spy)
-        AddInfo(tstock_info, spy, AddSupport=True)
+        spy = AddInfo(spy, spy)
+        tstock_info= AddInfo(tstock_info, spy, AddSupport=True)
     except (ValueError,KeyError):
         print('Error processing adding info %s' %ticker)
 
@@ -434,8 +434,8 @@ if __name__ == "__main__":
     #minute_prices = minute_prices[(minute_prices.index.hour>13) & (minute_prices.index.hour<20)
     #print(minute_prices)
     try:
-        AddInfo(spy, spy)
-        AddInfo(tstock_info, spy, AddSupport=True)
+        spy = AddInfo(spy, spy)
+        tstock_info = AddInfo(tstock_info, spy, AddSupport=True)
     except (ValueError,KeyError):
         print('Error processing adding info to SPY %s' %ticker)
 
