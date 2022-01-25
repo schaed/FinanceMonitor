@@ -503,7 +503,7 @@ def generateFigurePanda(ar,tickerA,xaxis=[],yaxis1=[],yaxis2=[],ytitle='EPS'):
     if len(yaxis2)>0:
         fig.update_yaxes(title_text=yaxis2[0], secondary_y=True)
 
-    fig.write_image("fig1.png")
+    #fig.write_image("fig1.png")
     figs +=[ fig ]
     return figs
 
@@ -621,6 +621,8 @@ with row3_1, _lock:
     # Set a bar for how significant to select
     signif = st.slider('How significant to select?', 3.0, 10.0, 5.0)
     st.write("Selected ", signif, 'sigma')
+    signif_start = st.slider('How significant to select for added stocks?', 1.0, 10.0, 4.0,key='startSig')
+    st.write("Selected ", signif_start, 'sigma')
 
     downloadFiles=False
     if st.button("Show file names"):
@@ -658,8 +660,10 @@ with row3_1, _lock:
                                      
         st.markdown("Greater than %ssigma or overbought!" %signif)
         df = df[df.stddev>0.000001]
-        df_plus = df[df.fit_diff_significance>signif]
+        #df_plus = df.copy(True)
+        df_plus = df[df.fit_diff_significance>signif_start]
         df_plus = collect_latest_trades(api,df_plus)
+        df_plus = df_plus[df_plus.fit_diff_significance>signif]        
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
 
@@ -679,8 +683,10 @@ with row3_1, _lock:
         # Running the oversold now
         st.write('')
         st.markdown("Greater than -%ssigma or oversold!" %signif)
-        df_min = df[df.fit_diff_significance<(-1*signif)]
+        #df_min = df.copy(True)
+        df_min = df[df.fit_diff_significance<(-1*signif_start)]
         df_min = collect_latest_trades(api,df_min)
+        df_min = df_min[df_min.fit_diff_significance<(-1*signif)]        
         if require_shortable:
             df_min = df_min[df_min.shortable]
         tickers_min = df_min['ticker'].unique()

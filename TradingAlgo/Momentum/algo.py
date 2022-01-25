@@ -6,13 +6,13 @@ import numpy as np
 from datetime import datetime, timedelta
 from pytz import timezone
 
-from ReadData import ALPACA_REST,ALPACA_STREAM
+from ReadData import ALPACA_REST,ALPACA_STREAM,runTicker
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # Load API
 api = ALPACA_REST()
-
+STOCK_DB_PATH = os.getenv('STOCK_DB_PATH')
 session = requests.session()
 
 # We only consider stocks with per-share prices inside this range
@@ -24,7 +24,6 @@ min_last_dv = 500000
 default_stop = .95
 # How much of our portfolio to allocate to any one position
 risk = 0.001
-
 
 # Creates trades when requested
 class  MyHandler(FileSystemEventHandler):
@@ -75,22 +74,44 @@ def get_1000m_history_data(symbols):
     print('Success.')
     return minute_history
 
-
 def get_tickers():
     print('Getting current ticker data...')
-    out_dir_name='Instructions/out_momentum_instructions.csv'
-    #tickers = api.polygon.all_tickers()
+    in_instruct_name=STOCK_DB_PATH+'/Instructions/out_momentum_instructions.csv'
+    instruct = pd.read_csv(in_instruct_name,delimiter=' ')
+    tickers = []
+    if 'ticker' in instruct.columns:
+        tickers = instruct['ticker'].unique()
     print('Success.')
-    assets = api.list_assets()
-    symbols = [asset.symbol for asset in assets if asset.tradable]
-    return [ticker for ticker in tickers if (
-        ticker.ticker in symbols and
-        ticker.lastTrade['p'] >= min_share_price and
-        ticker.lastTrade['p'] <= max_share_price and
-        ticker.prevDay['v'] * ticker.lastTrade['p'] > min_last_dv and
-        ticker.todaysChangePerc >= 3.5
-    )]
 
+    # Load assets
+    assets = []
+    for tick in tickers:
+        assets +=[api.get_asset(tick)]
+
+    symbols = [asset.symbol for asset in assets if asset.tradable]
+    out_tickers = []
+    nyc = timezone('America/New_York')
+    today = datetime.datetime.now(tz=nyc) 
+    todayFilter = (today + timedelta(days=-2))
+    d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
+    s1_day = (today + timedelta(days=-10)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+    s1_min = (today).strftime("%Y-%m-%dT09:30:00-05:00")
+    for s in symbols:
+        trade = api.get_latest_trade(s)
+        day_prices = runTicker(api, s, timeframe=TimeFrame.Day, start=s1_day, end=d1)
+        #minute_prices = runTicker(api, s, timeframe=TimeFrame.Day, start=s1_min, end=d1)
+        if len(day_prices)<2 or 'volume' not in day_prices.columns:
+            continue
+        #if len(min_prices)<1 or 'open' not in min_prices.columns:
+        #    continue
+        open_price = day_prices['open'][-1]
+        if open_price<=0.0:
+            continue
+        if trade.p >= min_share_price and \
+           trade.p <= max_share_price and \
+           day_prices['volume']*trade.p >  min_last_dv and \
+           (open_price - trade.p)/open_price >= 0.035:
+            out_ticker+=[s]
 
 def find_stop(current_value, minute_history, now):
     series = minute_history['low'][-100:] \
@@ -421,10 +442,10 @@ if __name__ == "__main__":
 
     # reading in stocks
     # checking for trades to execute!
-    event_handler = MyHandler(fleet,api,stream)
-    observer = Observer(timeout=1)
-    observer.schedule(event_handler,  path='/Users/schae/testarea/finances/FinanceMonitor/Instructions/',  recursive=True)
-    observer.start()        
+    #event_handler = MyHandler(fleet,api,stream)
+    #observer = Observer(timeout=1)
+    #observer.schedule(event_handler,  path='/Users/schae/testarea/finances/FinanceMonitor/Instructions/',  recursive=True)
+    #observer.start()        
     
     # Wait until just before we might want to trade
     current_dt = datetime.today().astimezone(nyc)

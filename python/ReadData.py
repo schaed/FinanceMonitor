@@ -130,6 +130,16 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
         stock[index_label]=pd.to_datetime(stock[index_label])
         stock = stock.set_index(index_label)
         stock = stock.sort_index()
+
+        # Let's check if the stock entries that we added had any splits. If so, drop the table and reload
+        if 'splitcoef' in stock and len(stock)>5:
+            stock_tmp = stock[-4:]
+            if len(stock_tmp[stock_tmp.splitcoef!=1.0])>0:
+                print('Stock split was found for %s' %ticker)
+                sqlcursor.cursor().execute('DROP TABLE %s' %ticker)
+                NewEntry=True
+                sys.stdout.flush()
+        
         today=datetime.datetime.now()
         StartLoading = True
         if stock.index[-1].weekday()==4 and (today - stock.index[-1])<datetime.timedelta(days=4):
