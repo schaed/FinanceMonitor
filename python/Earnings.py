@@ -32,7 +32,7 @@ def GetOverview(fd, ticker, connectionCal, debug=False):
     oEDF = ConfigTableFromPandas('overview',ticker,connectionCal,overview,index_label='Date',tickerName='Symbol')
     return oEDF
 
-def GetStockOverview(fd, ticker, connectionCal, ReDownload=False, debug=False):
+def GetStockOverview(fd, ticker, connectionCal, j=0, ReDownload=False, debug=False):
     """ GetStockOverview - Back testing of the SAR trading model. Shows the cumulative return from the strategy
         
          Parameters:
@@ -45,11 +45,13 @@ def GetStockOverview(fd, ticker, connectionCal, ReDownload=False, debug=False):
         """
     # download the overview
     DownloadOverview=False
+    stockOver=[]
     if ReDownload: DownloadOverview=True
     if not ReDownload:
         try:
             stockOver = pd.read_sql('SELECT * FROM overview WHERE Symbol="%s"' %(ticker), connectionCal)
             if len(stockOver)==0: DownloadOverview=True
+
             # https://www.finra.org/filing-reporting/regulatory-filing-systems/short-interest
             # check if the last entry was more than 10 days ago. If so, then load a new entry. Things like the short data are updated once every two weeks
             # info saved as Date when it was recorded
@@ -66,11 +68,12 @@ def GetStockOverview(fd, ticker, connectionCal, ReDownload=False, debug=False):
         try:
             stockOver = GetOverview(fd, ticker, connectionCal, debug)
         except:
-            print('failed download for %s' %ticker)
+            if debug: print('failed download for %s' %ticker)
             pass
+
     return stockOver
 
-def GetPastEarnings(fd, ticker, connectionCal, ReDownload=False, debug=False):
+def GetPastEarnings(fd, ticker, connectionCal, j=0, ReDownload=False, debug=False):
     """ GetPastEarnings - get quarterly and annual earnings
         
          Parameters:
@@ -81,11 +84,19 @@ def GetPastEarnings(fd, ticker, connectionCal, ReDownload=False, debug=False):
         ReDownload - bool - just download info anyway
         debug - bool - print info
         """
+    stockInfoQ=[]
+    DownloadInfo=False
     if not ReDownload:
         try:
-            stockInfo = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
-            if debug: print(stockInfo)
-            if len(stockInfo)==0: DownloadInfo=True
+            stockInfoQ = pd.read_sql('SELECT * FROM quarterlyEarnings WHERE ticker="%s"' %(ticker), connectionCal)
+            stockInfoA = pd.read_sql('SELECT * FROM annualEarnings WHERE ticker="%s"' %(ticker), connectionCal)
+            if debug: print(stockInfoQ)
+            if len(stockInfoQ)==0:
+                DownloadInfo=True
+            else:
+                stockInfoQ.sort_values('reportedDate',inplace=True)
+                stockInfoA.sort_values('fiscalDateEnding',inplace=True)
+                return stockInfoA,stockInfoQ
         except:
             DownloadInfo=True
             
@@ -96,7 +107,7 @@ def GetPastEarnings(fd, ticker, connectionCal, ReDownload=False, debug=False):
             pastEarnings = fd.get_company_earnings(ticker)
         except:
             print('Could not collect: %s' %ticker)
-            continue
+            return [],[]
     else:
         #continue
         return [],[]
@@ -104,6 +115,10 @@ def GetPastEarnings(fd, ticker, connectionCal, ReDownload=False, debug=False):
     #
     # Loading the previous earnings!
     #
+    annualEarnings=[]
+    quarterlyEarnings=[]
+    totalDF=[]
+    qEDF=[]
     try:
         pastEarnings[0]
         if debug: print(pastEarnings[0].keys())
@@ -147,10 +162,11 @@ def GetPastEarnings(fd, ticker, connectionCal, ReDownload=False, debug=False):
             print(quarterlyEarnings.dtypes)
         qEDF = ConfigTableFromPandas('quarterlyEarnings',ticker,connectionCal,quarterlyEarnings,index_label='reportedDate')
         if debug: print(qEDF)
+        
+    return totalDF,qEDF
 
-
-def GetBalanceSheetQuartly(fd, ticker, debug=False):
-    """ GetBalanceSheetQuartly - get quarterly balance shee
+def GetBalanceSheetQuarterly(fd, ticker, debug=False):
+    """ GetBalanceSheetQuarterly - get quarterly balance shee
         
          Parameters:
          fd - Fundamental data api source from alpha vantage
@@ -158,7 +174,18 @@ def GetBalanceSheetQuartly(fd, ticker, debug=False):
                 Stock ticker symbol
         debug bool - print extra info 
     """
-    return fd.get_balance_sheet_quarterly(ticker)
+    a = fd.get_balance_sheet_quarterly(ticker)
+    if len(a)>0:
+        a = a[0]
+        for sch in a.columns:
+            if sch in ['reportedDate','fiscalDateEnding','reportedCurrency']:
+                continue
+            if sch in a:
+                a[sch]=pd.to_numeric(a[sch],errors='coerce')
+
+        a['fiscalDateEnding']=pd.to_datetime(a['fiscalDateEnding'])
+        return a
+    return []
 
 def GetBalanceSheetAnnual(fd, ticker, debug=False):
     """ GetBalanceSheetAnnual- get annual balance shee
@@ -169,7 +196,18 @@ def GetBalanceSheetAnnual(fd, ticker, debug=False):
                 Stock ticker symbol
         debug bool - print extra info 
     """
-    return fd.get_balance_sheet_annual(ticker)
+    a=fd.get_balance_sheet_annual(ticker)
+    if len(a)>0:
+        a = a[0]
+        a['fiscalDateEnding']=pd.to_datetime(a['fiscalDateEnding'])
+        for sch in a.columns:
+            if sch in ['reportedDate','fiscalDateEnding','reportedCurrency']:
+                continue
+            if sch in a:
+                a[sch]=pd.to_numeric(a[sch],errors='coerce')
+        
+        return a
+    return []
 
 def GetIncomeStatement(fd, ticker, annual=False, debug=False):
     """ GetIncomeStatue- get the income statement
@@ -183,7 +221,30 @@ def GetIncomeStatement(fd, ticker, annual=False, debug=False):
     """
 
     if annual:
-        return fd.get_income_statement_annual(ticker)
-    
-    return fd.get_income_statement_quarterly(ticker)
+        a = fd.get_income_statement_annual(ticker)
+        if len(a)>0:
+            a = a[0]
+            for sch in a.columns:
+                if sch in ['reportedDate','fiscalDateEnding','reportedCurrency']:
+                    continue
+                if sch in a:
+                    a[sch]=pd.to_numeric(a[sch],errors='coerce')
+
+            a['fiscalDateEnding']=pd.to_datetime(a['fiscalDateEnding'])
+
+            return a
+    else:
+        a = fd.get_income_statement_quarterly(ticker)
+        if len(a)>0:
+            a = a[0]
+            for sch in a.columns:
+                if sch in ['reportedDate','fiscalDateEnding','reportedCurrency']:
+                    continue
+                if sch in a:
+                    a[sch]=pd.to_numeric(a[sch],errors='coerce')
+
+            a['fiscalDateEnding']=pd.to_datetime(a['fiscalDateEnding'])
+
+            return a        
+    return []
 

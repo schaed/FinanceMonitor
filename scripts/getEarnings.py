@@ -53,7 +53,7 @@ for ticker in tickers:
         time.sleep(60)
 
     # Load the stock overview
-    stockOver = GetStockOverview(fd, ticker, connectionCal, ReDownload=ReDownload, debug=debug):
+    stockOver = GetStockOverview(fd, ticker, connectionCal, j=j, ReDownload=ReDownload, debug=debug)
     
     # try downloading updated info:
     DownloadInfo=False
@@ -67,7 +67,7 @@ for ticker in tickers:
             DownloadInfo=True
 
     # Collect past earnings
-    GetPastEarnings(fd, ticker, connectionCal, ReDownload=ReDownload, debug=debug)
+    GetPastEarnings(fd, ticker, connectionCal, j=j, ReDownload=ReDownload, debug=debug)
 
 #print(fd.get_balance_sheet_annual(ticker))
 #get_company_overview

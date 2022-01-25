@@ -13,10 +13,11 @@ from matplotlib.patches import StepPatch
 from matplotlib.backends.backend_agg import RendererAgg
 
 # collect data
-from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot
+from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot,ALPHA_FundamentalData
 from alpaca_trade_api.rest import TimeFrame
 import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
+from Earnings import GetIncomeStatement,GetPastEarnings,GetStockOverview,GetBalanceSheetQuarterly,GetBalanceSheetAnnual
 
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
@@ -474,6 +475,38 @@ def generateFigure(apiA,tickerA):
 
     return minute_prices_thirty,figs
 
+def generateFigurePanda(ar,tickerA,xaxis=[],yaxis1=[],yaxis2=[],ytitle='EPS'):
+    """generateFigurePanda
+       ar - panda array
+       tickerA - str - ticker
+    """
+    figs=[]
+    if len(ar)==0:
+        return figs
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    for y in yaxis1:
+        fig.add_trace(go.Scatter(
+            x=ar[xaxis],
+            y=ar[y],
+            name=y),secondary_y=False)
+    for y in yaxis2:        
+        fig.add_trace(  go.Scatter(x=ar[xaxis],
+                                   y=ar[y],name=y),
+                        secondary_y=True)
+
+    # Set x-axis title
+    fig.update_layout(xaxis_title="Date",yaxis_title="%s %s" %(tickerA,ytitle))
+    
+    # Set y-axes titles
+    #fig.update_yaxes(title_text="Price", secondary_y=False)
+    if len(yaxis2)>0:
+        fig.update_yaxes(title_text=yaxis2[0], secondary_y=True)
+
+    fig.write_image("fig1.png")
+    figs +=[ fig ]
+    return figs
+
 def load_lottieurl(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -521,6 +554,7 @@ with row2_1:
     #st.table(pd.DataFrame(list(api.get_asset(title)._raw.items())))
 
     doRelativeToSpyAll = st.checkbox('Show relative to SPY',key='relTitleSpy')
+    doEarnings = st.checkbox('Show earnings',key='do earnings')
     
     if title!='Select':
         # Print a table of stock information on Alpaca
@@ -540,7 +574,45 @@ with row2_1:
         
         if st.button("Show table"):
             st.dataframe(fig_table)
+
+        if doEarnings:
+            st.markdown("**Earnings info**")
+            fd=ALPHA_FundamentalData()
+            sqlcursorShorts = SQL_CURSOR(db_name=STOCK_DB_PATH+'/stocksShort.db')
+            
+            sqlcursorCal = SQL_CURSOR(db_name=STOCK_DB_PATH+'/earningsCalendarv2.db')
+            fiscal_figs = []
+            ticker = title
+            annualE,qE = GetPastEarnings(fd,ticker,sqlcursorCal)
+            overview = GetStockOverview(fd,ticker,sqlcursorCal) #fd.get_company_overview(ticker) # has P/E, etc
+            if len(overview)>0:
+                fiscal_figs+=generateFigurePanda(overview,ticker,xaxis='Date',yaxis1=['BookValue'],yaxis2=[],ytitle='BookValue')
+                fiscal_figs+=generateFigurePanda(overview,ticker,xaxis='Date',yaxis1=['SharesShort','SharesShortPriorMonth'],yaxis2=['ShortPercentFloat'],ytitle='Shares Short')                
+
+            if len(qE)>0:
+                fiscal_figs+=generateFigurePanda(qE,ticker,xaxis='reportedDate',yaxis1=['reportedEPS','estimatedEPS'],yaxis2=['surprise'])
+            if len(annualE)>0:
+                fiscal_figs+=generateFigurePanda(annualE,ticker,xaxis='fiscalDateEnding',yaxis1=['reportedEPS'],yaxis2=[])
+                
+            incomeQ = GetIncomeStatement(fd, ticker, annual=False, debug=False)
+            incomeA = GetIncomeStatement(fd, ticker, annual=True, debug=False)
+
+            if len(incomeQ)>0:
+                fiscal_figs+=generateFigurePanda(incomeQ,ticker,xaxis='fiscalDateEnding',yaxis1=['totalRevenue','costOfRevenue'],yaxis2=['netIncome'],ytitle='New Income')
+            if len(incomeA)>0:
+                fiscal_figs+=generateFigurePanda(incomeA,ticker,xaxis='fiscalDateEnding',yaxis1=['totalRevenue','costOfRevenue'],yaxis2=['netIncome'],ytitle='New Income')
     
+            balanceQ = GetBalanceSheetQuarterly(fd, ticker, debug=False)
+            #balanceA = GetBalanceSheetAnnual(fd, ticker, debug=False)
+            if 'currentDebt' in balanceQ:
+                balanceQ['debt_to_assets'] = balanceQ['currentDebt'] / balanceQ['totalCurrentAssets']
+                balanceQ['debt_to_commonstock'] = balanceQ['currentDebt'] / balanceQ['commonStock']
+                fiscal_figs+=generateFigurePanda(balanceQ,ticker,xaxis='fiscalDateEnding',yaxis1=['debt_to_assets','debt_to_commonstock'],yaxis2=['commonStock'],ytitle='Common Stock')
+                fiscal_figs+=generateFigurePanda(balanceQ,ticker,xaxis='fiscalDateEnding',yaxis1=['currentDebt','shortTermDebt','currentLongTermDebt','cashAndShortTermInvestments'],yaxis2=['commonStock'],ytitle='Common Stock')
+            
+            for fiscal_fig in fiscal_figs:
+                st.plotly_chart(fiscal_fig)
+
 st.write('')
 row3_space1, row3_1, row3_space2, row3_2, row3_space3 = st.columns((.1, 1, .1, 1, .1))
 with row3_1, _lock:
