@@ -287,10 +287,18 @@ class Sentiment:
             money = [tok for tok in doc if tok.pos_ == "NUM"];
             if len(money)==1:
                 self.price_after = money[0]
+                try:
+                    self.price_after = float(str(self.price_after))
+                except:
+                    print('Failed to convert money for IPO price %s' %self.price_after)                
             if len(money)==2:
                 self.price_after  = money[0]
                 self.price_before = money[1]
-                
+                try:
+                    self.price_after = float(str(self.price_after))
+                    self.price_before = float(str(self.price_before))
+                except:
+                    print('Error converting inputs in IPO price: %s %s' %(self.price_after,self.price_before))                
         # price target
         # Alcoa price target raised to $20 from $14 at B. Riley Securities »
         # Alcoa price target raised to $38 from $36 at BMO Capital »
@@ -306,14 +314,27 @@ class Sentiment:
                     
             if len(money)==1:
                 self.price_after = money[0]
+                try:
+                    self.price_after = float(str(self.price_after))
+                except:
+                    print('Failed to convert money for price target %s' %self.price_after)
                 #if 'initiat' in inputTxtLower:
             if len(money)==2:
                 self.price_after  = money[0]
                 self.price_before = money[1]
+                try:
+                    self.price_after = float(str(self.price_after))
+                    self.price_before = float(str(self.price_before))
+                except:
+                    print('Error converting inputs in price target: %s %s' %(self.price_after,self.price_before))
                 if 'rais'  in inputTxtLower:                       self.sentiment=1
                 if 'lower' in inputTxtLower:                       self.sentiment=-1                    
-                if 'rais'  in inputTxtLower and self.price_after<self.price_before: self.assessment_consistent = False
-                if 'lower' in inputTxtLower and self.price_after>self.price_before: self.assessment_consistent = False
+                if 'rais'  in inputTxtLower and self.price_after<self.price_before:
+                    print('consistency problem',self.price_after)
+                    self.assessment_consistent = False
+                if 'lower' in inputTxtLower and self.price_after>self.price_before:
+                    print('Find a lower')
+                    self.assessment_consistent = False
 
         # special case for passive stake
         # Senvest Management reports 5.54% passive stake in GameStop 
@@ -569,7 +590,7 @@ class Sentiment:
             print('analyzing earnings on %s with EPS after %s' %(self.ticker,self.price_after))
             price_after  = str(self.price_after).replace(',','')
             price_before = str(self.price_before).replace(',','')
-            print('analyzing price target on %s with price after %s' %(self.ticker,price_after))
+            print('analyzing earnings on %s with price after %s' %(self.ticker,price_after))
             if (price_after.replace('.','',1)).isdigit() and (price_before.replace('.','',1)).isdigit():
                 price_after = float(price_after)
                 price_before = float(price_before)

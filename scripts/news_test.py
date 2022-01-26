@@ -35,17 +35,26 @@ inputTxt='Molecular Partners indicated to open at $20, IPO priced at $21.25'
 #inputTxt='Bassett Furniture reports Q2 EPS 60c, two est. 35c'
 #inputTxt='Royal Caribbean reports Q2 adjusted EPS ($5.06), consensus ($4.40)'
 #inputTxt='UroGen Pharma reports Q2 EPS ($1.17), consensus ($1.27)'
-is_earnings=True
+inputTxt='Alcoa call volume heavy and directionally bullish'
+is_earnings=False
+#inputTxt = 'Wynn Resorts price target raised to $125 from $120 at CBRE'
+#inputTxt = 'IFF upgraded to Buy from Hold at Stifel'
 #s.Parse(inputTxt,'Honest Company', 'HON', sid=sid, nlp=nlp, is_earnings=False)
-inputTxt='Bank of Hawaii reports Q4 EPS $1.55, consensus $1.35'
+#inputTxt='Bank of Hawaii reports Q4 EPS $1.55, consensus $1.35'
 s.Parse(inputTxt,'Bank of Hawaii', 'BOH', sid=sid, nlp=nlp, is_earnings=False)
-if len(s.PassEarnings())>0:
-    AnaSignal.GenerateSignal(s.ticker,'out_earnings_instructions.csv',s.PassEarnings())
+#if len(s.PassEarnings())>0:
+#    AnaSignal.GenerateSignal(s.ticker,'out_earnings_instructions.csv',s.PassEarnings())
+#if len(s.PassPriceTarget())>0:
+#    AnaSignal.GenerateSignal(s.ticker,'out_target_instructions.csv',s.PassPriceTarget())
+#if s.PassUpgrade():
+#    AnaSignal.GenerateSignal(s.ticker,'out_upgrade_instructions.csv')
+if s.message!=None and s.sentiment>0 and s.message=='options':
+    AnaSignal.GenerateSignal(s.ticker,'out_bull_instructions.csv')
      
 #s.Sentiment(sid=sid,nlp=nlp,is_earnings=is_earnings)
 print(s)
 
-#sys.exit(0)
+sys.exit(0)
 import pytz
 import datetime
 est = pytz.timezone('US/Eastern')

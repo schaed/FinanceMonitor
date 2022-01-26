@@ -121,6 +121,13 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
             line=dict(color='rgb(31, 119, 180)'),
         ),
         go.Scatter(
+            name='Adj Close',
+            x=my_index,
+            y=arr_prices.adj_close,
+            mode='lines',
+            line=dict(color='rgb(31, 119, 180)'),
+        ),        
+        go.Scatter(
             name='1 sigma',
             x=my_index,
             y=p4(x)+0.5*stddev,
