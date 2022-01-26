@@ -15,7 +15,9 @@ import sqlite3,sys
 from dateutil.parser import parse
 import urllib3
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import matplotlib
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 import base as baseB
 NY = 'America/New_York'
 # db_name the database name
@@ -907,7 +909,7 @@ def GetNNSelection(ticker, ts, connectionCal, sqlcursor, spy, debug=False,j=0,
     if debug: print(stock_info[['adj_close','open','pred','sma50r','sma20r','sma200r','downSL','upSL']])
     return stock_info,j
 
-def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None,draw=False,doPDFs=False,outdir='/tmp/',doIterX=False):
+def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], dash=[], xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None,draw=False,doPDFs=False,outdir='/tmp/',doIterX=False,spy=[]):
     """ Generic plotting option for multiple plots 
          
          Parameters:
@@ -935,24 +937,42 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], xname='Date',yname='Bet
          doPDFs : bool - save as a PDF
          outdir : str - path to save file
          doIterX : bool - iterate over the x axis because they are not the same 
+         spy : dataframe - dataframe with adj_close to overlay the prices
     """
     # plotting
     j=0
     plt.clf()
+    #if len(xaxis)==0:
+    fig,ax1 = plt.subplots()
     for y in yaxis:
-        if doIterX:
-            plt.plot(xaxis[j],y,color=colors[j],label=labels[j])
+        if len(xaxis)==0:
+            if len(dash)>0:
+                plt.plot(y.index,y,color=colors[j],label=labels[j],linestyle=dash[j])
+            else:
+                plt.plot(y.index,y,color=colors[j],label=labels[j])
         else:
-            plt.plot(xaxis,y,color=colors[j],label=labels[j])
+            if doIterX:
+                plt.plot(xaxis[j],y,color=colors[j],label=labels[j])
+            else:
+                plt.plot(xaxis,y,color=colors[j],label=labels[j])
         j+=1
+
     plt.gcf().autofmt_xdate()
     plt.ylabel(yname)
     plt.xlabel(xname)
+
     if title!="":
         plt.title(title, fontsize=30)
     for h in hlines:
         plt.axhline(y=h[0],color=h[1],linestyle=h[2]) #xmin=h[1], xmax=h[2],
     plt.legend(loc="upper left")
+
+    if len(spy)>0:
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('SPY',color='blue')
+        ax2.plot(spy.index,spy.adj_close, color='blue',linewidth=4)
+        ax2.tick_params(axis ='y', labelcolor = 'blue')
+    
     if doSupport:
         techindicators.supportLevels(my_stock_info)
     if draw: plt.show()
@@ -1021,7 +1041,7 @@ def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],titl
     if not draw: plt.close()
     plt.close()
 
-def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False):
+def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False, spy=[]):
     """ Reads global market indicators read in from an sql database for percentage of stocks over a given MA
          outdir - string - of the directory to same
          debug - bool - print extra info to see if something is broken
@@ -1076,7 +1096,31 @@ def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False):
                 plotXs+=[s.index]
                 plotYs+=[s['Last']]
             MakePlotMulti(plotXs, yaxis=plotYs, colors=['black','green','red','cyan','yellow','blue','magenta'], labels=exchanges, xname='Date',yname='Percent of stocks about 50DMA',saveName='POSITION_exchange_50MA', hlines=[],title='Perc above 50DMA',doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir,doIterX=True)
-            
+
+    # read in the number of new lows and highs in different exchanges
+    stock = pd.read_sql('SELECT * FROM summary', sqlcursor)
+    stock['Date']=pd.to_datetime(stock.Date.astype(str), format='%Y-%m-%d')
+    for exch in ['NYSE','NASDAQ','ETFs','PRICE_lt_$10','PRICE_gt_$10','NYSE_Arca','OVERALL','VOL_lt_100K','VOL_gt_100K','OTC-US']:
+
+        if len(stock)==0 or 'Period' not in stock.columns:
+            continue
+        
+        #if exch not in list(stock['Period'].unique()):
+        #    print('error')
+        #    continue
+        
+        plotXs=None
+        plotYs=[]
+        merge_spy=[]
+        periods = ['3-Month Highs','3-Month Lows','6-Month Highs', '6-Month Lows','52-Week Highs', '52-Week Lows','5-Year Highs', '5-Year Lows']
+        for per in periods:
+            stock_per = stock[stock.Period==per]
+            stock_per.set_index('Date',inplace=True)
+            if len(spy)>0:
+                merge_spy = stock_per.join(spy,on='Date',how='left')
+            plotYs+=[stock_per[exch]]
+        MakePlotMulti([], yaxis=plotYs, colors=['black','black','green','green','red','red','cyan','cyan','blue','yellow'], dash=['dashed','solid','dashed','solid','dashed','solid','dashed','solid'], labels=periods, xname='Date',yname='New Highs and Lows',saveName='POSITION_exchange_%s_Lows' %exch.replace('$','d'), hlines=[],title=exch,doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir,spy=merge_spy)
+        
 def GLOBAL_MARKET_PLOTS(outdir='/tmp/',j=0,debug=False):
     """ Reads global market indicators as json files and makes a simple plot of them
          outdir - string - of the directory to same

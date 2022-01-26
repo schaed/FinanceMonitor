@@ -857,7 +857,7 @@ if not args.skip:
     os.chdir(outdir)
     b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
     os.chdir(cdir)
-POS_MARKET_PLOTS(outdir,debug,doPDFs)
+POS_MARKET_PLOTS(outdir,debug,doPDFs,spy=spy)
 os.chdir(outdir)
 b.makeHTML('POSITION.html' ,'POSITION',filterPattern='*POSITION_exchange_*',describe='Position of stocks relative to moving averages')
 os.chdir(cdir)    
