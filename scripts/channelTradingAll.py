@@ -20,6 +20,7 @@ import argparse
 from zigzag import *
 import matplotlib.dates as mdates
 from scipy.stats.mstats import gmean
+import yfinance as yf
 
 my_parser = argparse.ArgumentParser()
 #my_parser.add_argument('--input', default='', type=str, required=True)
@@ -428,7 +429,67 @@ def CandleStick(data, ticker):
     #                dict(tlines=datepairs,tline_use=['open','close'],colors='r')],
     #     figscale=1.35
     #    )
+
+def LongTermTrendLine(my_stock,ticker):
+    """ Plot 5 year time window
+        
+         Parameters:
+         my_stock      - pandas data frame with time plus adj_close price
+         ticker - str - ticker name
+    """
+    FitWithBand(my_stock.index, my_stock  [['adj_close','high','low','open','close']],ticker=ticker,outname='lifetime', poly_order=1)
+
+    if ticker in ['SPY','QQQ','VPU','VYM']:
+        FitWithBand(my_stock.index, my_stock  [['adj_close','high','low','open','close']],ticker=ticker,outname='lifetime', poly_order=1)
+
+        # Load the GDP and divide it from SPY
+        gdp = pd.read_csv('data/united-states-gdp-gross-domestic-product.csv',delimiter=',')
+        gdp['date'] = pd.to_datetime(gdp.date)
+        hist=None
+        # special longer term look up
+        if ticker=='SPY':
+            msft = yf.Ticker("^GSPC")
+            hist = msft.history(period="max")
+            hist.columns = ['open','high','low','close','volume','dividens','splits']
+            hist['adj_close']= hist['close']
+        else:
+            hist = my_stock.copy(True)
+
+        # Draw the longest periods possible
+        FitWithBand(hist.index, hist  [['adj_close','high','low','open','close']],ticker=ticker,outname='lifetimev2', poly_order=2)
+
+        # join the gdp info
+        hist['mydate'] = pd.to_datetime(hist.index)
+        hist['gdp'] = 543.0
+        for year in gdp.date.dt.year.unique():
+            hist.loc[hist.mydate.dt.year==year,'gdp'] = gdp[gdp.date.dt.year==year][' GDP ( Billions of US $)'].values[0]
+
+        # normalize out by the latest GDP
+        hist['gdp']/=hist['gdp'].values[-1]
+        
+        for h in ['adj_close','high','low','open','close']:
+            hist[h]/=hist['gdp']
+        FitWithBand(hist.index, hist  [['adj_close','high','low','open','close']],ticker=ticker,outname='POSITION_exchange_lifetimevGDP', poly_order=1)
+
+def getPEShiller():
+    URL = 'https://www.multpl.com/shiller-pe/table/by-month'
+    filename = '/tmp/shiller.html'
+    os.system('wget -q -O %s %s' %(filename,URL))
+
+    table_MN = pd.read_html(filename)
+    try:
     
+        if len(table_MN)>0:
+            if debug: print(table_MN[0])
+            table_MN = table_MN[0]
+            table_MN.columns = ['Date','P/E10']
+            if debug: print(table_MN['Date'])
+            table_MN['Date'] = pd.to_datetime(table_MN['Date'],infer_datetime_format=True)#format='%b %d, %Y')
+            FitWithBand(table_MN['Date'], table_MN, doMarker=True, ticker='P/E10',outname='', poly_order = 1, price_key='P/E10')
+        
+    except:
+        print('Failed to collect the Shiller P/E10 ratio')
+        
 def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
     """ Plot 5 year time window
         
@@ -628,14 +689,23 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     #         #label="1 sigma",
     #         capsize=0,
     #         linestyle='')
-    cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
+    if poly_order==2:
+        cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
+    elif poly_order==1:
+        cx.plot(dd, p4(xx), '-g',label='Linear fit')
+    else:
+        cx.plot(dd, p4(xx), '-g',label='Fit')
 
-    plt.plot(arr_prices.high,color='red',label='High')
-    plt.plot(arr_prices.low,color='cyan',label='Low')
-    plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
+    if 'high' in arr_prices.columns:
+        plt.plot(arr_prices.high,color='red',label='High')
+        plt.plot(arr_prices.low,color='cyan',label='Low')
+        plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
 
     if len(spy_comparison)>0:  cx.set_ylabel('Price / '+ratioName)
+    elif ticker.count('P/E10'): cx.set_ylabel(ticker)
     else: cx.set_ylabel('Price')
+    if 'GDP' in outname:
+        cx.set_ylabel(ticker+' /  GDP')
     #cx.set_xlabel('Date')
     
     if doMarker:
@@ -645,6 +715,9 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     plt.title("Fit - mean reversion %s for time period: %s" %(ticker,outname))
     plt.legend()
     plt.text(x.min(), max(prices), coverage_txt, ha='left', wrap=True)
+    ticker = ticker.replace('/','_')
+    if ticker.count('P_E10'):
+        ticker = 'POSITION_exchange_'+ ticker
     if draw: plt.show()
     if doPDFs: fig.savefig(outdir+'meanrev%s_%s.pdf' %(outname,ticker))
     fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
@@ -857,6 +930,8 @@ if not args.skip:
     os.chdir(outdir)
     b.makeHTML('GLOBAL.html' ,'GLOBAL',filterPattern='*_GLOBAL',describe='Global market metrics')
     os.chdir(cdir)
+    
+getPEShiller()
 POS_MARKET_PLOTS(outdir,debug,doPDFs,spy=spy)
 os.chdir(outdir)
 b.makeHTML('POSITION.html' ,'POSITION',filterPattern='*POSITION_exchange_*',describe='Position of stocks relative to moving averages')
@@ -899,6 +974,7 @@ if doStocks:
         # draw before we shorten this to 1 year
         startL = time.time()
         LongTermPlot(tstock_info,spy,ticker=s[0])
+        LongTermTrendLine(tstock_info,ticker=s[0])
         endL = time.time()
         if debug: print('Process time to add long term info: %s' %(endL - startL))
         if s[0] in ['SPY','SLV','GLD' ]:
@@ -990,7 +1066,7 @@ if doETFs:
         #    j+=1
         #    continue
         LongTermPlot(estock_info,spy,ticker=s[0])
-
+        LongTermTrendLine(estock_info,ticker=s[0])
         try:
             start = time.time()
             estock_info = AddInfo(estock_info, spy)

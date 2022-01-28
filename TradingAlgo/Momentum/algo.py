@@ -1,18 +1,22 @@
 #!/usr/bin/python
 import requests
-import time
-from ta import macd
+import time,os,sys
+from ta.trend import macd
 import numpy as np
 from datetime import datetime, timedelta
 from pytz import timezone
+import pandas as pd
 
-from ReadData import ALPACA_REST,ALPACA_STREAM,runTicker
+from ReadData import ALPACA_REST,ALPACA_STREAMCONN,runTicker
+from alpaca_trade_api.rest import TimeFrame
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from file_change_monitor import MyFileHandler
 
 # Load API
 api = ALPACA_REST()
 STOCK_DB_PATH = os.getenv('STOCK_DB_PATH')
+global global_out_tickers
+global_out_tickers = []
 session = requests.session()
 
 # We only consider stocks with per-share prices inside this range
@@ -25,50 +29,51 @@ default_stop = .95
 # How much of our portfolio to allocate to any one position
 risk = 0.001
 
-# Creates trades when requested
-class  MyHandler(FileSystemEventHandler):
-    def __init__(self, fleet,api,stream):
-        FileSystemEventHandler.__init__(self)
-        self.fleet = fleet # save a link to all of the trades
-    def on_moved(self, event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
-    def  on_modified(self,  event):
-        #print(f'event type: {event.event_type} path : {event.src_path}')
-        file_list=['Instructions/out_target_instructions.csv',
-                       'Instructions/out_upgrade_instructions.csv',
-                       #'Instructions/out_bull_instructions.csv',
-                       'Instructions/out_pharmaphase_instructions.csv']
+
+class FileHandler(MyFileHandler):
+    def  on_modified(self,event):
+
         # if boolean, then load them all. otherwise, see if the file was modified
         if type(event)==type(True):
-            for ifile_name in file_list:
-                self._read_csv(in_file_name=ifile_name)
-        else:
-            for ifile_name in file_list:
-                if event.src_path==ifile_name:
-                    self._read_csv(in_file_name=ifile_name)
-                    
-    def  on_created(self,  event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
-    def  on_deleted(self,  event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
-
-    def _read_csv(self, in_file_name='Instructions/out_target_instructions.csv'):
-        """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
-        Inputs:
-        in_file_name - str - input csv file path like Instructions/out_bull_instructions_test.csv
-        """
-        if not os.path.exists(in_file_name):
-            print(f'File path does not exist! {in_file_name}. Skipping...')
             return
 
+        for ifile_name in self.file_list:
+            if ifile_name in event.src_path:
+                return get_tickers()
+            
+class Stock:
+    
+    def __init__(self, ticker, asset, day_prices, prevday_volume, latest_trade):
+        self.ticker = ticker
+        self.asset = asset
+        self.day_prices = day_prices
+        self.prevday_close = day_prices['close'][-1]
+        self.prevday_volume = prevday_volume
+        self.latest_trade = latest_trade
+
+    def Get1000m(self, api):
+        """Get1000m: 
+        api - alpaca rest api
+        """
+        #
+        # Collect the latest 1000 minute bars
+        #
+        nyc = timezone('America/New_York')
+        today = datetime.now(tz=nyc) 
+        d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
+        s1_day = (today + timedelta(days=-15)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+
+        minute_prices = runTicker(api, self.ticker, timeframe=TimeFrame.Day, start=s1_day, end=d1, limit=100000)
+        minute_prices = minute_prices[-1000:]
+        
+        return minute_prices
+    
 def get_1000m_history_data(symbols):
     print('Getting historical data...')
     minute_history = {}
     c = 0
     for symbol in symbols:
-        minute_history[symbol] = api.polygon.historic_agg(
-            size="minute", symbol=symbol, limit=1000
-        ).df
+        minute_history[symbol.ticker] = symbol.Get1000m(api)
         c += 1
         print('{}/{}'.format(c, len(symbols)))
     print('Success.')
@@ -81,6 +86,7 @@ def get_tickers():
     tickers = []
     if 'ticker' in instruct.columns:
         tickers = instruct['ticker'].unique()
+    print(tickers)
     print('Success.')
 
     # Load assets
@@ -89,9 +95,9 @@ def get_tickers():
         assets +=[api.get_asset(tick)]
 
     symbols = [asset.symbol for asset in assets if asset.tradable]
-    out_tickers = []
+
     nyc = timezone('America/New_York')
-    today = datetime.datetime.now(tz=nyc) 
+    today = datetime.now(tz=nyc) 
     todayFilter = (today + timedelta(days=-2))
     d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
     s1_day = (today + timedelta(days=-10)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
@@ -102,16 +108,24 @@ def get_tickers():
         #minute_prices = runTicker(api, s, timeframe=TimeFrame.Day, start=s1_min, end=d1)
         if len(day_prices)<2 or 'volume' not in day_prices.columns:
             continue
-        #if len(min_prices)<1 or 'open' not in min_prices.columns:
-        #    continue
+        prevday_volume = day_prices['volume'][-2]
         open_price = day_prices['open'][-1]
         if open_price<=0.0:
             continue
+
         if trade.p >= min_share_price and \
            trade.p <= max_share_price and \
-           day_prices['volume']*trade.p >  min_last_dv and \
+           prevday_volume*trade.p > min_last_dv and \
            (open_price - trade.p)/open_price >= 0.035:
-            out_ticker+=[s]
+            my_stock = Stock(s, api.get_asset(tick), day_prices, prevday_volume, trade)
+            found = False
+            for ts in global_out_tickers:
+                if s==ts.s:
+                    found=True
+            if not found:
+                global_out_tickers+=[my_stock]
+            
+    #return global_out_tickers
 
 def find_stop(current_value, minute_history, now):
     series = minute_history['low'][-100:] \
@@ -124,21 +138,23 @@ def find_stop(current_value, minute_history, now):
     return current_value * default_stop
 
 
-def run(tickers, market_open_dt, market_close_dt):
+def run(market_open_dt, market_close_dt, observer=None):
     # Establish streaming connection
-    conn = ALPACA_STREAM(data_feed='sip')    
+    conn = ALPACA_STREAMCONN()
 
     # Update initial state with information from tickers
     volume_today = {}
     prev_closes = {}
-    for ticker in tickers:
+    for ticker in global_out_tickers:
         symbol = ticker.ticker
-        prev_closes[symbol] = ticker.prevDay['c']
-        volume_today[symbol] = ticker.day['v']
+        prev_closes[symbol] = ticker.prevday_close
+        volume_today[symbol] = ticker.prevday_volume
 
-    symbols = [ticker.ticker for ticker in tickers]
+    symbols = [ticker.ticker for ticker in global_out_tickers]
     print('Tracking {} symbols.'.format(len(symbols)))
-    minute_history = get_1000m_history_data(symbols)
+    sys.stdout.flush()
+    
+    minute_history = get_1000m_history_data(global_out_tickers)
 
     portfolio_value = float(api.get_account().portfolio_value)
 
@@ -420,7 +436,6 @@ def run_ws(conn, channels):
         conn.close()
         run_ws(conn, channels)
 
-
 if __name__ == "__main__":
     # Get when the market opens or opened today
     nyc = timezone('America/New_York')
@@ -441,12 +456,11 @@ if __name__ == "__main__":
     market_close = market_close.astimezone(nyc)
 
     # reading in stocks
-    # checking for trades to execute!
-    #event_handler = MyHandler(fleet,api,stream)
-    #observer = Observer(timeout=1)
-    #observer.schedule(event_handler,  path='/Users/schae/testarea/finances/FinanceMonitor/Instructions/',  recursive=True)
-    #observer.start()        
-    
+    event_handler = FileHandler(STOCK_DB_PATH+'Instructions/')
+    observer = Observer(timeout=1)
+    observer.schedule(event_handler,  STOCK_DB_PATH+'Instructions/',  recursive=True)
+    observer.start()
+
     # Wait until just before we might want to trade
     current_dt = datetime.today().astimezone(nyc)
     since_market_open = current_dt - market_open
@@ -454,7 +468,8 @@ if __name__ == "__main__":
         time.sleep(1)
         since_market_open = current_dt - market_open
 
-    run(get_tickers(), market_open, market_close)
+    get_tickers()
+    run(market_open, market_close)
     
     observer.stop()
     observer.join()

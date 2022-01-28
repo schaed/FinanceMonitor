@@ -3,7 +3,7 @@ FinanceMonitor - various functionality from html tables to plotting market indic
 
 
 ```pip3 install alpaca_trade_api
-pip3 install numpy
+pip3 install numpy sklearn ta
 pip3 install pandas matplotlib mplfinance numpy_ext watchdog
 pip3 install numpy numpy_ext pandas scipy TA-lib matplotlib alpha_vantage html5lib nltk cython zigzag lxml statsmodels pmdarima wget spacy nltk talib --user
 python3 -m spacy download en_core_web_sm numba
@@ -109,6 +109,12 @@ https://tradingeconomics.com/commodity/coffee
 # a good stock or a good start to an upward trend
 # plot the summary plots of the percentage of stocks above x average
 
+# could add news check for bad earnings. save those stocks to a sheet
+# could add a news check for a merger or sale...examples below:
+    Bluerock Residential to be acquired by Blackstone affiliates for $3.6B
+    Bluerock Residential exploring options, including sale, Bloomberg says 
+# could make sure there isn't a large diviidend to compete with before shorting.
+
 Crontab
 ```
 30 14 * * * /Users/schae/testarea/finances/googlefinance/getPrice.sh
@@ -127,3 +133,5 @@ Crontab
 
 It is worth comparing spy to the Baltic dry index for inflation and spy. BDI could be a leading indicator..
 https://www.tradingview.com/chart/?symbol=INDEX%3ABDI
+http://www.econ.yale.edu/~shiller/data.htm
+https://www.multpl.com/shiller-pe
