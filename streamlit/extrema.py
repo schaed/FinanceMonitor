@@ -753,7 +753,8 @@ with row3_1, _lock:
         if require_shortable:
             df_etf = df_etf[df_etf.shortable]
         tickers_etf = df_etf['ticker'].unique()
-        df_etf = df_etf.assign(sortkey = df_etf.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1)
+        df_etf['abs_sort'] = df_etf['fit_diff_significance'].abs()
+        df_etf = df_etf.assign(sortkey = df_etf.groupby(['ticker'])['abs_sort'].transform('min')).sort_values(['sortkey','abs_sort'],ascending=[True,True]).drop('sortkey', axis=1).drop('abs_sort', axis=1)
         if do_static_table:
             try:
                 st.table(df_etf.style.highlight_max(axis=0))
