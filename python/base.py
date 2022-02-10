@@ -868,7 +868,7 @@ stock_list = [
         ['GFI',3.3,6.0,'NYSE','Gold fields unlimited. south african gold'], # Gold fields unlimited. south african gold
         ['EGO',3.3,6.0,'NYSE','eldarado gold'], # eldarado gold.
         ['BTG',1.3,4.0,'NYSEARCA','b2gold'], # b2gold
-        ['VALE',3.3,6.0,'NYSE','mineral miner in brazil'], # mineral miner in brazil 2.dividend
+        ['VALE',3.3,6.0,'NYSE','mineral miner in brazil'], # mineral miner in brazil 2.dividedn
         ['KGC',1.3,3.8,'NYSE','KinCross Gold mining'], # KinCross Gold mining company 0.0% dividend Canada
         ['CSCO',15.0,35.0,'NASDAQ','cisco'], # cisco. 3.7%
         ['NOVN',15.0,35.0,'NASDAQ','novn'], #
@@ -922,7 +922,7 @@ stock_list = [
         ['TXN',50.0,70.0,'NASDAQ','texas instraments. semi-conductor'], # texas instraments. semi-conductor manufacturer
         ['INFN',10.0,20.0,'NASDAQ','infera semi-conductor'], # infera semi-conductor manufacturer.
         ['LMT',150.0,300.0,'NYSE','lockheed martin'], # lockheed martin. 2.92
-        ['MTN',150.0,300.0,'NYSE','vail resorts'], # 
+        ['MTN',150.0,300.0,'NYSE','vail resorts'],  #
         ['BA',100.0,150.0,'NYSE','boeing'], # boeing
         ['NOC',170.0,250.0,'NYSE','northrop gruman'], # northrop gruman. 2.92
         #['GBSN',3.0,8.0,'NASDAQ','genetics testing'], # genetics testing company
@@ -1064,7 +1064,6 @@ safe_stocks = [['KR',35.0,50.0,'NYSE','kroger'], # kroger. 1%
         ['X',20.0,55.0,'NYSE','PA steel'],  # steel industry
         ['GOOGL',640.0,805.0,'NASDAQ','google'], # google
         ['AMZN',450.0,700.0,'NASDAQ','amazon'], # amazon
-        ['QQQ',200.0,805.0,'NYSE','qqq'], # nasdaq
         ['SPY',200.0,805.0,'NYSE','spy'], # spy
         ['V',65.0,100.0,'NYSE','visa'], # visa. 0.7%
         ['JPM',65.0,120.0,'NYSE','JPM chase'], # JPM chase. 2% dividend
@@ -1074,8 +1073,40 @@ safe_stocks = [['KR',35.0,50.0,'NYSE','kroger'], # kroger. 1%
         ['AWR',20.0,53.0,'NYSE','american states water company'], # american states water company
         ['PNR',20.0,53.0,'NYSE','pentair. partial water company'], # pentair. partial water company that may grow
         ['DUK',70.0,100.0,'NYSE','DUKE energy.'], # DUKE energy. good electric stock. 3.8% dividend
-        ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
         ['HAS',25.0,120.0,'NYSE','hasbro'], # hasbro
+        ['MSCI',640.0,805.0,'NASDAQ','Stock market ETF provider'], #
+        ['STT',640.0,805.0,'NASDAQ','State street spdr ETF provider'], #        
+        ['AAPL',86.0,110.0,'NASDAQ','apple'], # apple
+        ['PLTR',2.0,155.0,'NYSE','palantir'],  # 
+        ['MAT',25.0,40.0,'NASDAQ','matel'], # matel
+        ['CLPS',25.0,40.0,'NASDAQ','CLPS'], # CLPS
+        ['JFU',25.0,40.0,'NYSE','JFU'], # JFU
+        ['TLRY',25.0,120.0,'NYSE','Tilray'], # Tilray
+        ['RIOT',25.0,120.0,'NYSE','RIOT'], # RIOT        
+        ['MJ',25.0,120.0,'NYSE','Marjo ETF'], # MJ        
+        ['CLF',2.0,55.0,'NYSE','OH - iron ore'],  # iron ore company
+        ['MT',2.0,55.0,'NYSE','mining iron'],  # steel production
+        ['FLR',2.0,155.0,'NYSE','construction TX'],  # construction. texas 1.5%
+        ['CAT',60.0,90.0,'NYSE','Catepillar'], # Catepillar, 3.8% dividend. most shorted
+        ['VALE',3.3,6.0,'NYSE','mineral miner in brazil'], # mineral miner in brazil 2.dividend
+        ['STM',4.0,8.0,'NYSE','Geneva Semiconductor'], # parts manufacturer for drones. motion control. geneva based. won apple smart watch bid. 7.4% dividend
+        ['HOG',40.0,55.0,'NYSE','harley davidson'], # 3% dividend harley davidson
+        ['DDD',15.0,25.0,'NYSE','3D printing'], # 3D printing manufacturer
+        ['UAL',45.0,90.0,'NYSE','united airlines'], # united airlines
+        ['AA',45.0,90.0,'NYSE','Alcoa'], # alcoa
+        ['CINF',52.0,70.0,'NASDAQ','insurance. cincy'], # insurance. cincy. 3% dividend
+        ['SCHN',30.0,80.0,'NYSE','Schnitzer Steel Industries, Inc.'], # colfax?
+        ['BKNG',1000.0,1500.0,'NASDAQ','priceline'], # priceline
+        ['HZO',50.0,70.0,'NYSE','Marine Max florida provider of boat parts'],
+        ['MTN',150.0,300.0,'NYSE','vail resorts'], #
+        ['MET',30.0,60.0,'NYSE','insurance'], # insurance 3.8% dividend. 
+        ['WY',20.0,35.0,'NYSE','timber'], # real estate 5.% dividend. 
+        ['RYN',20.0,35.0,'NYSE','florida timber'], # timber 3% dividend
+        ['TAP',80.0,100.0,'NYSE','molson beer'], # molson beer. 1.8% dividend
+        ['RTX',115.0,160.0,'NYSE','ratheon'], # ratheon. defense. 2.1% dividend
+        ['CXW',15.0,300.0,'NYSE','corecivics. jailing'], # corecivics. jailing. 5.8% dividend
+        ['MMM',132.0,170.0,'NYSE','3M'], # 3M
+        ['INTC',25.0,34.0,'NASDAQ','intel'], # intel 3.55% dividend
 ]
 
     

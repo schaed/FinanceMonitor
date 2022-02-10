@@ -887,14 +887,15 @@ ticker='TSLA'
 stock_info=None
 spy=None
 sqlcursor = SQL_CURSOR()
-spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
-gld,j = ConfigTable('GLD', sqlcursor,ts,readType, hoursdelay=15)
-slv,j = ConfigTable('SLV', sqlcursor,ts,readType, hoursdelay=15)
-labu,j = ConfigTable('LABU', sqlcursor,ts,readType, hoursdelay=15)
-labd,j = ConfigTable('LABD', sqlcursor,ts,readType, hoursdelay=15)
-bib,j = ConfigTable('BIB', sqlcursor,ts,readType, hoursdelay=15)
-gush,j = ConfigTable('GUSH', sqlcursor,ts,readType, hoursdelay=15)
-drip,j = ConfigTable('DRIP', sqlcursor,ts,readType, hoursdelay=15)
+j=0
+spy,j = ConfigTable('SPY', sqlcursor,ts,readType,j, hoursdelay=15)
+gld,j = ConfigTable('GLD', sqlcursor,ts,readType,j, hoursdelay=15)
+slv,j = ConfigTable('SLV', sqlcursor,ts,readType,j, hoursdelay=15)
+labu,j = ConfigTable('LABU', sqlcursor,ts,readType,j, hoursdelay=15)
+labd,j = ConfigTable('LABD', sqlcursor,ts,readType,j, hoursdelay=15)
+bib,j = ConfigTable('BIB', sqlcursor,ts,readType,j, hoursdelay=15)
+gush,j = ConfigTable('GUSH', sqlcursor,ts,readType,j, hoursdelay=15)
+drip,j = ConfigTable('DRIP', sqlcursor,ts,readType,j, hoursdelay=15)
 print('spy')
 print(spy)
 #if loadFromPickle and os.path.exists("%s.p" %ticker):
@@ -1067,6 +1068,24 @@ if doETFs:
         #    continue
         LongTermPlot(estock_info,spy,ticker=s[0])
         LongTermTrendLine(estock_info,ticker=s[0])
+
+        if s[0] in ['SPY','SLV','GLD' ]:
+            LongTermPlot(estock_info,gld,ticker=s[0],ratioName='GLD')
+            LongTermPlot(estock_info,slv,ticker=s[0],ratioName='SLV')
+        if s[0] in ['LABD' ]:
+            LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
+            LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')
+        if s[0] in ['LABU' ]:
+            LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
+            LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
+        if s[0] in ['BIB' ]:
+            LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
+            LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')            
+        if s[0] in ['GUSH' ]:
+            LongTermPlot(estock_info,drip,ticker=s[0],ratioName='DRIP')
+        if s[0] in ['DRIP' ]:
+            LongTermPlot(estock_info,gush,ticker=s[0],ratioName='GUSH') 
+        
         try:
             start = time.time()
             estock_info = AddInfo(estock_info, spy)

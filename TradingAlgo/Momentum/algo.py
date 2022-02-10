@@ -15,8 +15,7 @@ from file_change_monitor import MyFileHandler
 # Load API
 api = ALPACA_REST()
 STOCK_DB_PATH = os.getenv('STOCK_DB_PATH')
-global global_out_tickers
-global_out_tickers = []
+global _out_tickers
 session = requests.session()
 
 # We only consider stocks with per-share prices inside this range
@@ -31,6 +30,8 @@ risk = 0.001
 
 
 class FileHandler(MyFileHandler):
+
+    #self._out_tickers = []
     def  on_modified(self,event):
 
         # if boolean, then load them all. otherwise, see if the file was modified
@@ -39,7 +40,7 @@ class FileHandler(MyFileHandler):
 
         for ifile_name in self.file_list:
             if ifile_name in event.src_path:
-                return get_tickers()
+                return get_tickers(self._out_tickers)
             
 class Stock:
     
@@ -79,7 +80,7 @@ def get_1000m_history_data(symbols):
     print('Success.')
     return minute_history
 
-def get_tickers():
+def get_tickers(_out_tickers = []):
     print('Getting current ticker data...')
     in_instruct_name=STOCK_DB_PATH+'/Instructions/out_momentum_instructions.csv'
     instruct = pd.read_csv(in_instruct_name,delimiter=' ')
@@ -113,19 +114,19 @@ def get_tickers():
         if open_price<=0.0:
             continue
 
-        if trade.p >= min_share_price and \
+        if True or  trade.p >= min_share_price and \
            trade.p <= max_share_price and \
            prevday_volume*trade.p > min_last_dv and \
            (open_price - trade.p)/open_price >= 0.035:
             my_stock = Stock(s, api.get_asset(tick), day_prices, prevday_volume, trade)
             found = False
-            for ts in global_out_tickers:
-                if s==ts.s:
+            for ts in _out_tickers:
+                if s==ts.ticker:
                     found=True
             if not found:
-                global_out_tickers+=[my_stock]
+                _out_tickers+=[my_stock]
             
-    #return global_out_tickers
+    return _out_tickers
 
 def find_stop(current_value, minute_history, now):
     series = minute_history['low'][-100:] \
@@ -138,23 +139,23 @@ def find_stop(current_value, minute_history, now):
     return current_value * default_stop
 
 
-def run(market_open_dt, market_close_dt, observer=None):
+def run(_out_tickers, market_open_dt, market_close_dt, observer=None):
     # Establish streaming connection
     conn = ALPACA_STREAMCONN()
 
     # Update initial state with information from tickers
     volume_today = {}
     prev_closes = {}
-    for ticker in global_out_tickers:
+    for ticker in _out_tickers:
         symbol = ticker.ticker
         prev_closes[symbol] = ticker.prevday_close
         volume_today[symbol] = ticker.prevday_volume
 
-    symbols = [ticker.ticker for ticker in global_out_tickers]
+    symbols = [ticker.ticker for ticker in _out_tickers]
     print('Tracking {} symbols.'.format(len(symbols)))
     sys.stdout.flush()
     
-    minute_history = get_1000m_history_data(global_out_tickers)
+    minute_history = get_1000m_history_data(_out_tickers)
 
     portfolio_value = float(api.get_account().portfolio_value)
 
@@ -401,7 +402,7 @@ def run(market_open_dt, market_close_dt, observer=None):
             if len(symbols) <= 0:
                 conn.close()
             conn.deregister([
-                'A.{}'.format(symbol),
+                #'A.{}'.format(symbol),
                 'AM.{}'.format(symbol)
             ])
 
@@ -421,7 +422,8 @@ def run(market_open_dt, market_close_dt, observer=None):
 
     channels = ['trade_updates']
     for symbol in symbols:
-        symbol_channels = ['A.{}'.format(symbol), 'AM.{}'.format(symbol)]
+        #symbol_channels = ['A.{}'.format(symbol), 'AM.{}'.format(symbol)]
+        symbol_channels = ['AM.{}'.format(symbol)]        
         channels += symbol_channels
     print('Watching {} symbols.'.format(len(symbols)))
     run_ws(conn, channels)
@@ -442,6 +444,7 @@ if __name__ == "__main__":
     today = datetime.today().astimezone(nyc)
     today_str = datetime.today().astimezone(nyc).strftime('%Y-%m-%d')
     calendar = api.get_calendar(start=today_str, end=today_str)[0]
+    _out_tickers = []
     market_open = today.replace(
         hour=calendar.open.hour,
         minute=calendar.open.minute,
@@ -457,6 +460,7 @@ if __name__ == "__main__":
 
     # reading in stocks
     event_handler = FileHandler(STOCK_DB_PATH+'Instructions/')
+    event_handler._out_tickers = []
     observer = Observer(timeout=1)
     observer.schedule(event_handler,  STOCK_DB_PATH+'Instructions/',  recursive=True)
     observer.start()
@@ -468,8 +472,8 @@ if __name__ == "__main__":
         time.sleep(1)
         since_market_open = current_dt - market_open
 
-    get_tickers()
-    run(market_open, market_close)
+    event_handler._out_tickers = get_tickers(event_handler._out_tickers)
+    run(event_handler._out_tickers, market_open, market_close)
     
     observer.stop()
     observer.join()

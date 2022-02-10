@@ -3,6 +3,7 @@ from streamlit_lottie import st_lottie_spinner
 import requests
 import streamlit as st
 import time,os
+import copy
 import pandas as pd
 import seaborn as sns
 from matplotlib.figure import Figure
@@ -15,9 +16,11 @@ from matplotlib.backends.backend_agg import RendererAgg
 # collect data
 from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot,ALPHA_FundamentalData
 from alpaca_trade_api.rest import TimeFrame
+import alpaca_trade_api
 import statsmodels.api as sm1
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from Earnings import GetIncomeStatement,GetPastEarnings,GetStockOverview,GetBalanceSheetQuarterly,GetBalanceSheetAnnual
+import base
 
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
@@ -291,19 +294,25 @@ def collect_latest_trades(apiA,df_blah):
        df_blah - dataframe with the signifances of stocks
     """
     df_blah['price_when_added']  = df_blah['current_price']
-    df_blah['signif_when_added'] = df_blah['fit_diff_significance']
+    df_blah.loc[:,'signif_when_added'] = df_blah['fit_diff_significance']
     df_blah['current_price'] = 0
+    #df_blah['fit_diff_significance'] = 0
     df_blah['shortable'] = False
     tickersA = df_blah['ticker'].unique()
     try:
         trade_map = apiA.get_latest_trades(tickersA)
         for t in tickersA:
-            asset_info = apiA.get_asset(t)
+            try:
+                asset_info = apiA.get_asset(t)
+            except alpaca_trade_api.rest.APIError:
+                print('Could not find %s' %t)
+                continue
             if t in trade_map:
                 df_blah.loc[df_blah.ticker==t,['current_price']] = trade_map[t].p
                 df_blah.loc[df_blah.ticker==t,['shortable']] = asset_info.shortable
         df_blah['fit_diff_significance'] = (df_blah['current_price'] - df_blah['fit_expectations']) / df_blah.stddev
-    except:
+    except Exception as e:
+        print(e)
         pass
     return df_blah
 
@@ -630,6 +639,8 @@ with row3_1, _lock:
     st.write("Selected ", signif, 'sigma')
     signif_start = st.slider('How significant to select for added stocks?', 1.0, 10.0, 4.0,key='startSig')
     st.write("Selected ", signif_start, 'sigma')
+    signif_start_etf = st.slider('How significant to select for ETFs?', 0.0, 10.0, 2.0,key='startSigETF')
+    st.write("Selected ", signif_start_etf, 'sigma')    
 
     downloadFiles=False
     if st.button("Show file names"):
@@ -655,7 +666,8 @@ with row3_1, _lock:
         add_10dm = st.checkbox('Add 10 day by minute checks')
         add_10dh = st.checkbox('Add 10 day by hour checks')
         require_shortable = st.checkbox('Require shortable')
-
+        rm_spycomparison = st.checkbox('Remove SPY comparison')
+        optionTFrame = st.selectbox('Select a time frame?',np.array(['Select','60d','365d','180d','3y','5y']),key='tframe')
         keys_for_list = list(df['time_span'].unique())
         if not add_10dm:
             keys_for_list.remove('10dm')
@@ -668,12 +680,15 @@ with row3_1, _lock:
         st.markdown("Greater than %ssigma or overbought!" %signif)
         df = df[df.stddev>0.000001]
         #df_plus = df.copy(True)
-        df_plus = df[df.fit_diff_significance>signif_start]
+        df_plus = df[df.fit_diff_significance>signif_start].copy(True)
+        if rm_spycomparison:
+            df_plus  = df_plus[~df_plus['time_span'].str.lower().str.contains('comparison')]
+        if optionTFrame!='Select':
+            df_plus  = df_plus[df_plus['time_span'].str.lower().str.contains(optionTFrame)]
         df_plus = collect_latest_trades(api,df_plus)
-        df_plus = df_plus[df_plus.fit_diff_significance>signif]        
+        df_plus = df_plus[df_plus.fit_diff_significance>signif]  
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
-
         df_plus = df_plus.assign(sortkey = df_plus.groupby(['ticker'])['fit_diff_significance'].transform('max')).sort_values(['sortkey','fit_diff_significance'],ascending=[False,False]).drop('sortkey', axis=1)
         if do_static_table:
             #df_plus.style.hide_index()
@@ -691,11 +706,17 @@ with row3_1, _lock:
         st.write('')
         st.markdown("Greater than -%ssigma or oversold!" %signif)
         #df_min = df.copy(True)
-        df_min = df[df.fit_diff_significance<(-1*signif_start)]
+        df_min = df[df.fit_diff_significance<(-1*signif_start)].copy(True)
+        if rm_spycomparison:
+            df_min  = df_min[~df_min['time_span'].str.lower().str.contains('comparison')]
+        if optionTFrame!='Select':
+            df_min  = df_min[df_min['time_span'].str.lower().str.contains(optionTFrame)]
+        
         df_min = collect_latest_trades(api,df_min)
-        df_min = df_min[df_min.fit_diff_significance<(-1*signif)]        
+        df_min = df_min[df_min.fit_diff_significance<(-1*signif)]
         if require_shortable:
             df_min = df_min[df_min.shortable]
+
         tickers_min = df_min['ticker'].unique()
 
         df_min = df_min.assign(sortkey = df_min.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1)
@@ -707,6 +728,40 @@ with row3_1, _lock:
                 st.table(df_min)
         else:
             st.dataframe(df_min,500,500)
+
+        # Running the stable etfs and other stable stocks. a gut feeling about stability, but not a real measure
+        st.write('')
+        st.markdown("ETFs and stable versions!")
+        # base.safe_stocks, base.etfs
+        keep_list = []
+        for j in base.safe_stocks: keep_list +=[j[0]]
+        for j in base.etfs: keep_list +=[j[0]]
+        df_etf = df[df['ticker'].isin(keep_list)].copy(True)
+        # only keep the most recent because we are drawing all of them
+        df_etf['date'] = pd.to_datetime(df_etf['date'])
+        most_recent_date = df_etf['date'].max()
+        df_etf = df_etf[df_etf.date == most_recent_date ]
+        if rm_spycomparison:
+            df_etf  = df_etf[~df_etf['time_span'].str.lower().str.contains('comparison')]
+        if optionTFrame!='Select':
+            df_etf  = df_etf[df_etf['time_span'].str.lower().str.contains(optionTFrame)]
+            
+        df_etf = collect_latest_trades(api,df_etf)
+
+        df_etf = df_etf[abs(df_etf.fit_diff_significance)>signif_start_etf]
+        
+        if require_shortable:
+            df_etf = df_etf[df_etf.shortable]
+        tickers_etf = df_etf['ticker'].unique()
+        df_etf = df_etf.assign(sortkey = df_etf.groupby(['ticker'])['fit_diff_significance'].transform('min')).sort_values(['sortkey','fit_diff_significance'],ascending=[True,True]).drop('sortkey', axis=1)
+        if do_static_table:
+            try:
+                st.table(df_etf.style.highlight_max(axis=0))
+            except:
+                st.table(df_etf)
+        else:
+            st.dataframe(df_etf,500,500)
+        
 #
 # now to make plots max
 #
