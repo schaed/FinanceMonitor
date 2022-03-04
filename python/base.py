@@ -1056,7 +1056,8 @@ stock_list = [
 #Pls - show
 #Sgma small miner
 safe_stocks = [['KR',35.0,50.0,'NYSE','kroger'], # kroger. 1%
-        ['TGT',65.0,85.0,'NYSE','target'], # target. 3%        
+        ['TGT',65.0,85.0,'NYSE','target'], # target. 3%
+        ['WEN',9.0,15.0,'NASDAQ','wendys'], # wendys               
         ['CVS',80.0,120.0,'NYSE','CVS'], # CVS 1.6%
         ['WBA',80.0,120.0,'NYSE','walgreens'], # walgreens 3.6%
         ['COST',80.0,120.0,'NYSE','costco'], # walgreens 0.9%

@@ -137,6 +137,7 @@ if __name__ == "__main__":
 
         # check the quotes:
         if len(df_store_data)>0:
+            col_start = df_store_data.columns
             sns={}
             try:
                 sns = api.get_snapshots(list(df_store_data['ticker'].unique()))
@@ -163,6 +164,16 @@ if __name__ == "__main__":
                 pass
             if debug: print(df_store_data_curr[df_store_data_curr['signif_quote_ap']>5.0].to_string())
             if debug: print(df_store_data_curr[df_store_data_curr['signif_quote_ap']<-5.0].to_string())
+            #if
+            if debug: print(df_store_data_curr[abs(df_store_data_curr['signif_quote_ap'])>abs(df_store_data_curr['fit_diff_significance'])].to_string())
+            # update when the significance is increased
+            loc_high_signif = abs(df_store_data_curr['signif_quote_ap'])>abs(df_store_data_curr['fit_diff_significance'])
+            if len(df_store_data_curr[loc_high_signif])>0:
+                df_store_data_curr.loc[loc_high_signif,'fit_diff_significance']=df_store_data_curr[loc_high_signif].signif_quote_ap
+                df_store_data_curr.loc[loc_high_signif,'current_price']=df_store_data_curr[loc_high_signif].bar_open
+                df_store_data = df_store_data_curr[col_start].copy(True)
+            
+            
         # check new stocks
         proc_all_tickers = all_tickers
         if len(df)>0 and 'ticker' in df.columns:
@@ -174,7 +185,7 @@ if __name__ == "__main__":
             if debug: print(ticker,iticker)
             iticker+=1
             sys.stdout.flush()
-
+            # if really high up on the list, then reprocess
             # if not loaded, then let's compute stuff
             if len(df_store_data[(df_store_data['ticker']==ticker)])==0:
 
