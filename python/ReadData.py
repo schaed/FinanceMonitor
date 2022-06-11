@@ -140,6 +140,9 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
             if len(stock_tmp[stock_tmp.splitcoef!=1.0])>0:
                 print('Stock split was found for %s' %ticker)
                 sqlcursor.cursor().execute('DROP TABLE %s' %ticker)
+                fsplit = open('split_stocks.txt','a')
+                fsplit.write('%s\n' %ticker)
+                fsplit.close()
                 NewEntry=True
                 sys.stdout.flush()
         

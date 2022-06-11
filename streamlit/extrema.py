@@ -288,7 +288,7 @@ def AddData(t):
     t['change'] -= t.open.values[-1]
     t['change'] /= t.open.values[-1]
 
-def collect_latest_trades(apiA,df_blah):
+def collect_latest_trades(apiA,df_blah,getShortable=True,shortThr=5.0):
     """collect_latest_trades:
        apiA - alpaca api
        df_blah - dataframe with the signifances of stocks
@@ -305,14 +305,27 @@ def collect_latest_trades(apiA,df_blah):
         trade_map = apiA.get_latest_trades(tickersA)
         print('have trades')
         for t in tickersA:
-            try:
-                asset_info = apiA.get_asset(t)
-            except alpaca_trade_api.rest.APIError:
-                print('Could not find %s' %t)
-                continue
+            asset_info=None
             if t in trade_map:
                 df_blah.loc[df_blah.ticker==t,['current_price']] = trade_map[t].p
-                df_blah.loc[df_blah.ticker==t,['shortable']] = asset_info.shortable
+                df_blah_stock = df_blah[df_blah.ticker==t].copy(True)
+                df_blah_stock['signfi_tmp'] = (df_blah_stock['current_price']-df_blah_stock['fit_expectations'])/df_blah_stock.stddev
+                signif_tmp = df_blah_stock['signfi_tmp'].max()
+            df_blah.loc[df_blah.ticker==t,['shortable']] = False
+            df_blah.loc[df_blah.ticker==t,['shortable_checked']] = 'no'
+            if getShortable and signif_tmp>shortThr:
+                try:
+                    asset_info = apiA.get_asset(t)
+                except alpaca_trade_api.rest.APIError:
+                    print('Could not find %s' %t)
+                    continue
+                
+                if t in trade_map and getShortable:
+                    df_blah.loc[df_blah.ticker==t,['shortable']] = asset_info.shortable
+                    df_blah.loc[df_blah.ticker==t,['shortable_checked']] = 'yes'
+            elif signif_tmp>shortThr:
+                df_blah.loc[df_blah.ticker==t,['shortable']] = False
+                
         df_blah['fit_diff_significance'] = (df_blah['current_price'] - df_blah['fit_expectations']) / df_blah.stddev
     except Exception as e:
         print(e)
@@ -642,6 +655,8 @@ with row3_1, _lock:
     # Set a bar for how significant to select
     signif = st.slider('How significant to select?', 3.0, 10.0, 5.0)
     st.write("Selected ", signif, 'sigma')
+    shortThr = st.slider('Short significance threshold to check (slow to check, so set the threshold high to avoid long waiting)?', 0.0, 10.0, 5.0)
+    st.write("Selected ", shortThr, 'short threshold')
     signif_start = st.slider('How significant to select for added stocks?', 1.0, 10.0, 4.0,key='startSig')
     st.write("Selected ", signif_start, 'sigma')
     signif_start_etf = st.slider('How significant to select for ETFs?', 0.0, 10.0, 2.0,key='startSigETF')
@@ -654,16 +669,24 @@ with row3_1, _lock:
         
     # Loop over recent days to find which stocks to look up
     df=[]
+    fsplits =[]
+    if os.path.exists('%s/split_stocks.txt' %STOCK_DB_PATH):
+        fsplit = open('%s/split_stocks.txt' %STOCK_DB_PATH)
+        for s1 in fsplit: fsplits+=[s1.rstrip('\n').strip()]
     for d in my_days:
         outFileName='%s/News/signif_%s_%s_%s.csv' %(STOCK_DB_PATH,d.day,d.month,d.year)
         if os.path.exists(outFileName):
             if downloadFiles: st.write(outFileName)
             df_part = pd.read_csv(outFileName)
+            if len(df_part[df_part.ticker.isin(fsplits)])>0:
+                df_part[~df_part.ticker.isin(fsplits)].to_csv(outFileName,index=False)
+                if os.path.exists('%s/split_stocks.txt' %STOCK_DB_PATH):
+                    os.remove('%s/split_stocks.txt' %STOCK_DB_PATH)
             df_part['date'] = '%s-%s-%s' %(d.day,d.month,d.year)
             if len(df)==0:
-                df = df_part
+                df = df_part[~df_part.ticker.isin(fsplits)]
             else:
-                df = pd.concat([df,df_part])
+                df = pd.concat([df,df_part[~df_part.ticker.isin(fsplits)]])
 
 
     if len(df)>0:
@@ -692,7 +715,7 @@ with row3_1, _lock:
         if optionTFrame!='Select':
             df_plus  = df_plus[df_plus['time_span'].str.lower().str.contains(optionTFrame)]
         if do_refresh_table:
-            df_plus = collect_latest_trades(api,df_plus)
+            df_plus = collect_latest_trades(api,df_plus,True,shortThr)
         df_plus = df_plus[df_plus.fit_diff_significance>signif]  
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
@@ -719,9 +742,9 @@ with row3_1, _lock:
         if optionTFrame!='Select':
             df_min  = df_min[df_min['time_span'].str.lower().str.contains(optionTFrame)]
         if do_refresh_table:
-            df_min = collect_latest_trades(api,df_min)
+            df_min = collect_latest_trades(api,df_min,False,shortThr)
         df_min = df_min[df_min.fit_diff_significance<(-1*signif)]
-        if require_shortable:
+        if require_shortable and shortThr<3.0:
             df_min = df_min[df_min.shortable]
 
         tickers_min = df_min['ticker'].unique()
@@ -754,11 +777,11 @@ with row3_1, _lock:
             df_etf  = df_etf[df_etf['time_span'].str.lower().str.contains(optionTFrame)]
 
         if do_refresh_table:
-            df_etf = collect_latest_trades(api,df_etf)
+            df_etf = collect_latest_trades(api,df_etf,False,shortThr)
 
         df_etf = df_etf[abs(df_etf.fit_diff_significance)>signif_start_etf]
         
-        if require_shortable:
+        if require_shortable and shortThr<3.0:
             df_etf = df_etf[df_etf.shortable]
         tickers_etf = df_etf['ticker'].unique()
         df_etf['abs_sort'] = df_etf['fit_diff_significance'].abs()
