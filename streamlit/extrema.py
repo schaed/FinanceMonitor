@@ -299,8 +299,11 @@ def collect_latest_trades(apiA,df_blah):
     #df_blah['fit_diff_significance'] = 0
     df_blah['shortable'] = False
     tickersA = df_blah['ticker'].unique()
+    print('Processing: %s' %len(tickersA))
+    #sys.stdout.flush()
     try:
         trade_map = apiA.get_latest_trades(tickersA)
+        print('have trades')
         for t in tickersA:
             try:
                 asset_info = apiA.get_asset(t)
@@ -314,6 +317,7 @@ def collect_latest_trades(apiA,df_blah):
     except Exception as e:
         print(e)
         pass
+    print('return')
     return df_blah
 
 def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
@@ -631,6 +635,7 @@ with row2_1:
 
 st.write('')
 row3_space1, row3_1, row3_space2, row3_2, row3_space3 = st.columns((.1, 1, .1, 1, .1))
+do_refresh_table=False
 with row3_1, _lock:
     st.subheader('Recent highly significant')
 
@@ -650,7 +655,7 @@ with row3_1, _lock:
     # Loop over recent days to find which stocks to look up
     df=[]
     for d in my_days:
-        outFileName='../News/signif_%s_%s_%s.csv' %(d.day,d.month,d.year)
+        outFileName='%s/News/signif_%s_%s_%s.csv' %(STOCK_DB_PATH,d.day,d.month,d.year)
         if os.path.exists(outFileName):
             if downloadFiles: st.write(outFileName)
             df_part = pd.read_csv(outFileName)
@@ -662,6 +667,7 @@ with row3_1, _lock:
 
 
     if len(df)>0:
+        do_refresh_table = st.checkbox('Refresh table?')
         do_static_table = st.checkbox('Draw static table')
         add_10dm = st.checkbox('Add 10 day by minute checks')
         add_10dh = st.checkbox('Add 10 day by hour checks')
@@ -679,13 +685,14 @@ with row3_1, _lock:
                                      
         st.markdown("Greater than %ssigma or overbought!" %signif)
         df = df[df.stddev>0.000001]
-        #df_plus = df.copy(True)
+
         df_plus = df[df.fit_diff_significance>signif_start].copy(True)
         if rm_spycomparison:
             df_plus  = df_plus[~df_plus['time_span'].str.lower().str.contains('comparison')]
         if optionTFrame!='Select':
             df_plus  = df_plus[df_plus['time_span'].str.lower().str.contains(optionTFrame)]
-        df_plus = collect_latest_trades(api,df_plus)
+        if do_refresh_table:
+            df_plus = collect_latest_trades(api,df_plus)
         df_plus = df_plus[df_plus.fit_diff_significance>signif]  
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
@@ -711,8 +718,8 @@ with row3_1, _lock:
             df_min  = df_min[~df_min['time_span'].str.lower().str.contains('comparison')]
         if optionTFrame!='Select':
             df_min  = df_min[df_min['time_span'].str.lower().str.contains(optionTFrame)]
-        
-        df_min = collect_latest_trades(api,df_min)
+        if do_refresh_table:
+            df_min = collect_latest_trades(api,df_min)
         df_min = df_min[df_min.fit_diff_significance<(-1*signif)]
         if require_shortable:
             df_min = df_min[df_min.shortable]
@@ -745,8 +752,9 @@ with row3_1, _lock:
             df_etf  = df_etf[~df_etf['time_span'].str.lower().str.contains('comparison')]
         if optionTFrame!='Select':
             df_etf  = df_etf[df_etf['time_span'].str.lower().str.contains(optionTFrame)]
-            
-        df_etf = collect_latest_trades(api,df_etf)
+
+        if do_refresh_table:
+            df_etf = collect_latest_trades(api,df_etf)
 
         df_etf = df_etf[abs(df_etf.fit_diff_significance)>signif_start_etf]
         

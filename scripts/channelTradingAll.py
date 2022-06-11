@@ -491,6 +491,7 @@ def getPEShiller():
         print('Failed to collect the Shiller P/E10 ratio')
         
 def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
+    print('Long term for ',ticker)
     """ Plot 5 year time window
         
          Parameters:
@@ -560,6 +561,8 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
                         ticker=ticker,outname='60dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],ratioName=ratioName)
             FitWithBand(my_stock_info5y.index,my_stock_info5y[['adj_close','high','low','open','close']],
                         ticker=ticker,outname='5ysandpcomparison'+ratioName,spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],ratioName=ratioName)
+        else: print('ERROR missing data for spy')
+    else: print('ERROR missing data for ',ticker)        
     endM = time.time()
     if debug: print('Process time to process LongTermPlots bands: %s' %(endM - startM))
 def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[],ratioName='SPY'):
@@ -723,7 +726,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     fig.savefig(outdir+'meanrev%s_%s.png' %(outname,ticker))
     if not draw: plt.close()
     endBa = time.time()
-    if debug: print('Process time to process FitWithBand drawing: %s' %(endBa - startBa))    
+    if debug: print('Process time to process FitWithBand', ticker,' drawing: %s' %(endBa - startBa))    
         
 def DrawPlots(my_stock_info,ticker,market,plttext=''):
     """ DrawPlots - Draw all plots of the stock along with market comparisons
@@ -953,13 +956,13 @@ if doStocks:
         if args.filter!='':
             if s[0]!=args.filter:
                 continue
-        if s[0]=='SPY':
-            continue
+        #if s[0]=='SPY':
+        #    continue
         if s[0].count('^'):
             continue
         if j%n_ALPHA_PREMIUM_WAIT_ITER==0 and j!=0:
             time.sleep(56)
-        print(s[0])
+        print('making plots: ',s[0])
         sys.stdout.flush()
 
         startR = time.time()
@@ -1018,8 +1021,12 @@ if doStocks:
             tstock_info = AddInfo(tstock_info, spy, debug=debug)
             end = time.time()
             if debug: print('Process time to add info: %s' %(end - start))
-        except (ValueError,KeyError):
-            print('Error processing %s' %s[0])
+        except (ValueError,KeyError,NotImplementedError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))            
+            print('Error processing %s' %(s[0]))
+            #clean up
+            print('Removing: ',s[0])
+            sqlcursor.cursor().execute('DROP TABLE %s' %s[0])
             j+=1
             continue
                 
@@ -1091,8 +1098,12 @@ if doETFs:
             estock_info = AddInfo(estock_info, spy)
             end = time.time()
             if debug: print('Process time to add info: %s' %(end - start))
-        except ValueError:
+        except (ValueError,KeyError,NotImplementedError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))            
             print('Error processing %s' %s[0])
+            #clean up
+            print('Removing: ',s[0])
+            sqlcursor.cursor().execute('DROP TABLE %s' %s[0])
             continue
         start = time.time()
         estock_info = GetTimeSlot(estock_info) # gets the one year timeframe

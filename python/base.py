@@ -168,6 +168,7 @@ def makeHTMLTable(outFileName,title='Stock Performance', columns=[], entries=[],
         line=' <p><a href="GLOBAL.html">Global Indicators</a></p>\n'
         line+=' <p><a href="POSITION.html">Percentage in exhcange above moving averages</a></p>\n'
         line+=' <p><a href="https://www.tradingview.com/chart/?symbol=INDEX%3ABDI">Baltic dry index indicator of inflation and spy</a></p>\n'
+        line+=' <p><a href="https://www.tradingview.com/symbols/USI-TRIN.NY/">TRIN indicator</a></p>\n'
         line+=' <p><a href="https://www.aia.org/resources/10046-architecture-billings-index-abi">Architecture billing index for small business updates. gives regional info</a></p>\n'
         line+=' <p><a href="http://www.econ.yale.edu/~shiller/data.htm">Yale econ professor Shiller: webpage with inflation and other data</a></p>\n'
         line+=' <p><a href="https://www.multpl.com/shiller-pe">SPY data plots including p/e over time</a></p>\n'

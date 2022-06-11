@@ -171,6 +171,9 @@ if __name__ == "__main__":
     collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-52wk-high/',tableName='summary52w_high',doHighLow=True)
     collect(sqlcursor, URLin = 'https://www.tradingview.com/markets/stocks-usa/market-movers-52wk-low/',tableName='summary52w_low',doHighLow=True)
 
+    # collect the NYSE TRIN
+    #collect(sqlcursor, URLin = 'https://www.tradingview.com/symbols/USI-TRIN.NY/',tableName='nyse_trin',doHighLow=True)
+
     # struggled to load these
     #collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/highs-lows/highs?screener=overall\&timeFrame=alltime\&page=all',name='summary',doHighLow=True)
     #collect(sqlcursor, URLin = 'https://www.barchart.com/stocks/highs-lows/lows?screener=overall\&timeFrame=alltime\&page=all',name='summary',doHighLow=True)

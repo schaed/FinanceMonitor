@@ -142,7 +142,11 @@ if __name__ == "__main__":
             daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
             daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
             #if debug: print('ticker,time_span,fit_expectations,stddev,fit_diff_significance,current_price')
-        
+            if len(daily_prices_60d)==0:
+                continue
+            if 'adj_close' not in daily_prices_60d.columns:
+                continue
+            #print(daily_prices_60d)
             # Run:
             df_store_data=GetRMSData(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d',out_df = df_store_data,describe_ticker = describe_tickers[iticker-1])
             df_store_data=GetRMSData(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d',out_df = df_store_data, describe_ticker = describe_tickers[iticker-1])

@@ -534,7 +534,13 @@ def AddInfo(stock,market,debug=False, AddSupport=False):
     #print(stock[['adj_close','oneday_future_return','twoday_future_return']])
     
     stock['daily_return_stddev14']=techindicators.rstd(stock['daily_return'],14)
+    #try:
     stock['beta']=techindicators.rollingBetav2(stock,14,market)
+    #except (ValueError,KeyError,NotImplementedError) as e:
+    #    print("Testing multiple exceptions. {}".format(e.args[-1]))
+    #    print('Error getting info for %s' %ticker)
+    #    return []
+    
     stock['alpha']=techindicators.rollingAlpha(stock,14,market)
     stock['rsquare']=techindicators.rollingRsquare(stock,14,market)
     start = time.time()
