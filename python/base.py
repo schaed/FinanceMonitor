@@ -1263,5 +1263,12 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['VBK',8.0,20.0,'NYSEARCA','Vanguard Small-Cap Growth Index Fund ETF'],
             ['VGT',90.0,150.0,'NYSEARCA','Vanguard information tech'], # Vanguard information tech. 1.4% dividend
         ['JNYAX',90.0,150.0,'NASDAQ','JPM retirement fund'],
+        #VIX ETFs
+        ['UVXY',90.0,150.0,'BATS','Ultra VIX Short-Term Futures ETF ',],
+        ['SVXY',90.0,150.0,'BATS','shorting Ultra VIX Short-Term Futures ETF '],
+        ['VXX',90.0,150.0,'BATS','s&p vix Short-Term Futures ETF '],
+        ['SVOL',90.0,150.0,'BATS','sells vix calls and puts ETF '],
+        ['VIXM',90.0,150.0,'BATS','medium term vix futures. more efficient '],
+        ['ZIV',90.0,150.0,'BATS','short medium term vix futures. more efficient '],
             ]
 #VFIFX - vanguard 2050 return
