@@ -88,7 +88,7 @@ def PercentageChange(percent_change):
 
 def GetPastPerformance(stock):
 
-    day180 = GetTimeSlot(stock)
+    day180 = GetTimeSlot(stock,180)
     day30 = GetTimeSlot(stock,30)
     day365 = GetTimeSlot(stock,365)
     entry=-1

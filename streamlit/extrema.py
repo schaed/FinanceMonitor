@@ -575,6 +575,7 @@ with row2_1:
     titleStart='Select'
     st.button("Clear",on_click=clear_form)
     title = st.text_input('Stock Ticker ', titleStart,key='tickerKey')
+    title = title.upper()
     st.write('The current ticker is', title)
 
     today = datetime.datetime.now(tz=est)
@@ -589,7 +590,7 @@ with row2_1:
     doRelativeToSpyAll = st.checkbox('Show relative to SPY',key='relTitleSpy')
     doEarnings = st.checkbox('Show earnings',key='do earnings')
     
-    if title!='Select':
+    if title!='SELECT':
         # Print a table of stock information on Alpaca
         st.json(api.get_asset(title)._raw)
 
