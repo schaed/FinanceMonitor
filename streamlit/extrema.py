@@ -658,7 +658,7 @@ with row3_1, _lock:
     st.write("Selected ", signif, 'sigma')
     shortThr = st.slider('Short significance threshold to check (slow to check, so set the threshold high to avoid long waiting)?', 0.0, 10.0, 5.0)
     st.write("Selected ", shortThr, 'short threshold')
-    signif_start = st.slider('How significant to select for added stocks?', 1.0, 10.0, 4.0,key='startSig')
+    signif_start = st.slider('How significant to select for added stocks? this is the price when added', 1.0, 10.0, 4.0,key='startSig')
     st.write("Selected ", signif_start, 'sigma')
     signif_start_etf = st.slider('How significant to select for ETFs?', 0.0, 10.0, 2.0,key='startSigETF')
     st.write("Selected ", signif_start_etf, 'sigma')    
@@ -711,15 +711,19 @@ with row3_1, _lock:
         df = df[df.stddev>0.000001]
 
         df_plus = df[df.fit_diff_significance>signif_start].copy(True)
+
         if rm_spycomparison:
             df_plus  = df_plus[~df_plus['time_span'].str.lower().str.contains('comparison')]
         if optionTFrame!='Select':
             df_plus  = df_plus[df_plus['time_span'].str.lower().str.contains(optionTFrame)]
         if do_refresh_table:
             df_plus = collect_latest_trades(api,df_plus,True,shortThr)
-        df_plus = df_plus[df_plus.fit_diff_significance>signif]  
+
+        df_plus = df_plus[df_plus.fit_diff_significance>signif]
+
         if require_shortable:
             df_plus = df_plus[df_plus.shortable]
+
         df_plus = df_plus.assign(sortkey = df_plus.groupby(['ticker'])['fit_diff_significance'].transform('max')).sort_values(['sortkey','fit_diff_significance'],ascending=[False,False]).drop('sortkey', axis=1)
         if do_static_table:
             #df_plus.style.hide_index()

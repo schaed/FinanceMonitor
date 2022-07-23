@@ -838,6 +838,7 @@ stock_list = [
         ['SIL',10.0,125.,'NYSE','silver miners ETF'], # silver
     #['SHNY',10.0,125.,'NYSE','silver miners 2X ETF'], # silver
         ['USO',5.0,25.,'NYSE','crude oil'], # crude oil    
+        ['UGA',5.0,25.,'NYSE','us gas'], # natural gas    
         ['GDX',11.0,125.,'NYSEARCA','gold miners'], # gold miners
         ['NUGT',1.0,125.0,'NYSEARCA','goldx5'], # gold    
         ['DIA',120.0,200.0,'NYSE','Dow jones'], # Dow jones 
@@ -1176,7 +1177,7 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
             ['RZV',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Value ETF, short TZA'],
             ['TZA',8.0,20.0,'NYSE','Invesco S&P SmallCap 600 Pure Value ETF, short TZA'],
             ['RYE',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Energy ETF'],
-            ['UGA',8.0,20.0,'NYSE','United States Gasoline Fund'],
+            ['UGA',8.0,20.0,'NYSE','United States Gasoline Fund- futures contracts'],
             ['RCD',8.0,20.0,'NYSE','Invesco S&P 500 Equal Weight Consumer Discretionary ETF'],
             ['SDOG',8.0,20.0,'NYSE','ALPS Sector Dividend Dogs ETF'],
             ['DOG',8.0,20.0,'NYSE','short Dow30 ETF'],
@@ -1270,5 +1271,11 @@ etfs = [['SPY',8.0,20.0,'NYSE','SPY'],
         ['SVOL',90.0,150.0,'BATS','sells vix calls and puts ETF '],
         ['VIXM',90.0,150.0,'BATS','medium term vix futures. more efficient '],
         ['ZIV',90.0,150.0,'BATS','short medium term vix futures. more efficient '],
+        ['SOYB',90.0,150.0,'NYSEArca','soy bean futures contracts '],
+        ['CORN',90.0,150.0,'NYSEArca','corn futures contracts '],
+        ['WEAT',90.0,150.0,'NYSEArca','wheat futures contracts '],
+        ['COW',90.0,150.0,'NYSEArca','beef futures contracts '],
+        ['COWZ',90.0,150.0,'NYSEArca','top 100 with free cash flow '],
+        ['MUB',90.0,150.0,'NYSEArca','municipal bonds '],
             ]
 #VFIFX - vanguard 2050 return

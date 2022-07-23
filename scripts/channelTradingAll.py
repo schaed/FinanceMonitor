@@ -974,12 +974,20 @@ if doStocks:
             continue
         # shorten the info
         #tstock_info = GetTimeSlot(tstock_info, days=6*365)
-        
-        # draw before we shorten this to 1 year
-        startL = time.time()
-        LongTermPlot(tstock_info,spy,ticker=s[0])
-        LongTermTrendLine(tstock_info,ticker=s[0])
-        endL = time.time()
+        try:
+            # draw before we shorten this to 1 year
+            startL = time.time()
+            LongTermPlot(tstock_info,spy,ticker=s[0])
+            LongTermTrendLine(tstock_info,ticker=s[0])
+            endL = time.time()
+        except (ValueError,KeyError,NotImplementedError) as e:
+            print("Testing multiple exceptions. {}".format(e.args[-1]))            
+            print('Error processing %s' %(s[0]))
+            #clean up
+            print('Removing: ',s[0])
+            sqlcursor.cursor().execute('DROP TABLE %s' %s[0])
+            j+=1
+            continue            
         if debug: print('Process time to add long term info: %s' %(endL - startL))
         if s[0] in ['SPY','SLV','GLD' ]:
             LongTermPlot(tstock_info,gld,ticker=s[0],ratioName='GLD')
@@ -1073,27 +1081,28 @@ if doETFs:
         #    print('ERROR processing...ValueError %s' %s[0])
         #    j+=1
         #    continue
-        LongTermPlot(estock_info,spy,ticker=s[0])
-        LongTermTrendLine(estock_info,ticker=s[0])
+        try:        
+            LongTermPlot(estock_info,spy,ticker=s[0])
+            LongTermTrendLine(estock_info,ticker=s[0])
 
-        if s[0] in ['SPY','SLV','GLD' ]:
-            LongTermPlot(estock_info,gld,ticker=s[0],ratioName='GLD')
-            LongTermPlot(estock_info,slv,ticker=s[0],ratioName='SLV')
-        if s[0] in ['LABD' ]:
-            LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
-            LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')
-        if s[0] in ['LABU' ]:
-            LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
-            LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
-        if s[0] in ['BIB' ]:
-            LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
-            LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')            
-        if s[0] in ['GUSH' ]:
-            LongTermPlot(estock_info,drip,ticker=s[0],ratioName='DRIP')
-        if s[0] in ['DRIP' ]:
-            LongTermPlot(estock_info,gush,ticker=s[0],ratioName='GUSH') 
+            if s[0] in ['SPY','SLV','GLD' ]:
+                LongTermPlot(estock_info,gld,ticker=s[0],ratioName='GLD')
+                LongTermPlot(estock_info,slv,ticker=s[0],ratioName='SLV')
+            if s[0] in ['LABD' ]:
+                LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
+                LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')
+            if s[0] in ['LABU' ]:
+                LongTermPlot(estock_info,bib,ticker=s[0],ratioName='BIB')
+                LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
+            if s[0] in ['BIB' ]:
+                LongTermPlot(estock_info,labd,ticker=s[0],ratioName='LABD')
+                LongTermPlot(estock_info,labu,ticker=s[0],ratioName='LABU')            
+            if s[0] in ['GUSH' ]:
+                LongTermPlot(estock_info,drip,ticker=s[0],ratioName='DRIP')
+            if s[0] in ['DRIP' ]:
+                LongTermPlot(estock_info,gush,ticker=s[0],ratioName='GUSH') 
         
-        try:
+
             start = time.time()
             estock_info = AddInfo(estock_info, spy)
             end = time.time()
