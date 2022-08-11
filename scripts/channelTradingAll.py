@@ -1,6 +1,6 @@
 from techindicators import techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS,MakePlotMulti,MakePlot,POS_MARKET_PLOTS
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS,MakePlotMulti,MakePlot,POS_MARKET_PLOTS,AddSMA
 import pandas as pd
 import numpy as np
 import sys
@@ -437,6 +437,7 @@ def LongTermTrendLine(my_stock,ticker):
          my_stock      - pandas data frame with time plus adj_close price
          ticker - str - ticker name
     """
+    
     FitWithBand(my_stock.index, my_stock  [['adj_close','high','low','open','close']],ticker=ticker,outname='lifetime', poly_order=1)
 
     if ticker in ['SPY','QQQ','VPU','VYM']:
@@ -502,6 +503,11 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
          plttext - string
                 Label for the plot
     """
+    try:
+        AddSMA(my_stock_info_cp)
+    except ValueError:
+        print('cleaning table')
+    input_keys = ['adj_close','high','low','open','close','sma200','sma100','sma50','sma20']
     startM = time.time()    
     GetMonthlyReturns(my_stock_info_cp,ticker)
     endM = time.time()
@@ -545,21 +551,21 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
     if debug: print('Process time to process LongTermPlots draw: %s' %(endM - startM))
     startM = time.time()
     if len(daily_prices_60d)>10:
-        FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
-        FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
-        FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
-        FitWithBand(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y')
-        FitWithBand(my_stock_info5y.index,  my_stock_info5y  [['adj_close','high','low','open','close']],ticker=ticker,outname='5y')
+        FitWithBand(daily_prices_60d.index, daily_prices_60d [input_keys],ticker=ticker,outname='60d')
+        FitWithBand(daily_prices_180d.index,daily_prices_180d[input_keys],ticker=ticker,outname='180d')
+        FitWithBand(daily_prices_365d.index,daily_prices_365d[input_keys],ticker=ticker,outname='365d')
+        FitWithBand(daily_prices_3y.index,  daily_prices_3y  [input_keys],ticker=ticker,outname='3y')
+        FitWithBand(my_stock_info5y.index,  my_stock_info5y  [input_keys],ticker=ticker,outname='5y')
         filter_shift_days=0
         spy_daily_prices_60d  = GetTimeSlot(market, days=60+filter_shift_days)
         spy_daily_prices_365d = GetTimeSlot(market, days=365+filter_shift_days)
         spy_daily_prices_5y   = GetTimeSlot(market, days=5*365+filter_shift_days)
         if len(spy_daily_prices_60d)>0:
-            FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
+            FitWithBand(daily_prices_365d.index,daily_prices_365d[input_keys],
                         ticker=ticker,outname='365dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']],ratioName=ratioName)
-            FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
+            FitWithBand(daily_prices_60d.index,daily_prices_60d[input_keys],
                         ticker=ticker,outname='60dsandpcomparison'+ratioName,spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']],ratioName=ratioName)
-            FitWithBand(my_stock_info5y.index,my_stock_info5y[['adj_close','high','low','open','close']],
+            FitWithBand(my_stock_info5y.index,my_stock_info5y[input_keys],
                         ticker=ticker,outname='5ysandpcomparison'+ratioName,spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']],ratioName=ratioName)
         else: print('ERROR missing data for spy')
     else: print('ERROR missing data for ',ticker)        
@@ -593,6 +599,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         for i in [price_key,'high','low','open','close']:
             spy_comparison[i+'_spy'] = spy_comparison[i]
         arr_prices = arr_prices.join(spy_comparison[[price_key+'_spy','high'+'_spy','low'+'_spy','open'+'_spy','close'+'_spy']],how='left')
+        prices = arr_prices[price_key]
         prices /= (arr_prices[price_key+'_spy'] / arr_prices[price_key+'_spy'][-1])
         arr_prices.loc[:,'high'] /= (arr_prices.high_spy / arr_prices.high_spy[-1])
         arr_prices.loc[:,'low'] /= (arr_prices.low_spy / arr_prices.low_spy[-1])
@@ -601,7 +608,10 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     if debug: print('Process time to process FitWithBand normalization: %s' %(endBa - startBa))
 
     # perform the fit
-    startBa = time.time()    
+    startBa = time.time()
+    if len(x)!=len(prices):
+        print('Error fitting ',ticker,len(x),len(prices),' ',outname)
+        return
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)
     endBa = time.time()
@@ -651,6 +661,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
                  color='g', alpha=0.45)
     plt.fill_between(dd, p4(xx), p4(xx)- np.ones(len(dd))*0.5*stddev,
                  color='g', alpha=0.45)
+
    #linescale=1.0
     #if len(dd)<100:
     #    linescale=10.0
@@ -703,6 +714,14 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         plt.plot(arr_prices.high,color='red',label='High')
         plt.plot(arr_prices.low,color='cyan',label='Low')
         plt.plot(my_index,arr_prices.open, '+',color='orange',label='Open')
+
+    if  len(spy_comparison)==0 and 'sma200' in arr_prices.columns: 
+        plt.plot(arr_prices["sma200"],color='magenta',label='SMA200')
+        plt.plot(arr_prices["sma100"],color='cyan',label='SMA100')
+        plt.plot(arr_prices["sma50"],color='yellow',label='SMA50')
+        plt.plot(arr_prices["sma20"],color='green',label='SMA20')
+        #plt.plot(data.index, data["ema13"],color='blue',label='EMA13')
+        #print(arr_prices['sma200'])
 
     if len(spy_comparison)>0:  cx.set_ylabel('Price / '+ratioName)
     elif ticker.count('P/E10'): cx.set_ylabel(ticker)

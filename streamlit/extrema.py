@@ -14,7 +14,7 @@ from matplotlib.patches import StepPatch
 from matplotlib.backends.backend_agg import RendererAgg
 
 # collect data
-from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot,ALPHA_FundamentalData
+from ReadData import ALPACA_REST,runTicker,ALPHA_TIMESERIES,SQL_CURSOR,ConfigTable,GetTimeSlot,ALPHA_FundamentalData,AddSMA
 from alpaca_trade_api.rest import TimeFrame
 import alpaca_trade_api
 import statsmodels.api as sm1
@@ -44,7 +44,7 @@ _lock = RendererAgg.lock
 def clear_form():
     st.session_state["tickerKey"] = "Select"
 
-def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',spy_comparison=[], doRelative=False, doJoin=True, debug=False):
+def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',doDateKey=False,spy_comparison=[], doRelative=False, doJoin=True, debug=False):
     """
     my_index : datetime array
     price : array of prices or values
@@ -58,9 +58,15 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     doJoin : bool : join the two arrays on matching times
 """
     prices = arr_prices[price_key]
-    x = mdates.date2num(my_index)
-    xx = np.linspace(x.min(), x.max(), 1000)
-    dd = mdates.num2date(xx)
+    x=my_index.values
+    #print(x)
+    if not doDateKey:
+        x = mdates.date2num(my_index)
+    xx = x
+    dd = xx
+    if not doDateKey:
+        xx = np.linspace(x.min(), x.max(), 1000)        
+        dd = mdates.num2date(xx)
 
     # prepare a spy comparison
     ylabelPlot='Price for %s' %ticker 
@@ -84,6 +90,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
             prices = arr_prices[price_key]
 
     # perform the fit
+    #print(x,prices)
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)
 
@@ -114,7 +121,30 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
             coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
     if doRelative:
         stddev *= p4(x).mean()
+    smaPlots=[]
+    if  len(spy_comparison)==0 and 'sma200' in arr_prices.columns:
+        smaPlots = [go.Scatter(
+            name='SMA200',
+            x=my_index,
+            y=arr_prices['sma200'],
+            mode='lines',
+            line=dict(color='rgb(500, 119, 0)')),
+                    go.Scatter(
+            name='SMA100',
+            x=my_index,
+            y=arr_prices['sma100'],
+            mode='lines',
+                        line=dict(color='rgb(7, 119, 0)')),
+                    go.Scatter(
+            name='SMA50',
+            x=my_index,
+            y=arr_prices['sma50'],
+            mode='lines',
+                        line=dict(color='rgb(100, 9, 0)')),                    
+        ]
 
+
+        
     fig = go.Figure([
         go.Scatter(
             name='Price',
@@ -128,7 +158,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
             x=my_index,
             y=arr_prices.adj_close,
             mode='lines',
-            line=dict(color='rgb(31, 119, 180)'),
+            line=dict(color='rgb(31, 219, 0)'),
         ),        
         go.Scatter(
             name='1 sigma',
@@ -221,13 +251,13 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
         #        symmetric=False,
         #        array=arr_prices.high-arr_prices.open,
         #        arrayminus=arr_prices.open-arr_prices.low))
-    ])
+    ]+smaPlots)
+    
     fig.update_layout(xaxis_rangeslider_visible=False,
                       xaxis_title='Date',
                       yaxis_title=ylabelPlot,
                       title='Mean reversion %s' %outname,
                       hovermode="x")
-
     #cx.plot(dd, p4(xx), '-g',label='Quadratic fit')
     #plt.plot(arr_prices.high,color='red',label='High')
     #plt.plot(arr_prices.low,color='cyan',label='Low')
@@ -333,7 +363,7 @@ def collect_latest_trades(apiA,df_blah,getShortable=True,shortThr=5.0):
     print('return')
     return df_blah
 
-def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
+def generateMeanRevFigure(apiA, sqlA, tsA, tickerA, doRelativeToSpy=False):
     """generateMeanRevFigure:
        apiA - alpaca api
        sqlA - mysql cursor
@@ -368,6 +398,11 @@ def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
         
     #st.table(daily_prices.tail())
     filter_shift_days = 0
+    try:
+        AddSMA(daily_prices)
+    except ValueError:
+        print('cleaning table')
+        
     if filter_shift_days>0:
         daily_prices  = GetTimeSlot(daily_prices, days=6*365, startDate=todayFilter)
     daily_prices_60d  = GetTimeSlot(daily_prices, days=60+filter_shift_days)
@@ -376,12 +411,12 @@ def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
     daily_prices_3y   = GetTimeSlot(daily_prices, days=3*365+filter_shift_days)
     daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
     daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
-
-    figs+=[FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=tickerA,outname='60d')]
-    figs+=[FitWithBand(daily_prices_180d.index, daily_prices_180d [['adj_close','high','low','open','close']],ticker=tickerA,outname='180d')]
-    figs+=[FitWithBand(daily_prices_365d.index, daily_prices_365d [['adj_close','high','low','open','close']],ticker=tickerA,outname='365d')]
-    figs+=[FitWithBand(daily_prices_3y.index, daily_prices_3y [['adj_close','high','low','open','close']],ticker=tickerA,outname='3y')]
-    figs+=[FitWithBand(daily_prices_5y.index, daily_prices_5y [['adj_close','high','low','open','close']],ticker=tickerA,outname='5y')]
+    input_keys = ['adj_close','high','low','open','close','sma200','sma100','sma50','sma20']
+    figs+=[FitWithBand(daily_prices_60d.index, daily_prices_60d   [input_keys],ticker=tickerA,outname='60d')]
+    figs+=[FitWithBand(daily_prices_180d.index, daily_prices_180d [input_keys],ticker=tickerA,outname='180d')]
+    figs+=[FitWithBand(daily_prices_365d.index, daily_prices_365d [input_keys],ticker=tickerA,outname='365d')]
+    figs+=[FitWithBand(daily_prices_3y.index, daily_prices_3y     [input_keys],ticker=tickerA,outname='3y')]
+    figs+=[FitWithBand(daily_prices_5y.index, daily_prices_5y     [input_keys],ticker=tickerA,outname='5y')]
 
     # Compute relative to spy
     if doRelativeToSpy:
@@ -392,12 +427,12 @@ def generateMeanRevFigure(apiA,sqlA,tsA,tickerA,doRelativeToSpy=False):
         spy_daily_prices_365d = GetTimeSlot(spy, days=365+filter_shift_days)
         spy_daily_prices_5y   = GetTimeSlot(spy, days=5*365+filter_shift_days)
 
-        figs+=[FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],
-                           ticker=tickerA,outname='365dspycomparison',spy_comparison = spy_daily_prices_365d[['adj_close','high','low','open','close']])]
-        figs+=[FitWithBand(daily_prices_60d.index,daily_prices_60d[['adj_close','high','low','open','close']],
-                           ticker=tickerA,outname='60dspycomparison',spy_comparison = spy_daily_prices_60d[['adj_close','high','low','open','close']])]
-        figs+=[FitWithBand(daily_prices_5y.index,daily_prices_5y[['adj_close','high','low','open','close']],
-                           ticker=tickerA,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[['adj_close','high','low','open','close']])] 
+        figs+=[FitWithBand(daily_prices_365d.index,daily_prices_365d[input_keys],
+                           ticker=tickerA,outname='365dspycomparison',spy_comparison = spy_daily_prices_365d[input_keys])]
+        figs+=[FitWithBand(daily_prices_60d.index,daily_prices_60d[input_keys],
+                           ticker=tickerA,outname='60dspycomparison',spy_comparison = spy_daily_prices_60d[input_keys])]
+        figs+=[FitWithBand(daily_prices_5y.index,daily_prices_5y[input_keys],
+                           ticker=tickerA,outname='5yspycomparison',spy_comparison = spy_daily_prices_5y[input_keys])] 
     return figs
 
 def generateFigure(apiA,tickerA):
@@ -409,9 +444,10 @@ def generateFigure(apiA,tickerA):
     doSPYComparison=False
     today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
     d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
-    thirty_days = (today + datetime.timedelta(days=-13)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+    thirty_days = (today + datetime.timedelta(days=-18)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
     minute_prices_thirty = []
-    try:
+    #try:
+    if True:
         minute_prices_thirty  = runTicker(apiA, tickerA, timeframe=TimeFrame.Minute, start=thirty_days, end=d1)
         AddData(minute_prices_thirty)
         minute_prices_spy=[]
@@ -443,6 +479,13 @@ def generateFigure(apiA,tickerA):
         ))
         fig.update_layout(xaxis_title="Minute Bars",yaxis_title="%s Price" %tickerA)
         figs +=[ fig ]
+
+        # try mean reversion
+        minute_prices_thirty['adj_close']=minute_prices_thirty['close']
+        minute_prices_thirty['sma200']=minute_prices_thirty['close']
+        minute_prices_thirty['sma100']=minute_prices_thirty['close']
+        minute_prices_thirty['sma50']=minute_prices_thirty['close']
+        figs+=[FitWithBand(minute_prices_thirty['i'], minute_prices_thirty[['adj_close','high','low','open','close','sma200','sma100','sma50']], ticker=tickerA,doDateKey=True, outname='60min')]
 
         fig = go.Figure(data=[go.Candlestick(x=minute_prices_thirty['i'],
                                              open=minute_prices_thirty['open'],
@@ -503,8 +546,8 @@ def generateFigure(apiA,tickerA):
 
         figs +=[ fig ]
         
-    except:
-        pass
+    #except:
+    #    pass
 
     return minute_prices_thirty,figs
 
@@ -679,18 +722,23 @@ with row3_1, _lock:
         if os.path.exists(outFileName):
             if downloadFiles: st.write(outFileName)
             df_part = pd.read_csv(outFileName)
+            #print('B')
+            #print(df_part[df_part.ticker=='EUM'])
             if len(df_part[df_part.ticker.isin(fsplits)])>0:
                 df_part[~df_part.ticker.isin(fsplits)].to_csv(outFileName,index=False)
                 if os.path.exists('%s/split_stocks.txt' %STOCK_DB_PATH):
                     os.remove('%s/split_stocks.txt' %STOCK_DB_PATH)
             df_part['date'] = '%s-%s-%s' %(d.day,d.month,d.year)
             if len(df)==0:
-                df = df_part[~df_part.ticker.isin(fsplits)]
+                df = df_part[~df_part.ticker.isin(fsplits)].copy(True)
             else:
                 df = pd.concat([df,df_part[~df_part.ticker.isin(fsplits)]])
-
+            #print('A')
+            #print(df[df.ticker=='EUM'])
 
     if len(df)>0:
+        df['fit_diff_significance'] = (df['current_price'] - df['fit_expectations']) / df.stddev
+        #print(df[df.ticker=='EUM'])
         do_refresh_table = st.checkbox('Refresh table?')
         do_static_table = st.checkbox('Draw static table')
         add_10dm = st.checkbox('Add 10 day by minute checks')
@@ -709,9 +757,9 @@ with row3_1, _lock:
                                      
         st.markdown("Greater than %ssigma or overbought!" %signif)
         df = df[df.stddev>0.000001]
-
+        #print(df[df.ticker=='EUM'])
         df_plus = df[df.fit_diff_significance>signif_start].copy(True)
-
+        
         if rm_spycomparison:
             df_plus  = df_plus[~df_plus['time_span'].str.lower().str.contains('comparison')]
         if optionTFrame!='Select':

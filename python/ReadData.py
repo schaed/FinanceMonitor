@@ -261,6 +261,46 @@ def ALPHA_TIMESERIES():
     ts = TimeSeries(key=ALPHA_ID)
     return ts
  
+def get_company_earnings(symbol,annual=False,debug=False):
+    """
+    Returns the company information, financial ratios, 
+    and other key metrics for the equity specified. 
+    Data is generally refreshed on the same day a company reports its latest 
+    earnings and financials.
+    Keyword Arguments:
+    symbol:  the symbol for the equity we want to get its data
+    """
+    import requests    
+    ALPHA_ID = os.getenv('ALPHA_ID')
+    _FUNCTION_KEY = 'EARNINGS'
+    url = 'https://www.alphavantage.co/query?function=%s&symbol=%s&apikey=%s' %(_FUNCTION_KEY,symbol,ALPHA_ID)
+    try:
+        r = requests.get(url)
+        data = r.json()
+        data_pandas = pd.DataFrame()
+        EarningsName='quarterlyEarnings'
+        if annual:
+            EarningsName='annualEarnings'
+        #print(data)
+        if debug:
+            print(data['annualEarnings'])
+            print(data['quarterlyEarnings'])
+            print(data.keys())
+        data_array = []
+        #print(data[EarningsName])
+        for val in data[EarningsName]:
+            if debug:
+                print(val)
+            data_array.append([v for _, v in val.items()])
+        data_pandas = pd.DataFrame(data_array, columns=[k for k, _ in data[EarningsName][0].items()])
+        data_pandas['ticker']=symbol
+        #return data_pandas
+        return data
+    except:
+        print('error collecting company earnings')
+        return []
+
+
 def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
     """ ALPHA_FundamentalData - Return fundamental data like earnings along with the output format
 
@@ -268,8 +308,10 @@ def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
          output_format - str
                 output format pandas, json, csv, csvpan
     """
+    
     ALPHA_ID = os.getenv('ALPHA_ID')
     fd = FundamentalData(key=ALPHA_ID,output_format=output_format)
+    fd.get_company_earnings = get_company_earnings
     return fd
 
 def GetTimeSlot(stock, days=365, startDate=None):
@@ -286,7 +328,9 @@ def GetTimeSlot(stock, days=365, startDate=None):
     if startDate!=None:
         today = startDate
     past_date = today + datetime.timedelta(days=-1*days)
-
+    if type(stock)==type([]):
+        print('error this is a list')
+        return stock
     date=stock.truncate(before=past_date, after=startDate)
     #date = stock[nearest(stock.index,past_date)]
     return date
@@ -476,6 +520,20 @@ def runTickerTypes(api, ticker, timeframe=TimeFrame.Day, start=None, end=None, l
             #print(ticker)
             trade_days = api(ticker, start=start, end=end, limit=limit).df             
     return trade_days
+def AddSMA(stock):
+    stock['sma10']=techindicators.sma(stock['adj_close'],10)
+    stock['sma20']=techindicators.sma(stock['adj_close'],20)
+    stock['sma20cen']=techindicators.sma(stock['adj_close'].shift(-10),20)
+    if len(stock['adj_close'])>50:
+        stock['sma50']=techindicators.sma(stock['adj_close'],50)
+    else: stock['sma50']=np.zeros(len(stock['adj_close']))
+    if len(stock['adj_close'])>100:
+        stock['sma100']=techindicators.sma(stock['adj_close'],100)
+    else: stock['sma100']=np.zeros(len(stock['adj_close']))        
+    if len(stock['adj_close'])>200:
+        stock['sma200']=techindicators.sma(stock['adj_close'],200)
+    else: stock['sma200']=np.zeros(len(stock['adj_close']))
+    return stock
 
 # add stock data and market data to compute metrics
 def AddInfo(stock,market,debug=False, AddSupport=False):

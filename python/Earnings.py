@@ -1,5 +1,6 @@
 import pandas as pd
-
+import numpy as np
+from ReadData import ConfigTableFromPandas
 # Read and process the overview info
 def GetOverview(fd, ticker, connectionCal, debug=False):
     """ GetOverview - Back testing of the SAR trading model. Shows the cumulative return from the strategy
@@ -99,12 +100,16 @@ def GetPastEarnings(fd, ticker, connectionCal, j=0, ReDownload=False, debug=Fals
                 return stockInfoA,stockInfoQ
         except:
             DownloadInfo=True
+    else:
+        DownloadInfo=True
             
     pastEarnings=[]
     if DownloadInfo:
+        #print('download test')
         j+=1
         try:
-            pastEarnings = fd.get_company_earnings(ticker)
+            pastEarnings = [fd.get_company_earnings(ticker)]
+        #print(pastEarnings)
         except:
             print('Could not collect: %s' %ticker)
             return [],[]
@@ -119,6 +124,8 @@ def GetPastEarnings(fd, ticker, connectionCal, j=0, ReDownload=False, debug=Fals
     quarterlyEarnings=[]
     totalDF=[]
     qEDF=[]
+    #print('test')
+    #print(pastEarnings)
     try:
         pastEarnings[0]
         if debug: print(pastEarnings[0].keys())
@@ -149,6 +156,7 @@ def GetPastEarnings(fd, ticker, connectionCal, j=0, ReDownload=False, debug=Fals
         # cleaning data
         if ('reportedDate' not in quarterlyEarnings.columns):
             #continue
+            print('error...empty quarterly info')
             return [],[]
         quarterlyEarnings['ticker'] = np.array([ticker for _ in range(0,len(quarterlyEarnings))])
         quarterlyEarnings.set_index('reportedDate')
@@ -162,7 +170,7 @@ def GetPastEarnings(fd, ticker, connectionCal, j=0, ReDownload=False, debug=Fals
             print(quarterlyEarnings.dtypes)
         qEDF = ConfigTableFromPandas('quarterlyEarnings',ticker,connectionCal,quarterlyEarnings,index_label='reportedDate')
         if debug: print(qEDF)
-        
+    #print('reached the end')
     return totalDF,qEDF
 
 def GetBalanceSheetQuarterly(fd, ticker, debug=False):

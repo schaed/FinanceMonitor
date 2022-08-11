@@ -56,6 +56,11 @@ def GetRMSData(my_index, arr_prices, ticker='X',outname='', poly_order = 2, pric
             prices = arr_prices[price_key]
 
     # perform the fit
+    if len(x)!=len(prices):
+        print('Error fitting ',ticker,len(x),len(prices),' ',outname)
+        #print(x)
+        #print(prices)
+        return out_df
     z4 = np.polyfit(x, prices, poly_order)
     p4 = np.poly1d(z4)
 
