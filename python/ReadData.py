@@ -13,6 +13,8 @@ import pandas as pd
 import numpy as np
 import requests
 import sqlite3,sys
+import statsmodels.api as sm1
+from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from dateutil.parser import parse
 import urllib3
 import matplotlib.pyplot as plt
@@ -314,7 +316,7 @@ def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
     fd.get_company_earnings = get_company_earnings
     return fd
 
-def GetTimeSlot(stock, days=365, startDate=None):
+def GetTimeSlot(stock, days=365, startDate=None, addToStart=False,minutes=0):
     """ GetTimeSlot - Filter time slot. Handle the datatime manipulation
 
          Parameters:
@@ -328,6 +330,10 @@ def GetTimeSlot(stock, days=365, startDate=None):
     if startDate!=None:
         today = startDate
     past_date = today + datetime.timedelta(days=-1*days)
+    if addToStart:
+        past_date = startDate + datetime.timedelta(days=1*days,minutes=minutes)
+        date=stock.truncate(before=startDate, after=past_date)
+        return date
     if type(stock)==type([]):
         print('error this is a list')
         return stock
@@ -1240,4 +1246,144 @@ def GLOBAL_MARKET_PLOTS(outdir='/tmp/',j=0,debug=False):
             MakePlot(my_data.date, my_data.value, xname='Date',yname='%s' %fout_name_y,saveName=fout_name,outdir=outdir)
         else:
             print('ERROR - %s' %url)
+
+# Fit linear regression on close
+# Return the t-statistic for a given parameter estimate.
+def tValLinR(close,plot=False,extra_vars=[],debug=False):
+    x = np.ones((close.shape[0],2)) # adding the constant
+    x[:,1] = np.arange(close.shape[0])
+    if len(extra_vars)>0:
+        x = np.ones((close.shape[0],3)) # adding the constant
+        x[:,1] = np.arange(close.shape[0])    
+        x[:,2] = extra_vars.volume#np.arange(close.shape[0])    
+    ols = sm1.OLS(close, x).fit()
+    if debug: print(ols.summary())
+    prstd, iv_l, iv_u = wls_prediction_std(ols)
+    return ols.tvalues[1] #,today_value_predicted # grab the t-statistic for the slope
+
+# collect the slow
+def slope(p4,x=[1,2]):
+    j = p4(x)
+    return j[1]-j[0]
+
+# add data for new fits
+def AddData(t):
+    """ AddData:
+          t - dataframe of minute data for  stock
+    """
+    t['slope']=0.0
+    t['slope'] = t.close.rolling(8).apply(tValLinR)
+    t['slope30']=0.0
+    t['slope30'] = t.close.rolling(30).apply(tValLinR)
+    t['time']  = t.index
+    t['i'] = range(0,len(t))
+    #t['slope_volume'] = t.volume.rolling(8).apply(tValLinR) 
+    t['signif_volume'] = (t.volume-t.volume.mean())/t.volume.std()
+    t['volma20'] = t.volume.rolling(20).mean()
+    t['volma10'] = t.volume.rolling(10).mean()
+    t['ma50'] = t.close.rolling(50).mean()
+    fivma = t['ma50'].mean()
+    t['ma50_div'] = (t['ma50'] - fivma)/fivma
+    t['ma50_div'] *=10.0
+    t['minute_diff_now'] = (t['close']-t['open'])/t['open']
+    t['minute_diff_minago'] = t['minute_diff_now'].shift(1)
+    t['minute_diff_2minago'] = t['minute_diff_now'].shift(2)
+    t['minute_diff_15minago'] = t['minute_diff_now'].shift(15)
+    t['minute_diff_5minback'] = (t['close'].shift(5)-t['open'].shift(1))/t['open'].shift(1)
+    t['minute_diff_15minback'] = (t['close'].shift(15)-t['open'].shift(1))/t['open'].shift(1)
+    t['minute_diff_15minfuture'] = (t['close'].shift(-15)-t['open'].shift(-1))/t['open'].shift(-1)
+    t['minute_diff_5minfuture'] = (t['close'].shift(-5)-t['open'].shift(-1))/t['open'].shift(-1)
+    t['minute_diff'] = (t['close']-t['open'])/t['open']
+    #t['minute_diff'] = (t['close']-t['open'])/t['open']
+    t['minute_diff'] *=10.0
+    t['minute_diff']+=1.5
+    
+    t['minute_diffHL'] = (t['high']-t['low'])/t['open']
+    t['minute_diffHL'] *=10.0
+    t['minute_diffHL']+=1.75
+    t['change'] = t.close
+    t['change'] -= t.open.values[-1]
+    t['change'] /= t.open.values[-1]
+
+def FitWithBandMeanRev(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',doDateKey=False,spy_comparison=[], doRelative=False, doPlot=False, doJoin=True, debug=False):
+    """
+    my_index : datetime array
+    price : array of prices or values
+    doMarker : bool : draw markers or if false draw line
+    ticker : str : ticker symbol name
+    outname : str : name of histogram to save as
+    poly_order : int : order of polynomial to fit
+    price_key : str : name of the price to entry to fit
+    spy_comparison : array : array of prices to use as a reference. don't use when None
+    doRelative : bool : compute the error bands with relative changes. Bigger when there is a big change in price
+    doJoin : bool : join the two arrays on matching times
+"""
+    prices = arr_prices[price_key]
+    x=my_index.values
+    #print(x)
+    if not doDateKey:
+        x = mdates.date2num(my_index)
+    xx = x
+    dd = xx
+    if not doDateKey:
+        xx = np.linspace(x.min(), x.max(), 1000)        
+        dd = mdates.num2date(xx)
+
+    # prepare a spy comparison
+    ylabelPlot='Price for %s' %ticker 
+    if len(spy_comparison)>0:
+        ylabelPlot='Price for %s / SPY' %ticker
+           
+        if not doJoin:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.loc[arr_prices.index,:]
+            prices /= (spy_comparison[price_key] / spy_comparison[price_key][-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'high'] /= (spy_comparison.high / spy_comparison.high[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'low']  /= (spy_comparison.low  / spy_comparison.low[-1])
+            arr_prices.loc[arr_prices.index==spy_comparison.index,'open'] /= (spy_comparison.open / spy_comparison.open[-1])
+        else:
+            arr_prices = arr_prices.copy(True)
+            spy_comparison = spy_comparison.copy(True)
+            arr_prices = arr_prices.join(spy_comparison,how='left',rsuffix='_spy')
+            for i in ['high','low','open','close',price_key]:
+                if len(arr_prices[i+'_spy'])>0:
+                    arr_prices[i] /= (arr_prices[i+'_spy'] / arr_prices[i+'_spy'][-1])
+            prices = arr_prices[price_key]
+
+    # perform the fit
+    #print(x,prices)
+    z4 = np.polyfit(x, prices, poly_order)
+    p4 = np.poly1d(z4)
+
+    # create an error band
+    diff = prices - p4(x)
+    stddev = diff.std()
+
+    output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
+    output_linesn = [p4(x)[-1],stddev,diff[-1],prices[-1],p4,x[-1]]
+    if stddev!=0.0:
+        output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])
+        output_linesn = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],p4,x[-1]]
+    if doRelative:
+        diff /= p4(x)
+        stddev = diff.std() #*p4(x).mean()
+        
+    pos_count_1sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-0.5*stddev))))
+    pos_count_2sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.0*stddev))))
+    pos_count_3sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-1.5*stddev))))
+    pos_count_4sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.0*stddev))))
+    pos_count_5sigma = len(list(filter(lambda x: (x >= 0), (abs(diff)-2.5*stddev))))
+    if len(diff)>0:
+        if debug: print('Time period: %s for ticker: %s' %(outname,ticker))
+        coverage_txt='Percent covered\n'
+        coverage = [100.0*pos_count_1sigma/len(diff) , 100.0*pos_count_2sigma/len(diff),
+                        100.0*pos_count_3sigma/len(diff) , 100.0*pos_count_4sigma/len(diff),
+                        100.0*pos_count_5sigma/len(diff) ]
+        for i in range(0,5):
+            if debug: print('Percent outside %i std. dev.: %0.2f' %(i+1,coverage[i]))
+            coverage_txt+='%i$\sigma$: %0.1f\n' %(i+1,coverage[i])
+
+    if not doPlot:
+        return output_linesn
+    
 
