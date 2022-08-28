@@ -1294,7 +1294,6 @@ def AddData(t):
     t['minute_diff_15minfuture'] = (t['close'].shift(-15)-t['open'].shift(-1))/t['open'].shift(-1)
     t['minute_diff_5minfuture'] = (t['close'].shift(-5)-t['open'].shift(-1))/t['open'].shift(-1)
     t['minute_diff'] = (t['close']-t['open'])/t['open']
-    #t['minute_diff'] = (t['close']-t['open'])/t['open']
     t['minute_diff'] *=10.0
     t['minute_diff']+=1.5
     

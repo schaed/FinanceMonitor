@@ -411,7 +411,8 @@ def run(_out_tickers, market_open_dt, market_close_dt, observer=None):
     async def handle_minute_bar(conn, channel, data):
         ts = data.start
         ts -= timedelta(microseconds=ts.microsecond)
-        minute_history[data.symbol].loc[ts] = [
+        #minute_history[data.symbol].loc[ts] =
+        [
             data.open,
             data.high,
             data.low,
