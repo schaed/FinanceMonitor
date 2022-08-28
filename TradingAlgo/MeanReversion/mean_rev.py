@@ -17,6 +17,12 @@ est = pytz.timezone('US/Eastern')
 debug=False
 logger = logging.getLogger()
 
+def CheckTimeToExit():
+    # exit if it is too late into the evening
+    if self._now().time() >= pd.Timestamp('20:59').time():
+        logger.info(f'Closing program because the timestamp is late: %s' %pd.Timestamp.now(tz='America/New_York'))
+        sys.exit(0)
+        
 def GetNewDF(df1,bar):
     # take a bar and a data frame and append one line for a bar
     df = pd.DataFrame([list(bar._raw.values())],columns=list(bar._raw.keys()))
@@ -336,6 +342,9 @@ class MeanRevAlgo:
 
     def _outofmarket(self):
         return self._now().time() >= pd.Timestamp('15:59').time()
+
+    def _afterhours(self):
+        return self._aftermarket() and self._premarket()
     
     def _aftermarket(self):
         return self._now().time() >= pd.Timestamp('15:59').time() and self._now().time() < pd.Timestamp('19:59').time()
@@ -617,16 +626,21 @@ class MeanRevAlgo:
         if limit < 0:
             return
 
-        self._transition('TO_BUY')        
+        extended_hours=False
+        time_in_force = 'day'
+        if self._afterhours():
+            time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
+            extended_hours=True
+        self._transition('TO_BUY')
         try:
             order = self._api.submit_order(
                 symbol=self._symbol,
                 side=self.trade_side,
                 type='limit',
                 qty=amount,
-                time_in_force='day',
+                time_in_force=time_in_force,
                 limit_price=limit,
-                #extended_hours=True,
+                extended_hours=extended_hours,
                 #take_profit=dict(limit_price=limit),
                 #stop_loss=dict(
                 #trail_percent=self._trail_percent
@@ -642,14 +656,19 @@ class MeanRevAlgo:
         self._transition('BUY_SUBMITTED')
 
     def _submit_trailing_stop(self):
+        extended_hours=False
+        time_in_force = 'day'
+        if self._afterhours():
+            time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
+            extended_hours=True        
         params = dict(
             symbol=self._symbol,
             side='sell',
             qty=self._position.qty,
             type='trailing_stop',
             trail_percent=self._trail_percent,
-            time_in_force='gtc',
-            #extended_hours=True,            
+            time_in_force=time_in_force,
+            extended_hours=extended_hours,
         )
 
         try:
@@ -667,14 +686,19 @@ class MeanRevAlgo:
         trade_side='sell'
         if self._position.qty<0:
             trade_side='buy'
-        
+
+        extended_hours=False
+        time_in_force = 'day'
+        if self._afterhours():
+            time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
+            extended_hours=True
         params = dict(
             symbol=self._symbol,
             side=trade_side,
             qty=self._position.qty,
-            #extended_hours=True,
+            extended_hours=extended_hours,
             #replaces , # id number that this order replaces
-            time_in_force='gtc')
+            time_in_force=time_in_force)
         if bailout:
             params['type'] = 'market'
         else:
@@ -753,6 +777,7 @@ def main(args):
     
     async def periodic():
         while True:
+            CheckTimeToExit()
             #if not api.get_clock().is_open:
             #    logger.info('exit as market is not open')
             #    sys.exit(0)
@@ -761,7 +786,7 @@ def main(args):
             for symbol, algo in fleet.items():
                 pos = [p for p in positions if p.symbol == symbol]
                 algo.checkup(pos[0] if len(pos) > 0 else None)
-    
+                
     loop = asyncio.get_event_loop()
     while 1:
         try:
