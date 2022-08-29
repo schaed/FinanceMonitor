@@ -19,7 +19,7 @@ logger = logging.getLogger()
 
 def CheckTimeToExit():
     # exit if it is too late into the evening
-    if self._now().time() >= pd.Timestamp('20:59').time():
+    if pd.Timestamp.now(tz='America/New_York').time() > pd.Timestamp('20:59',tz=est).time():
         logger.info(f'Closing program because the timestamp is late: %s' %pd.Timestamp.now(tz='America/New_York'))
         sys.exit(0)
         
@@ -207,7 +207,7 @@ class MeanRevAlgo:
         self._lot = lot
         self._limit = limit
         self._target = target
-        self._trail_percent = 4.0
+        self._trail_percent = 4.9
         self._stop_percent = 1.05
         self._take_profit=1.03
         self._raise_stop=1.01
@@ -341,16 +341,16 @@ class MeanRevAlgo:
                     if p.symbol == self._symbol ]
 
     def _outofmarket(self):
-        return self._now().time() >= pd.Timestamp('15:59').time()
+        return self._now().time() > pd.Timestamp('15:59',tz=est).time()
 
     def _afterhours(self):
         return self._aftermarket() and self._premarket()
     
     def _aftermarket(self):
-        return self._now().time() >= pd.Timestamp('15:59').time() and self._now().time() < pd.Timestamp('19:59').time()
+        return self._now().time() > pd.Timestamp('15:59',tz=est).time() and self._now().time() < pd.Timestamp('19:59',tz=est).time()
     
     def _premarket(self):
-        return self._now().time() >= pd.Timestamp('07:15').time() and self._now().time() < pd.Timestamp('09:30').time() 
+        return self._now().time() > pd.Timestamp('07:15',tz=est).time() and self._now().time() < pd.Timestamp('09:30',tz=est).time() 
 
     def _check_funds(self):
         # check how much money is available. Options: cash, buying_power, daytrading_buying_power
@@ -415,9 +415,9 @@ class MeanRevAlgo:
             if True:
                 # long position
                 # side: buy or sell or short
-                if self._position.qty>0:
+                if float(self._position.qty)>0:
                     # fit mean is less than 0.1sigma from the entry                    
-                    if self.fig[0] < (self._avg_entry_price + 0.1*self.fit[1] ) :
+                    if self.fig[0] < (self._avg_entry_price + 0.1*self.fig[1] ) :
                         if current_price> self._avg_entry_price:
                             self._limit=current_price
                             self._cancel_order()
@@ -428,7 +428,7 @@ class MeanRevAlgo:
                             self._submit_sell(bailout=True)
 
                     # fit mean is less than 0.25sigma from the entry                    
-                    elif self.fig[0] < (self._avg_entry_price + 0.25*self.fit[1] ) :
+                    elif self.fig[0] < (self._avg_entry_price + 0.25*self.fig[1] ) :
                         if current_price> self._avg_entry_price:
                             self._limit=current_price
                         else:
@@ -437,7 +437,7 @@ class MeanRevAlgo:
                         self._transition('TO_SELL')
                         self._submit_sell()
                     # fit mean is less than 0.75sigma from the entry
-                    elif self.fig[0] < (self._avg_entry_price + 0.75*self.fit[1] ) and current_price> self._avg_entry_price:
+                    elif self.fig[0] < (self._avg_entry_price + 0.75*self.fig[1] ) and current_price> self._avg_entry_price:
                         self._limit=current_price
                         self._cancel_order()
                         self._transition('TO_SELL')
@@ -453,7 +453,7 @@ class MeanRevAlgo:
                         
                 else: # short position
                     # fit mean is more than than 0.1sigma from the entry                    
-                    if self.fig[0] > (self._avg_entry_price - 0.1*self.fit[1] ) :
+                    if self.fig[0] > (self._avg_entry_price - 0.1*self.fig[1] ) :
                         if current_price < self._avg_entry_price:
                             self._limit=current_price
                             self._cancel_order()
@@ -464,7 +464,7 @@ class MeanRevAlgo:
                             self._submit_sell(bailout=True)
 
                     # fit mean is more than 0.25sigma from the entry                    
-                    elif self.fig[0] > (self._avg_entry_price - 0.25*self.fit[1] ) :
+                    elif self.fig[0] > (self._avg_entry_price - 0.25*self.fig[1] ) :
                         if current_price < self._avg_entry_price:
                             self._limit=current_price
                         else:
@@ -473,7 +473,7 @@ class MeanRevAlgo:
                         self._transition('TO_SELL')
                         self._submit_sell()
                     # fit mean is more than 0.75sigma from the entry
-                    elif self.fig[0] > (self._avg_entry_price - 0.75*self.fit[1] ) and current_price < self._avg_entry_price:
+                    elif self.fig[0] > (self._avg_entry_price - 0.75*self.fig[1] ) and current_price < self._avg_entry_price:
                         self._limit=current_price
                         self._cancel_order()
                         self._transition('TO_SELL')
@@ -556,12 +556,16 @@ class MeanRevAlgo:
             # if the fit slope is larger than the switch_slope, then check the significance.
             #   - the switch slope could be optimized
             if (slope_check>switch_slope and (self.fig[2])>signif_hi) or (slope_check<switch_slope and (self.fig[2])>signif_lo):
-                self._limit = int(100*trade.price*1.002)/100.0
+                #trade = self._api.get_last_trade(self._symbol)
+                max_price = current_price # max(current_price,trade.price)
+                self._limit = int(100*max_price*1.002)/100.0
                 self.trade_side='buy'
                 self._submit_buy()
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
             elif (self.fig[2]<-1*signif_lo and slope_check>-1*switch_slope) or (self.fig[2]<-1*signif_hi and slope_check<-1*switch_slope) :
-                self._limit = int(100*trade.price/1.002)/100.0
+                #trade = self._api.get_last_trade(self._symbol)
+                min_price = current_price #min(current_price,trade.price)                
+                self._limit = int(100*min_price/1.002)/100.0
                 self.trade_side='sell'
                 self._submit_buy()                
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
@@ -620,8 +624,10 @@ class MeanRevAlgo:
         #print(self._api,self._symbol)
         trade = self._api.get_latest_trade(self._symbol)
         amount = int(self._lot / trade.price)
-        limit = min(trade.price, self._limit)
-
+        limit = max(trade.price, self._limit)
+        if self.trade_side=='sell':
+            limit = min(trade.price, self._limit)
+        limit = round(limit,2)
         # if the limit wasn't set, then lets exit
         if limit < 0:
             return
@@ -683,15 +689,15 @@ class MeanRevAlgo:
         self._transition('TRAILSTOP_SUBMITTED')
         
     def _submit_sell(self, bailout=False):
-        trade_side='sell'
-        if self._position.qty<0:
-            trade_side='buy'
-
+        
+        # checking if this is extended hours
         extended_hours=False
         time_in_force = 'day'
         if self._afterhours():
             time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
             extended_hours=True
+
+        # creating sell params
         params = dict(
             symbol=self._symbol,
             side=trade_side,
@@ -699,14 +705,29 @@ class MeanRevAlgo:
             extended_hours=extended_hours,
             #replaces , # id number that this order replaces
             time_in_force=time_in_force)
+        
+        # current price for the limit...get the last bar close
+        current_price = float(self._api.get_latest_trade(self._symbol).price)
+        p_now = current_price
+        if len(self.minute_prices_18d)>0 and 'close' in self.minute_prices_18d:
+            p_now = self.minute_prices_18d['close'][-1]        
+        cost_basis = float(self._position.avg_entry_price)
+        self._avg_entry_price = cost_basis
+        limit_price = max([cost_basis * self._take_profit, current_price, self._target,p_now])
+
+        trade_side='sell'
+        if float(self._position.qty)<0:
+            trade_side='buy'
+            limit_price = min([cost_basis * self._take_profit, current_price, self._target,p_now])            
+        
+        # final limit price update
+        params.update(dict(type='limit',limit_price=limit_price))
+
         if bailout:
             params['type'] = 'market'
-        else:
-            current_price = float(self._api.get_latest_trade(self._symbol).price)
-            cost_basis = float(self._position.avg_entry_price)
-            self._avg_entry_price = cost_basis
-            limit_price = max([cost_basis * self._take_profit, current_price, self._target])
-            params.update(dict(type='limit',limit_price=limit_price))
+
+            
+        # submiting orders
         try:
             order = self._api.submit_order(**params)
         except Exception as e:
