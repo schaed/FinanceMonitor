@@ -8,7 +8,7 @@ from alpha_vantage.fundamentaldata import FundamentalData
 from techindicators import techindicators
 from sklearn import preprocessing
 from keras.models import load_model
-import datetime,time,os,pickle
+import datetime,time,os,pickle,socket
 import pandas as pd
 import numpy as np
 import requests
@@ -153,13 +153,25 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
         if stock.index[-1].weekday()==4 and (today - stock.index[-1])<datetime.timedelta(days=4):
             StartLoading=False
         if (today - stock.index[-1])>datetime.timedelta(days=1,hours=hoursdelay) and (StartLoading):
+            has_entries=False
+            try:
+                if len(stock)>0:
+                    stock = stock.set_index(index_label)                
+                    stock = stock.sort_index()
+                    stock.drop_duplicates(inplace=True)
+                    has_entries=True
+            except:
+                pass
             try:
                 stockCompact=runTickerAlpha(ts,ticker,'compact')
                 j+=1
-            except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError) as e:
+            except (socket.gaierror,ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError,requests.exceptions.ConnectionError) as e:
                 print("Testing multiple exceptions. {}".format(e.args[-1]))
                 print('%s could not load compact....' %ticker)
                 j+=1
+                if has_entries:
+                    return stock,j
+                
                 return [],j
             # make sure we only add newer dates
             stockCompact = GetTimeSlot(stockCompact, days=(today - stock.index[-1]).days)
@@ -181,15 +193,28 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
                 sys.stdout.flush()
     except:
         NewEntry=True
-        print('%s is a new entry to the database....' %ticker)
+        if len(stock)==0:
+            print('%s is a new entry to the database....' %ticker)
     if NewEntry:
+        has_entries=False
+        try:
+            if len(stock)>0:
+                stock = stock.set_index(index_label)                
+                stock = stock.sort_index()
+                stock.drop_duplicates(inplace=True)
+                has_entries=True
+        except:
+            pass
+        
         try:
             stock=runTickerAlpha(ts,ticker,'full')
             j+=1
-        except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError) as e:
+        except (ValueError,urllib3.exceptions.ProtocolError,ConnectionResetError,urllib3.exceptions.NewConnectionError,requests.exceptions.ConnectionError) as e:
             print("Testing multiple exceptions. {}".format(e.args[-1]))
             j+=1
             print('%s could not load....' %ticker)
+            if has_entries:
+                return stock,j
             return [],j
         UpdateTable(stock, ticker, sqlcursor, index_label=index_label)
 
