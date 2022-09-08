@@ -71,7 +71,6 @@ def ConfigTableFromPandas(tableName, ticker, sqlcursor, earnings, index_label='D
     """
     stock = None
     try:
-    #if True:
         stock = pd.read_sql('SELECT * FROM %s WHERE %s="%s"' %(tableName,tickerName,ticker), sqlcursor) #,index_col='Date')
         if len(stock)==0 and len(earnings)>0: # if empty, then let's fill it
             UpdateTable(earnings, tableName, sqlcursor, index_label=None)
@@ -193,7 +192,7 @@ def ConfigTable(ticker, sqlcursor, ts, readType, j=0, index_label='Date',hoursde
                 sys.stdout.flush()
     except:
         NewEntry=True
-        if len(stock)==0:
+        if type(stock)==type(None) or len(stock)==0:
             print('%s is a new entry to the database....' %ticker)
     if NewEntry:
         has_entries=False
@@ -1383,8 +1382,8 @@ def FitWithBandMeanRev(my_index, arr_prices, doMarker=True, ticker='X',outname='
     diff = prices - p4(x)
     stddev = diff.std()
 
-    output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
-    output_linesn = [p4(x)[-1],stddev,diff[-1],prices[-1],p4,x[-1]]
+    output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,0,prices[-1])
+    output_linesn = [p4(x)[-1],stddev,0,prices[-1],p4,x[-1]]
     if stddev!=0.0:
         output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])
         output_linesn = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],p4,x[-1]]

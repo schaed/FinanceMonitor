@@ -19,7 +19,7 @@ logger = logging.getLogger()
 
 def CheckTimeToExit(logger):
     # exit if it is too late into the evening
-    if pd.Timestamp.now(tz='America/New_York').time() > pd.Timestamp('20:59',tz=est).time():
+    if pd.Timestamp.now(tz='America/New_York').time() > pd.Timestamp('19:59',tz=est).time():
         logger.info(f'Closing program because the timestamp is late: %s' %pd.Timestamp.now(tz='America/New_York'))
         sys.exit(0)
         
@@ -32,8 +32,7 @@ def GetNewDF(df1,bar):
     else:
         df.index = pd.to_datetime(df.index, utc=True)
 
-    print(df)
-    sys.stdout.flush()
+    logger.info(f'{df}')
     return pd.concat([df1,df])
 
 # move old signals to new files.
@@ -44,7 +43,7 @@ def MoveOldSignals(api):
         try:
             dfnow = pd.read_csv(fname, sep=' ')
         except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            print(f'Could not load input csv: {fname}')
+            logger.error(f'Could not load input csv: {fname}')
             dfnow=[]
         if len(dfnow)>0:
             out_df = []
@@ -54,7 +53,7 @@ def MoveOldSignals(api):
                 orders = [p for p in api.list_orders() if p.symbol == t ]
                 print(t,positions,orders)
                 if dfnow[dfnow['ticker']==t]['signal_date'].values[0]=='signal_date':
-                    print('removing this duplicate header line')
+                    logger.warning('removing this duplicate header line')
                     dfnow.drop(index=dfnow[dfnow['ticker']==t].index,inplace=True)
                     continue
                 time_of_signal=''
@@ -67,7 +66,7 @@ def MoveOldSignals(api):
                 time_of_signal = time_of_signal.replace(tzinfo=est)
                 # if more than 5 days, then let's remove it or replace it.
                 if (time_of_signal<(datetime.datetime.now(tz=est)+datetime.timedelta(days=-5)) and len(positions)==0 and len(orders)==0 and dfnow[dfnow['ticker']==t]['sold_at_loss'].values[0]==0) or (time_of_signal<(datetime.datetime.now(tz=est)+datetime.timedelta(days=-40)) and len(positions)==0 and len(orders)==0 and dfnow[dfnow['ticker']==t]['sold_at_loss'].values[0]>0):
-                    print(f'remove {t} from {fname} time of signal {time_of_signal}')
+                    logger.info(f'remove {t} from {fname} time of signal {time_of_signal}')
                     if len(out_df)==0:
                         out_df = pd.DataFrame(data=None, columns=dfnow.columns)
                     # add up those to remove
@@ -86,7 +85,7 @@ def MoveOldSignals(api):
                     out_df.to_csv(fname_old, sep=' ',index=False)
                     dfnow.to_csv(fname, sep=' ',index=False)
                 except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-                    print(f'Could not load output csv OLD: {fname}')
+                    logger.error(f'Could not load output csv OLD: {fname}')
 
 # handle trades on the exit by updating the csv instructions
 def HandleTradeExit(ticker, sale_price, buy_price, sale_date):
@@ -97,7 +96,7 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date):
             dfnow = pd.read_csv(fname, sep=' ')
             sale_price = float(sale_price)
         except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            print(f'Could not load input csv LS check: {fname} {sale_price}')
+            logger.error(f'Could not load input csv LS check: {fname} {sale_price}')
             dfnow=[]
         if len(dfnow)>0:
             #sell_date sold_at_loss sold
@@ -109,7 +108,7 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date):
     
 # Creates trades when requested
 class  MyHandler(FileSystemEventHandler):
-    def __init__(self, fleet,api,stream, ts, sqlcursor, spy):
+    def __init__(self, fleet,api,stream, ts, sqlcursor, spy,logger):
         FileSystemEventHandler.__init__(self)
         self.fleet = fleet # save a link to all of the trades
         self.api = api
@@ -117,8 +116,9 @@ class  MyHandler(FileSystemEventHandler):
         self.ts = ts
         self.sqlcursor = sqlcursor
         self.spy = spy
+        self._l = logger
     def on_moved(self, event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
+        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
     def  on_modified(self,  event):
         #print(f'event type: {event.event_type} path : {event.src_path}')
         in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
@@ -140,9 +140,9 @@ class  MyHandler(FileSystemEventHandler):
                     self._read_csv(in_file_name=ifile_name)
                     
     def  on_created(self,  event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
+        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
     def  on_deleted(self,  event):
-        print(f'event type: {event.event_type} path : {event.src_path}')
+        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
 
     def _read_csv(self, in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_meanrev_instructions.csv'):
         """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
@@ -150,9 +150,9 @@ class  MyHandler(FileSystemEventHandler):
         in_file_name - str - input csv file path like Instructions/out_bull_instructions_test.csv
         """
         if not os.path.exists(in_file_name):
-            print(f'File path does not exist! {in_file_name}. Skipping...')
+            self._l.info(f'File path does not exist! {in_file_name}. Skipping...')
             return
-        print('next one: ',in_file_name)
+        self._l.info(f'next one: {in_file_name}')
         # Defining bars to pass off to the class
         async def on_bars(data):
             if data.symbol in self.fleet:
@@ -164,18 +164,18 @@ class  MyHandler(FileSystemEventHandler):
         try:
             dfnow = pd.read_csv(in_file_name, sep=' ')
         except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            print(f'Could not load input csv other: {in_file_name}')
+            self._l.warning(f'Could not load input csv other: {in_file_name}')
             dfnow=[]
         if len(dfnow)>0:
             for ticker in dfnow['ticker'].values:
 
                 # check if this was sold at a loss. if so skip it
                 if dfnow[dfnow['ticker']==ticker]['sold_at_loss'].values[0]!=0:
-                    print(f'Skipping. this was already sold at a loss for ticker {ticker}')
+                    self._l.info(f'Skipping. this was already sold at a loss for ticker {ticker}')
                     continue
                 # if it was already bought and sold, then skip.
                 if dfnow[dfnow['ticker']==ticker]['sell_date'].values[0]!='X':
-                    print(f'Skipping. this was already bought and sold for ticker {ticker}')
+                    self._l.info(f'Skipping. this was already bought and sold for ticker {ticker}')
                     continue
                 
                 if ticker not in self.fleet:
@@ -227,7 +227,7 @@ class MeanRevAlgo:
         #twelve_hours = (today + datetime.timedelta(hours=-12)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
         eighteen_days = (today + datetime.timedelta(days=-18)).strftime("%Y-%m-%dT%H:%M:%S-05:00")        
         minute_prices  = runTicker(self._api, self._symbol, timeframe=TimeFrame.Minute, start=eighteen_days, end=d1)
-        minute_prices_thirty = minute_prices    
+        minute_prices_thirty = minute_prices
         AddData(minute_prices_thirty)
 
         # try mean reversion
@@ -245,10 +245,10 @@ class MeanRevAlgo:
             start = time.time()
             daily_prices = AddInfo(daily_prices, self._spy, debug=debug)
             end = time.time()
-            if debug: print('Process time to add info: %s' %(end - start))
+            self._l.debug(f'Process time to add info: %s' %(end - start))
         except (ValueError,KeyError,NotImplementedError) as e:
-            print("Testing multiple exceptions. {}".format(e.args[-1]))            
-            print('Error processing %s' %(self._symbol))
+            self._l.error("Testing multiple exceptions. {}".format(e.args[-1]))            
+            self._l.error('Error processing %s' %(self._symbol))
             #clean up
             #print('Removing: ',self._symbol)
             #self._sqlcursor.cursor().execute('DROP TABLE %s' %self._symbol)
@@ -279,7 +279,9 @@ class MeanRevAlgo:
     def _fit(self):
         # fit the minute bars to extract the pol2 price prediction and error bands
         self.input_keys = ['adj_close','high','low','open','close','sma200','sma100','sma50']
-        self.fig = FitWithBandMeanRev(self.minute_prices_18d['i'], self.minute_prices_18d[self.input_keys], ticker=self._symbol,doDateKey=True, outname='60min')
+        self.fig = FitWithBandMeanRev(self.minute_prices_18d['i'], self.minute_prices_18d[self.input_keys], ticker=self._symbol,doDateKey=True, outname='60min',price_key='close')
+        if type(self.fig)==type(None) or len(self.fig)==0 or np.isnan(self.fig[0]):
+            self._l.error(f'Updating with nan...this is what we are fitting: {self.minute_prices_18d}')
         self._l.info(f'Updating fit: {self.fig}')
         self._bars_since_fit=0
         
@@ -297,9 +299,6 @@ class MeanRevAlgo:
         position = [p for p in self._api.list_positions()
                     if p.symbol == symbol]
 
-        # update the fit and 
-        #self._fit_on_transaction = self._fit()
-
         self._order = order[0] if len(order) > 0 else None
         self._position = position[0] if len(position) > 0 else None
         if self._position is not None:
@@ -316,9 +315,9 @@ class MeanRevAlgo:
                     self._state = 'TRAILSTOP_SUBMITTED'
         else:
             if self._order is None and self._state!='':
-                self._state = 'TO_BUY'
-                self._l.warning(f'Init_state is submitting an order state {self._state} order {self._order}')
-                self._submit_buy()
+                #self._state = 'TO_BUY'
+                self._l.warning(f'Init_state is trying to submit an order state {self._state} order {self._order}')
+                #self._submit_buy()
             elif self._order is not None:
                 self._state = 'BUY_SUBMITTED'
                 if self._order.side != 'buy':
@@ -339,7 +338,6 @@ class MeanRevAlgo:
 
     def _update_orders(self):
         self._order = [o for o in self._api.list_orders() if o.symbol == self._symbol]
-        #print(self._order)
 
     def _update_positions(self):
         self._position = [p for p in self._api.list_positions()
@@ -394,10 +392,10 @@ class MeanRevAlgo:
         # update with the latest bar
         self.minute_prices_18d = GetNewDF(self.minute_prices_18d,bar)
         # could be smarter and only update the latest bar
-        AddData(self.minute_prices_18d)        
-        #print(self.minute_prices_18d)
+        if False: # enable when used. currently not using this data
+            AddData(self.minute_prices_18d)        
+        #self._l.info(f'{self.minute_prices_18d}')
         #print(self.minute_prices_18d.columns)
-        #sys.stdout.flush()
 
         # update the fit 
         self._bars_since_fit+=1
@@ -417,13 +415,6 @@ class MeanRevAlgo:
                 limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0]])
                 if self._target>0:
                     limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0],self._target])
-            # check when we should sell. when the price is reverting to the mean
-            #      - check the slope of the fit from the last two minutes
-            slope_check = slope(self.fig[4],[self.fig[5],self.fig[5]+1])
-            # timeline till cross-over- could consider adding a constraint if there is serious shortening of this
-            timeline    = (self.fig[3]-self.fig[0])/slope_check
-            # time that we purchase till now -> not immediately clear
-            #failed_at
 
             # evaluate how the fit could be used to set the sell price
             #if len(self._fit_on_transaction)>0:
@@ -590,7 +581,6 @@ class MeanRevAlgo:
             # if an order already exists, then pass because the position hasn't collected yet
             #if self._order!=None and (self._position==None ):
             #    return
-                
             # check the slope of the fit from the last two minutes
             slope_check = slope(self.fig[4],[self.fig[5],self.fig[5]+1])
         
@@ -599,7 +589,7 @@ class MeanRevAlgo:
             switch_slope = 0.00006
             signif_hi=2.0
             signif_lo=1.5
-
+            timeline=5*500
             # add the time to achieve a full reversion to the mean
             if slope_check!=0:
                 timeline = (self.fig[3]-self.fig[0])/slope_check
@@ -609,11 +599,13 @@ class MeanRevAlgo:
                     signif_hi = 1.5+0.5*(5*500.0 - timeline)/500.0
                     # when there is downtrend in the slope, then set the significance at 1.5sigma
                     signif_lo = 1.5 #+0.5*(5*500.0 - timeline)/500.0
+                    
             # set the limit price                
             self.trade_side='buy'
-            # if the fit slope is larger than the switch_slope, then check the significance.
-            #   - the switch slope could be optimized
-            if (slope_check>switch_slope and (self.fig[2])>signif_hi) or (slope_check<switch_slope and (self.fig[2])>signif_lo):
+            # if the fit slope is larger than the switch_slope, then check the significance. The significance is also less than 0 indicating below the mean price
+            #   - the switch slope could be optimized -> just using the timeline to be more clear
+            self._l.info(f'considering trade: sigif: {self.fig[2]} signif_hi: {signif_hi} signif_lo: {signif_lo} timeline: {timeline} slope: {slope_check} current_price: {current_price} fit: {self.fig}')
+            if (timeline<5*500 and abs(self.fig[2])>signif_hi and self.fig[2]<0) or (timeline>=5*500 and abs(self.fig[2])>signif_lo and self.fig[2]<0):
                 #trade = self._api.get_last_trade(self._symbol)
                 max_price = current_price # max(current_price,trade.price)
                 self._limit = int(100*max_price*1.002)/100.0
@@ -626,7 +618,7 @@ class MeanRevAlgo:
                     self._l.info(f'Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self._trade_side} target: {self._target}') 
                     self._submit_buy()
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
-            elif (self.fig[2]<-1*signif_lo and slope_check>-1*switch_slope) or (self.fig[2]<-1*signif_hi and slope_check<-1*switch_slope) :
+            elif (self.fig[2]>signif_lo and timeline>=5*500) or (self.fig[2]>signif_hi and timeline<=5*500) :
                 #trade = self._api.get_last_trade(self._symbol)
                 min_price = current_price #min(current_price,trade.price)                
                 self._limit = int(100*min_price/1.002)/100.0
@@ -809,7 +801,7 @@ class MeanRevAlgo:
         
         # final limit price update
         params.update(dict(type='limit',limit_price=limit_price))
-        print(params)
+        self._l.info(f'{params}')
         
         if bailout:
             if not self._afterhours():
@@ -849,13 +841,13 @@ def main(args):
     #MoveOldSignals(api)
     
     # checking for trades to execute!
-    event_handler = MyHandler(fleet,api,stream,ts,sqlcursor, spy)
+    event_handler = MyHandler(fleet,api,stream,ts,sqlcursor, spy,logger)
     observer = Observer(timeout=1)
     try:
         in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
         observer.schedule(event_handler,  path=in_file_name,  recursive=True)
     except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-        self._l.info(f'Could not load input csv: {in_file_name}')            
+        self._l.info(f'Could not load input csv: {in_file_name}')
     observer.start()
 
     symbols = args.symbols #.split(',')
@@ -904,7 +896,8 @@ def main(args):
         try:
             loop.run_until_complete(asyncio.gather(stream._run_forever(),periodic()))
         except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError,TimeoutError):
-            print('Connection error. will try to restart')
+            self._l.info(f'Connection error. will try to restart after 10s')
+            time.sleep(10)
             pass
     loop.close()
     observer.stop()
