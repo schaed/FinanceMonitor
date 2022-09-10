@@ -5,6 +5,7 @@ from watchdog.events import FileSystemEventHandler
 import alpaca_trade_api as alpaca
 import asyncio
 import pandas as pd
+import numpy as np
 import sys,glob,os,copy
 import logging
 import urllib3,requests
@@ -19,13 +20,13 @@ logger = logging.getLogger()
 
 def CheckTimeToExit(logger):
     # exit if it is too late into the evening
-    if pd.Timestamp.now(tz='America/New_York').time() > pd.Timestamp('19:59',tz=est).time():
+    if pd.Timestamp.now(tz='America/New_York').time() > pd.Timestamp('18:59',tz=est).time():
         logger.info(f'Closing program because the timestamp is late: %s' %pd.Timestamp.now(tz='America/New_York'))
         sys.exit(0)
         
 def GetNewDF(df1,bar):
     # take a bar and a data frame and append one line for a bar
-    df = pd.DataFrame([list(bar._raw.values())],columns=list(bar._raw.keys()))
+    df = pd.DataFrame([list(bar._raw.values())+[df1['i'][-1]+1]],columns=list(bar._raw.keys())+['i'])
     df.set_index('timestamp', inplace=True)
     if not df.empty:
         df.index = pd.to_datetime((df.index).astype('int64'), utc=True,).tz_convert(est)
@@ -87,10 +88,47 @@ def MoveOldSignals(api):
                 except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
                     logger.error(f'Could not load output csv OLD: {fname}')
 
+def read_csv(in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_meanrev_instructions.csv'):
+    """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
+    Inputs:
+    in_file_name - str - input csv file path like Instructions/out_bull_instructions_test.csv
+    """
+    fleet_out = {}
+    
+    if not os.path.exists(in_file_name):
+        self._l.info(f'File path does not exist! {in_file_name}. Skipping...')
+        return
+    logger.info(f'next one: {in_file_name}')
+        
+    # reading in the sets of trades that we should be executing
+    dfnow=[]
+
+    try:
+        dfnow = pd.read_csv(in_file_name, sep=' ')
+        dfnow['sold_at_loss']  = dfnow.sold_at_loss.astype(bool)
+        dfnow['timestamp']  = pd.to_datetime(dfnow.timestamp)
+        # make sure the wash sale was more than 30 days ago
+        dfnow = dfnow[dfnow.timestamp>(pd.Timestamp.now(tz=est)+datetime.timedelta(days=-32))]
+    except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
+        logger.warning(f'Could not load input csv other: {in_file_name}')
+        dfnow=[]
+    if len(dfnow)>0:
+        for ticker in dfnow['symbol'].values:
+
+            # check if this was sold at a loss. if so skip it
+            if True in dfnow[dfnow['symbol']==ticker]['sold_at_loss'].values:
+                logger.info(f'Skipping. this was already sold at a loss for ticker {ticker}')
+                fleet_out[ticker] = True
+            
+    return fleet_out
+                    
 # handle trades on the exit by updating the csv instructions
-def HandleTradeExit(ticker, sale_price, buy_price, sale_date):
-    out_dir_name='Instructions/out_*_instructions.csv'
-    files_names_to_check = glob.glob(out_dir_name)
+def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data):
+    #out_dir_name='Instructions/out_*_instructions.csv'
+    #files_names_to_check = glob.glob(out_dir_name)
+    in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
+    files_names_to_check=[in_file_name+'out_meanrev_instructions.csv',]
+    return_sold_at_loss = False
     for fname in files_names_to_check:
         try:
             dfnow = pd.read_csv(fname, sep=' ')
@@ -98,94 +136,33 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date):
         except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
             logger.error(f'Could not load input csv LS check: {fname} {sale_price}')
             dfnow=[]
+        # fill the data to write out
+        sold_at_loss = False
+        if float(full_data.qty)>0 and buy_price>0: # this is buying to remove shares sold short
+            sold_at_loss = (buy_price<float(sale_price))
+        elif buy_price>0:
+            sold_at_loss = (buy_price>float(sale_price))
+        return_sold_at_loss = sold_at_loss
+        df_new = pd.DataFrame(data=[[ticker,
+                                     ticker,
+                                    full_data.event,
+                                    full_data.order['side'],
+                                    full_data.position_qty,
+                                    full_data.price,
+                                    full_data.qty,
+                                    buy_price,
+                                    sold_at_loss,
+                                    full_data.order['updated_at'],
+                                    full_data.execution_id]],
+                              columns=['isymbol','symbol','fill_status','side','position_qty','sale_price','sale_qty','avg_entry_price','sold_at_loss','timestamp','execution_id'])
+        if len(dfnow)==0:
+            dfnow = df_new
         if len(dfnow)>0:
             #sell_date sold_at_loss sold
-            dfnow.loc[dfnow['ticker']==ticker,'sell_date'] = sale_date
-            dfnow.loc[dfnow['ticker']==ticker,'sold'] = sale_price
-            if buy_price>sale_price:
-                dfnow.loc[dfnow['ticker']==ticker,'sold_at_loss'] = buy_price
+            dfnow = pd.concat([dfnow,df_new])
             dfnow.to_csv(fname, sep=' ',index=False)
-    
-# Creates trades when requested
-class  MyHandler(FileSystemEventHandler):
-    def __init__(self, fleet,api,stream, ts, sqlcursor, spy,logger):
-        FileSystemEventHandler.__init__(self)
-        self.fleet = fleet # save a link to all of the trades
-        self.api = api
-        self.stream = stream
-        self.ts = ts
-        self.sqlcursor = sqlcursor
-        self.spy = spy
-        self._l = logger
-    def on_moved(self, event):
-        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
-    def  on_modified(self,  event):
-        #print(f'event type: {event.event_type} path : {event.src_path}')
-        in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
-        file_list=[in_file_name+'out_meanrev_instructions.csv',
-                   #'Instructions/out_target_instructions.csv',
-                       #'Instructions/out_upgrade_instructions.csv',
-                       #'Instructions/out_bull_instructions.csv',
-                       #'Instructions/out_pharmaphase_instructions.csv'
-        ]
-        # if boolean, then load them all. otherwise, see if the file was modified
-        if type(event)==type(True):
-            for ifile_name in file_list:
-                print('file anem: ',ifile_name)
-                self._read_csv(in_file_name=ifile_name)
-        else:
-            for ifile_name in file_list:
-                if event.src_path==ifile_name:
-                    #print('file anem OTHER: ',ifile_name)                    
-                    self._read_csv(in_file_name=ifile_name)
-                    
-    def  on_created(self,  event):
-        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
-    def  on_deleted(self,  event):
-        self._l.info(f'event type: {event.event_type} path : {event.src_path}')
+    return return_sold_at_loss
 
-    def _read_csv(self, in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_meanrev_instructions.csv'):
-        """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
-        Inputs:
-        in_file_name - str - input csv file path like Instructions/out_bull_instructions_test.csv
-        """
-        if not os.path.exists(in_file_name):
-            self._l.info(f'File path does not exist! {in_file_name}. Skipping...')
-            return
-        self._l.info(f'next one: {in_file_name}')
-        # Defining bars to pass off to the class
-        async def on_bars(data):
-            if data.symbol in self.fleet:
-                self.fleet[data.symbol].on_bar(data)
-            
-        # reading in the sets of trades that we should be executing
-        dfnow=[]
-
-        try:
-            dfnow = pd.read_csv(in_file_name, sep=' ')
-        except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            self._l.warning(f'Could not load input csv other: {in_file_name}')
-            dfnow=[]
-        if len(dfnow)>0:
-            for ticker in dfnow['ticker'].values:
-
-                # check if this was sold at a loss. if so skip it
-                if dfnow[dfnow['ticker']==ticker]['sold_at_loss'].values[0]!=0:
-                    self._l.info(f'Skipping. this was already sold at a loss for ticker {ticker}')
-                    continue
-                # if it was already bought and sold, then skip.
-                if dfnow[dfnow['ticker']==ticker]['sell_date'].values[0]!='X':
-                    self._l.info(f'Skipping. this was already bought and sold for ticker {ticker}')
-                    continue
-                
-                if ticker not in self.fleet:
-                    # add ticker to streaming
-                    self.stream.subscribe_bars(on_bars, ticker)
-                    
-                    my_lot = 1000.0 #dfnow[dfnow['ticker']==ticker]['lot'].values[0]
-                    #my_limit = dfnow[dfnow['ticker']==ticker]['buy_limit'].values[0]
-                    #my_target = max([dfnow[dfnow['ticker']==ticker]['upSL'].values[0],dfnow[dfnow['ticker']==ticker]['fivedaymax'].values[0],dfnow[dfnow['ticker']==ticker]['BolUpper'].values[0],my_limit*1.025])
-                    self.fleet[ticker] = MeanRevAlgo(self.api, self.ts, self.sqlcursor, self.spy, ticker, lot = my_lot, df = dfnow[dfnow['ticker']==ticker]);
 class MeanRevAlgo:
     """ api is the contact to order stocks
         _ts: alpha vantage time series
@@ -219,13 +196,16 @@ class MeanRevAlgo:
         self._l = logger.getChild(self._symbol)
         self.trade_side='buy'
         self._submit_init_order=False
+        self.fig=[]
+        self.fig_36d=[]
+        self.sold_at_loss = False
 
         today = datetime.datetime.now(tz=est) 
         d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
         d1_set = today.strftime("%Y-%m-%d")
         #d1_set = "2022-01-19"
         #twelve_hours = (today + datetime.timedelta(hours=-12)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
-        eighteen_days = (today + datetime.timedelta(days=-18)).strftime("%Y-%m-%dT%H:%M:%S-05:00")        
+        eighteen_days = (today + datetime.timedelta(days=-36)).strftime("%Y-%m-%dT%H:%M:%S-05:00")        
         minute_prices  = runTicker(self._api, self._symbol, timeframe=TimeFrame.Minute, start=eighteen_days, end=d1)
         minute_prices_thirty = minute_prices
         AddData(minute_prices_thirty)
@@ -235,7 +215,9 @@ class MeanRevAlgo:
         minute_prices_thirty['sma200']=minute_prices_thirty['close']
         minute_prices_thirty['sma100']=minute_prices_thirty['close']
         minute_prices_thirty['sma50']=minute_prices_thirty['close']
-        self.minute_prices_18d = minute_prices_thirty
+        self.minute_prices_36d = minute_prices_thirty        
+        self.minute_prices_18d = GetTimeSlot(self.minute_prices_36d,days=18,timez=est)
+        self.minute_prices_60m = GetTimeSlot(self.minute_prices_36d,days=0,minutes=-60,timez=est)
         self._bars_since_fit=0
         self._fit()
         
@@ -247,7 +229,7 @@ class MeanRevAlgo:
             end = time.time()
             self._l.debug(f'Process time to add info: %s' %(end - start))
         except (ValueError,KeyError,NotImplementedError) as e:
-            self._l.error("Testing multiple exceptions. {}".format(e.args[-1]))            
+            self._l.error("Testing multiple exceptions. {}".format(e.args[-1]))
             self._l.error('Error processing %s' %(self._symbol))
             #clean up
             #print('Removing: ',self._symbol)
@@ -263,8 +245,10 @@ class MeanRevAlgo:
         p_now = self.minute_prices_18d['close'][-1]
         self.signif_180d = (p_now - self.fit_180d[0])/(self.fit_180d[1]/2)
         self.signif_365d = (p_now - self.fit_365d[0])/(self.fit_365d[1]/2)
-        self.no_short = (self.signif_180d)>3.0 or (self.signif_365d)>3.0;
-        self.no_long =  (self.signif_180d)<-3.0 or (self.signif_365d)<-3.0;
+        # Longer term trend indicates that this stock is oversold or overbought.
+        #   - idea is not to fight the bigger trend to avoid a big mean reversion that goes opposite to the general trend
+        self.no_long = (self.signif_180d)>3.0 or (self.signif_365d)>3.0;
+        self.no_short =  (self.signif_180d)<-3.0 or (self.signif_365d)<-3.0;
         
         self._l.info(f'Significance dont go short: {self.no_short}')
         self._l.info(f'Significance dont go long: {self.no_long}')
@@ -279,10 +263,19 @@ class MeanRevAlgo:
     def _fit(self):
         # fit the minute bars to extract the pol2 price prediction and error bands
         self.input_keys = ['adj_close','high','low','open','close','sma200','sma100','sma50']
-        self.fig = FitWithBandMeanRev(self.minute_prices_18d['i'], self.minute_prices_18d[self.input_keys], ticker=self._symbol,doDateKey=True, outname='60min',price_key='close')
-        if type(self.fig)==type(None) or len(self.fig)==0 or np.isnan(self.fig[0]):
-            self._l.error(f'Updating with nan...this is what we are fitting: {self.minute_prices_18d}')
-        self._l.info(f'Updating fit: {self.fig}')
+        fig_tmp_36d = FitWithBandMeanRev(self.minute_prices_36d['i'], self.minute_prices_36d[self.input_keys], ticker=self._symbol,doDateKey=True, outname='36d',price_key='close')        
+        fig_tmp = FitWithBandMeanRev(self.minute_prices_18d['i'], self.minute_prices_18d[self.input_keys], ticker=self._symbol,doDateKey=True, outname='18d',price_key='close')
+        if type(fig_tmp)==type(None) or len(fig_tmp)==0 or np.isnan(fig_tmp[0]):
+            self._l.error(f'Updating with nan...this is what we are fitting: {self.minute_prices_18d} {fig_tmp}. staying with other fit values')
+        else:
+            self.fig = fig_tmp
+            self._l.info(f'Updating fit 18d: {self.fig}')
+        if type(fig_tmp_36d)==type(None) or len(fig_tmp_36d)==0 or np.isnan(fig_tmp_36d[0]):
+            self._l.error(f'Updating with nan...this is what we are fitting: {self.minute_prices_36d} {fig_tmp_36d}. staying with other fit values')
+        else:
+            self.fig_36d = fig_tmp_36d
+            self._l.info(f'Updating fit 36d: {self.fig_36d}')            
+        
         self._bars_since_fit=0
         
     def _init_state(self):
@@ -390,10 +383,14 @@ class MeanRevAlgo:
         current_price = float(bar.close)
 
         # update with the latest bar
-        self.minute_prices_18d = GetNewDF(self.minute_prices_18d,bar)
+        self.minute_prices_36d = GetNewDF(self.minute_prices_36d,bar)
+        self.minute_prices_18d = GetTimeSlot(self.minute_prices_36d,days=18,timez=est)
+        self.minute_prices_60m = GetTimeSlot(self.minute_prices_36d,days=0,minutes=-60,timez=est)
+        #self._l.info(f'{self.minute_prices_18d.i}')
+        #self._l.info(f'{self.minute_prices_36d}')
         # could be smarter and only update the latest bar
-        if False: # enable when used. currently not using this data
-            AddData(self.minute_prices_18d)        
+        if True: # enable when used. currently not using this data
+            AddData(self.minute_prices_60m)
         #self._l.info(f'{self.minute_prices_18d}')
         #print(self.minute_prices_18d.columns)
 
@@ -401,6 +398,13 @@ class MeanRevAlgo:
         self._bars_since_fit+=1
         if self._bars_since_fit>15:
             self._fit()
+        # do not make decisions based on bad data
+        if type(self.fig)==type(None) or len(self.fig)==0 or np.isnan(self.fig[0]):
+            self._l.error(f'cannot make a decision without an 18d fit: {self.fig}')
+            return
+        if type(self.fig_36d)==type(None) or len(self.fig_36d)==0 or np.isnan(self.fig_36d[0]):
+            self._l.error(f'cannot make a decision without an 36d fit: {self.fig_36d}') 
+            return
 
         # have a position position, let's submit orders
         if self._position is not None:
@@ -419,7 +423,7 @@ class MeanRevAlgo:
             # evaluate how the fit could be used to set the sell price
             #if len(self._fit_on_transaction)>0:
             #    diff_mean_fit = self.fig[0]-self._fit_on_transaction[0] # the fit when it happens
-            # not saving the transaction. 
+            # not saving the transaction.
             if True:
                 if self._order!=None and self._order.limit_price!=None:
                     self._limit = float(self._order.limit_price)
@@ -428,24 +432,24 @@ class MeanRevAlgo:
                 if float(self._position.qty)>0:
                     # fit mean is less than 0.1sigma from the entry, bailout. Exit as soon as possible
                     if self.fig[0] < (self._avg_entry_price + 0.1*self.fig[1] ) :
-                        if current_price> self._avg_entry_price:
+                        if current_price>= self._avg_entry_price or True:
                             if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-current_price)/current_price>0.0033):
                                 self._l.info(f'Sell low - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                                 self._limit=current_price
                                 self._cancel_order()
                                 self._transition('TO_SELL')
                                 self._submit_sell()
-                        else:
-                            # if we have an order check that it is not already a market order or in the extended hours
-                            if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
-                                self._cancel_order()
-                                self._l.info(f'Sell immediate - Current price {current_price} and limit price {limit_price}, target: {self._target}')
-                            if self._order==None:
-                                self._transition('TO_SELL')
-                                self._l.info(f'Sell immediate - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
-                                self._submit_sell(bailout=True)
+                        #else: # improve the exiting when we are losing
+                        #    # if we have an order check that it is not already a market order or in the extended hours
+                        #    if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
+                        #        self._cancel_order()
+                        #        self._l.info(f'Sell immediate - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                        #    if self._order==None:
+                        #        self._transition('TO_SELL')
+                        #        self._l.info(f'Sell immediate - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                        #        self._submit_sell(bailout=True)
 
-                    # fit mean is less than 0.25sigma from the entry, then we exit with a profit if possible. Otherwise, just exit                    
+                    # fit mean is less than 0.25sigma from the entry, then we exit with a profit if possible. Otherwise, just exit
                     elif self.fig[0] < (self._avg_entry_price + 0.25*self.fig[1] ) :
 
                         # update the limit price
@@ -455,7 +459,7 @@ class MeanRevAlgo:
                         else:
                             new_limit_price = self._avg_entry_price
                         
-                        # check if we need to update the order                        
+                        # check if we need to update the order
                         if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
                             self._limit = new_limit_price
                             self._l.info(f'Sell 0.25 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
@@ -481,24 +485,25 @@ class MeanRevAlgo:
                             self._submit_sell()
                         
                 else: # short position
-                    # fit mean is more than than 0.1sigma from the entry                    
+                    # fit mean is more than than 0.1sigma from the entry
                     if self.fig[0] > (self._avg_entry_price - 0.1*self.fig[1] ) :
                         new_limit_price=current_price                        
-                        if current_price < self._avg_entry_price:
+                        if current_price <= self._avg_entry_price or True:
                             if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
                                 self._limit=new_limit_price
                                 self._l.info(f'Buy for short position - 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                                 self._cancel_order()
                                 self._transition('TO_SELL')
                                 self._submit_sell()
-                        else:
-                            # if we have an order check that it is not already a market order or in the extended hours
-                            if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
-                                self._cancel_order()
-                            if self._order==None:
-                                self._transition('TO_SELL')
-                                self._l.info(f'Buy immediate for short position - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
-                                self._submit_sell(bailout=True)
+                        #else: # TODO improve the exit procedure when we are losing
+                        #    # if we have an order check that it is not already a market order or in the extended hours
+                        #    if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
+                        #        self._l.info(f'Cancelling order...in the process of bailing on the short position - 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                        #        self._cancel_order()
+                        #    if self._order==None:
+                        #        self._transition('TO_SELL')
+                        #        self._l.info(f'Buy immediate for short position - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                        #        self._submit_sell(bailout=True)
 
                     # fit mean is more than 0.25sigma from the entry. Sell if we are making money; otherwise, put a limit order at the entry price
                     elif self.fig[0] > (self._avg_entry_price - 0.25*self.fig[1] ) :
@@ -548,10 +553,12 @@ class MeanRevAlgo:
             # exit positions if we cross the bail out threshold
             # - TODO improve the bailout procedure
             if float(self._position.qty)<0 and self._avg_entry_price>0.0 and current_price>((self._avg_entry_price)*self._stop_percent):
+                self._l.info('Bailout! trying to get rid of our short')
                 self._cancel_order()                
                 self._transition('TO_SELL')
                 self._submit_sell(bailout=True)
             if float(self._position.qty)>0 and self._avg_entry_price>0.0 and current_price<((self._avg_entry_price)/self._stop_percent):
+                self._l.info('Bailout! trying to sell')
                 self._cancel_order()                
                 self._transition('TO_SELL')
                 self._submit_sell(bailout=True)
@@ -583,6 +590,7 @@ class MeanRevAlgo:
             #    return
             # check the slope of the fit from the last two minutes
             slope_check = slope(self.fig[4],[self.fig[5],self.fig[5]+1])
+            slope_check_36d = slope(self.fig_36d[4],[self.fig_36d[5],self.fig_36d[5]+1])
         
             # set these slope checks using historical data?
             # at 5d or 5*500min, then 1.5 sigma. add 0.5 for each day shorter than 0.5sigma
@@ -590,45 +598,68 @@ class MeanRevAlgo:
             signif_hi=2.0
             signif_lo=1.5
             timeline=5*500
+            timeline_36d=5*500
             # add the time to achieve a full reversion to the mean
+            if slope_check_36d!=0:
+                timeline_36d = (self.fig_36d[3]-self.fig_36d[0])/slope_check_36d
             if slope_check!=0:
                 timeline = (self.fig[3]-self.fig[0])/slope_check
                 if timeline>5*500 or timeline<0.0:
                     switch_slope = slope_check
                 else:
                     signif_hi = 1.5+0.5*(5*500.0 - timeline)/500.0
+                    if timeline_36d>0 and timeline_36d<5*500 and timeline>timeline_36d:
+                        signif_hi = 1.5+0.5*(5*500.0 - timeline_36d)/500.0                        
+
                     # when there is downtrend in the slope, then set the significance at 1.5sigma
                     signif_lo = 1.5 #+0.5*(5*500.0 - timeline)/500.0
+
+            # check that the 36d and the 18d agree
+            signif_18d = self.fig[2]
+            signif_36d = self.fig_36d[2]
+            # if they point in the oppisite direction, then don't submit
+            if signif_18d*signif_36d<0:
+                self._l.info(f' - 18d and 36d have opposite signs 18d: {signif_18d} 36d: {signif_36d}')
+                return
+            if abs(signif_36d)<0.5:
+                self._l.info(f' 36d indicates nothing is out of order - 18d: {signif_18d} 36d: {signif_36d}')
+                return
                     
             # set the limit price                
             self.trade_side='buy'
             # if the fit slope is larger than the switch_slope, then check the significance. The significance is also less than 0 indicating below the mean price
             #   - the switch slope could be optimized -> just using the timeline to be more clear
-            self._l.info(f'considering trade: sigif: {self.fig[2]} signif_hi: {signif_hi} signif_lo: {signif_lo} timeline: {timeline} slope: {slope_check} current_price: {current_price} fit: {self.fig}')
-            if (timeline<5*500 and abs(self.fig[2])>signif_hi and self.fig[2]<0) or (timeline>=5*500 and abs(self.fig[2])>signif_lo and self.fig[2]<0):
+            self._l.info(f'considering trade: signif 18d: %0.2f signif 36d: %0.2f signif_hi: %0.2f signif_lo: %0.2f timeline: %0.1f min 36d: %0.1f slope: %0.6f ' %(self.fig[2],self.fig_36d[2],signif_hi,signif_lo,timeline,timeline_36d,slope_check)+f'current_price: {current_price} fit: {self.fig}')
+            if (timeline<5*500 and abs(self.fig[2])>signif_hi and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>signif_lo and self.fig[2]<0):
                 #trade = self._api.get_last_trade(self._symbol)
                 max_price = current_price # max(current_price,trade.price)
                 self._limit = int(100*max_price*1.002)/100.0
                 self.trade_side='buy'
-                if self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
-                    self._l.info(f'Update Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self._trade_side} target: {self._target}')
+                if self.no_long:
+                    self._l.info('long term (yearly) indicates this is already overbought')
+                    return
+                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
+                    self._l.info(f'Update Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._cancel_order()
                     self._submit_buy()
                 elif self._order==None and (self._position==None ):
-                    self._l.info(f'Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self._trade_side} target: {self._target}') 
+                    self._l.info(f'Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}') 
                     self._submit_buy()
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
-            elif (self.fig[2]>signif_lo and timeline>=5*500) or (self.fig[2]>signif_hi and timeline<=5*500) :
+            elif (self.fig[2]>signif_lo and (timeline>=5*500 or timeline<0)) or (self.fig[2]>signif_hi and timeline<=5*500) :
                 #trade = self._api.get_last_trade(self._symbol)
                 min_price = current_price #min(current_price,trade.price)                
                 self._limit = int(100*min_price/1.002)/100.0
                 self.trade_side='sell'
-                if self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
-                    self._l.info(f'Update Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self._trade_side} target: {self._target}')
+                if self.no_short:
+                    self._l.info('long term (yearly) indicates this is already oversold')                    
+                    return
+                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
+                    self._l.info(f'Update Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._cancel_order()
                     self._submit_buy()
                 elif self._order==None and (self._position==None ):
-                    self._l.info(f'Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self._trade_side} target: {self._target}')
+                    self._l.info(f'Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._submit_buy()                
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
                 
@@ -637,10 +668,13 @@ class MeanRevAlgo:
         if self._outofmarket():
             return
 
-    def on_order_update(self, event, order):
+    def on_order_update(self, event, order, full_data):
         self._l.info(f'order update: {event} = {order}')
         if event == 'fill':
             self._order = None
+            #
+            # Send signal to update the input file indicated what happened in the sale!
+            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data)
             if self._state == 'BUY_SUBMITTED':
                 self._position = self._api.get_position(self._symbol)
                 # TODO                
@@ -649,20 +683,16 @@ class MeanRevAlgo:
                 return
             elif self._state == 'TRAILSTOP_SUBMITTED':
                 self._position = None
-                self._transition('EXIT')                
+                self._transition('EXIT')
                 self._l.info(f'exiting because position is sold with trailing stop order ')
-                #
-                # Send signal to update the input file indicated what happened in the sale!
-                HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'])
                 return
             elif self._state == 'SELL_SUBMITTED':
                 self._position = None
                 self._transition('EXIT')
-                # Send signal to update the input file indicated what happened in the sale!
-                HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'])
                 self._l.info(f'exiting because position is sold with limit order ')
                 return
         elif event == 'partial_fill':
+            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data)            
             self._position = self._api.get_position(self._symbol)
             self._order = self._api.get_order(order['id'])
             return
@@ -692,6 +722,10 @@ class MeanRevAlgo:
                 self._l.warning(f'unexpected state for {event}: {self._state}')
 
     def _submit_buy(self):
+        # avoid a wash sale
+        if self.sold_at_loss:
+            self._l.info(f'Cannot buy to avoid a wash sale!')
+            return
         
         #print(self._api,self._symbol)
         trade = self._api.get_latest_trade(self._symbol)
@@ -837,35 +871,29 @@ def main(args):
 
     spy,j    = ConfigTable('SPY', sqlcursor,ts,'full',hoursdelay=22)
     spy = AddInfo(spy,spy,debug=debug)
-    # Move old signals so that we do not consider them
-    #MoveOldSignals(api)
+    # check if this was already sold short
+    sold_short = read_csv()
     
-    # checking for trades to execute!
-    event_handler = MyHandler(fleet,api,stream,ts,sqlcursor, spy,logger)
-    observer = Observer(timeout=1)
-    try:
-        in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
-        observer.schedule(event_handler,  path=in_file_name,  recursive=True)
-    except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-        self._l.info(f'Could not load input csv: {in_file_name}')
-    observer.start()
-
     symbols = args.symbols #.split(',')
     for symbol in symbols:
+        # check for wash sales
+        if symbol in sold_short and sold_short[symbol]:
+            logger.info(f'This {symbol} has a wash sale, so we are skipping.')
+            continue
         if args.lot>0:
-            #algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=-1, limit=, target=-1, df=[])
-            #print(api.get_latest_trade('X'))
             algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])            
             fleet[symbol] = algo
-
-    # Trigger the loading of the trades
-    event_handler.on_modified(True)
 
     async def on_bars(data):
         if data.symbol in fleet:
             fleet[data.symbol].on_bar(data)
 
     for symbol in symbols:
+        # check for wash sales
+        if symbol in sold_short and sold_short[symbol]:
+            logger.info(f'This {symbol} has a wash sale, so we are skipping.')
+            continue
+        
         logger.info(f'{symbol}')
         sys.stdout.flush()
         #stream.subscribe_trades(on_bars, symbol)
@@ -875,7 +903,7 @@ def main(args):
         logger.info(f'trade_updates {data}')
         symbol = data.order['symbol']
         if symbol in fleet:
-            fleet[symbol].on_order_update(data.event, data.order)
+            fleet[symbol].on_order_update(data.event, data.order, data)
     
     stream.subscribe_trade_updates(on_trade_updates)
     
@@ -900,8 +928,6 @@ def main(args):
             time.sleep(10)
             pass
     loop.close()
-    observer.stop()
-    observer.join()
 
 if __name__ == '__main__':
     import argparse

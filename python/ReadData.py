@@ -340,7 +340,7 @@ def ALPHA_FundamentalData(output_format='pandas'):#pandas, json, csv, csvpan
     fd.get_company_earnings = get_company_earnings
     return fd
 
-def GetTimeSlot(stock, days=365, startDate=None, addToStart=False,minutes=0):
+def GetTimeSlot(stock, days=365, startDate=None, addToStart=False,minutes=0,timez=None):
     """ GetTimeSlot - Filter time slot. Handle the datatime manipulation
 
          Parameters:
@@ -351,9 +351,11 @@ def GetTimeSlot(stock, days=365, startDate=None, addToStart=False,minutes=0):
               date for the start date. end of the series. required for delays because the APIs are delayed
     """
     today=datetime.datetime.now()
+    if type(timez)!=type(None):
+        today=datetime.datetime.now(tz=timez)
     if startDate!=None:
         today = startDate
-    past_date = today + datetime.timedelta(days=-1*days)
+    past_date = today + datetime.timedelta(days=-1*days,minutes=minutes)
     if addToStart:
         past_date = startDate + datetime.timedelta(days=1*days,minutes=minutes)
         date=stock.truncate(before=startDate, after=past_date)
@@ -1375,7 +1377,16 @@ def FitWithBandMeanRev(my_index, arr_prices, doMarker=True, ticker='X',outname='
 
     # perform the fit
     #print(x,prices)
-    z4 = np.polyfit(x, prices, poly_order)
+    z4=None
+    try:
+        #print(x,prices)
+        #sys.stdout.flush()
+        z4 = np.polyfit(x, prices, poly_order)
+
+    except (np.linalg.LinAlgError) as e:
+        print("Testing multiple exceptions. {}".format(e.args[-1]))
+        print(x,prices)
+        sys.stdout.flush()
     p4 = np.poly1d(z4)
 
     # create an error band
