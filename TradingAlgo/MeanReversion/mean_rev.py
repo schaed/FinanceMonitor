@@ -123,12 +123,12 @@ def read_csv(in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_
     return fleet_out
                     
 # handle trades on the exit by updating the csv instructions
-def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data):
+def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_sold_at_loss_current=False):
     #out_dir_name='Instructions/out_*_instructions.csv'
     #files_names_to_check = glob.glob(out_dir_name)
     in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
     files_names_to_check=[in_file_name+'out_meanrev_instructions.csv',]
-    return_sold_at_loss = False
+    return_sold_at_loss = return_sold_at_loss_current
     for fname in files_names_to_check:
         try:
             dfnow = pd.read_csv(fname, sep=' ')
@@ -142,7 +142,9 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data):
             sold_at_loss = (buy_price<float(sale_price))
         elif buy_price>0:
             sold_at_loss = (buy_price>float(sale_price))
-        return_sold_at_loss = sold_at_loss
+        # if we already sold at a loss, then keep that designation
+        if not return_sold_at_loss:
+            return_sold_at_loss = sold_at_loss
         df_new = pd.DataFrame(data=[[ticker,
                                      ticker,
                                     full_data.event,
@@ -488,7 +490,7 @@ class MeanRevAlgo:
                     # fit mean is more than than 0.1sigma from the entry
                     if self.fig[0] > (self._avg_entry_price - 0.1*self.fig[1] ) :
                         new_limit_price=current_price                        
-                        if current_price <= self._avg_entry_price or True:
+                        if current_price <= self._avg_entry_price:
                             if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
                                 self._limit=new_limit_price
                                 self._l.info(f'Buy for short position - 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
@@ -496,6 +498,7 @@ class MeanRevAlgo:
                                 self._transition('TO_SELL')
                                 self._submit_sell()
                         #else: # TODO improve the exit procedure when we are losing
+                        #    if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
                         #    # if we have an order check that it is not already a market order or in the extended hours
                         #    if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
                         #        self._l.info(f'Cancelling order...in the process of bailing on the short position - 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
@@ -674,7 +677,7 @@ class MeanRevAlgo:
             self._order = None
             #
             # Send signal to update the input file indicated what happened in the sale!
-            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data)
+            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             if self._state == 'BUY_SUBMITTED':
                 self._position = self._api.get_position(self._symbol)
                 # TODO                
@@ -692,7 +695,7 @@ class MeanRevAlgo:
                 self._l.info(f'exiting because position is sold with limit order ')
                 return
         elif event == 'partial_fill':
-            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data)            
+            self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             self._position = self._api.get_position(self._symbol)
             self._order = self._api.get_order(order['id'])
             return
@@ -726,7 +729,10 @@ class MeanRevAlgo:
         if self.sold_at_loss:
             self._l.info(f'Cannot buy to avoid a wash sale!')
             return
-        
+        if self._position is not None:
+            self._l.info(f'cannot submit buy with an existing position! {self._position}')
+            return
+            
         #print(self._api,self._symbol)
         trade = self._api.get_latest_trade(self._symbol)
         amount = int(self._lot / trade.price)
@@ -797,7 +803,10 @@ class MeanRevAlgo:
         self._transition('TRAILSTOP_SUBMITTED')
         
     def _submit_sell(self, bailout=False):
-        
+        if self._position is None:
+            self._l.info(f'cannot submit sell if there is no position!')
+            return
+    
         # checking if this is extended hours
         extended_hours=False
         time_in_force = 'day'
