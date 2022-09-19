@@ -415,12 +415,15 @@ class MeanRevAlgo:
             self._avg_entry_price = cost_basis
 
             # TODO figure out what to do with the limit price for the trailing stop
-            limit_price = max([cost_basis * self._take_profit, current_price, self._target,self.fig[0]])
+            limit_price = max([current_price, self._target,self.fig[0]]) # cost_basis / self._take_profit
             if float(self._position.qty)<0:
-                limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0]])
+                limit_price = min([current_price,self.fig[0]]) # cost_basis / self._take_profit
                 if self._target>0:
-                    limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0],self._target])
-            self._l.info(f'Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                    limit_price = min([current_price,self.fig[0],self._target])
+            signif_now=None
+            if self.fig[1]!=0:
+                signif_now = (current_price - self.fig[0])/self.fig[1]
+            self._l.info(f'Current price {current_price} and limit price {limit_price}, target: {self._target} and current fit: %0.2f with signif: %0.2f' %(self.fig[0],signif_now))
             
             # evaluate how the fit could be used to set the sell price
             #if len(self._fit_on_transaction)>0:
@@ -622,10 +625,10 @@ class MeanRevAlgo:
             signif_36d = self.fig_36d[2]
             # if they point in the oppisite direction, then don't submit
             if signif_18d*signif_36d<0:
-                self._l.info(f' - 18d and 36d have opposite signs 18d: {signif_18d} 36d: {signif_36d}')
+                self._l.info(f' - 18d and 36d significances have opposite signs 18d: %0.2f 36d: %0.2f' %(signif_18d,signif_36d))
                 return
             if abs(signif_36d)<0.5:
-                self._l.info(f' 36d indicates nothing is out of order - 18d: {signif_18d} 36d: {signif_36d}')
+                self._l.info(f' 36d indicates nothing is out of order - 18d: %0.2f 36d: %0.2f' %(signif_18d,signif_36d))
                 return
                     
             # set the limit price                
