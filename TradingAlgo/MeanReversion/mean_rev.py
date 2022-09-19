@@ -416,12 +416,12 @@ class MeanRevAlgo:
 
             # TODO figure out what to do with the limit price for the trailing stop
             limit_price = max([cost_basis * self._take_profit, current_price, self._target,self.fig[0]])
-            self._l.info(f'Current price {current_price} and limit price {limit_price}, target: {self._target}')
             if float(self._position.qty)<0:
                 limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0]])
                 if self._target>0:
                     limit_price = min([cost_basis / self._take_profit, current_price,self.fig[0],self._target])
-
+            self._l.info(f'Current price {current_price} and limit price {limit_price}, target: {self._target}')
+            
             # evaluate how the fit could be used to set the sell price
             #if len(self._fit_on_transaction)>0:
             #    diff_mean_fit = self.fig[0]-self._fit_on_transaction[0] # the fit when it happens
@@ -561,7 +561,7 @@ class MeanRevAlgo:
                 self._transition('TO_SELL')
                 self._submit_sell(bailout=True)
             if float(self._position.qty)>0 and self._avg_entry_price>0.0 and current_price<((self._avg_entry_price)/self._stop_percent):
-                self._l.info('Bailout! trying to sell')
+                self._l.info('Bailout! trying to sell long position')
                 self._cancel_order()                
                 self._transition('TO_SELL')
                 self._submit_sell(bailout=True)
@@ -680,20 +680,23 @@ class MeanRevAlgo:
             self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             if self._state == 'BUY_SUBMITTED':
                 self._position = self._api.get_position(self._symbol)
-                # TODO                
+                # TODO
                 #self._transition('TO_TRAILSTOP')
                 #self._submit_trailing_stop()
                 return
             elif self._state == 'TRAILSTOP_SUBMITTED':
-                self._position = None
+                self._position = self._api.get_position(self._symbol)
                 self._transition('EXIT')
                 self._l.info(f'exiting because position is sold with trailing stop order ')
                 return
             elif self._state == 'SELL_SUBMITTED':
-                self._position = None
+                self._position = self._api.get_position(self._symbol)
                 self._transition('EXIT')
                 self._l.info(f'exiting because position is sold with limit order ')
                 return
+            else:
+                self._l.info(f'unclear state, so we are updating... {self._state}')
+                self._position = self._api.get_position(self._symbol)
         elif event == 'partial_fill':
             self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             self._position = self._api.get_position(self._symbol)
