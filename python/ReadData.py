@@ -1,7 +1,7 @@
 from alpaca_trade_api.rest import TimeFrame
 from alpaca_trade_api.rest import REST
 from alpaca_trade_api.stream import Stream
-from alpaca_trade_api import StreamConn
+#from alpaca_trade_api import StreamConn
 import alpaca_trade_api
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.fundamentaldata import FundamentalData
@@ -248,14 +248,14 @@ def ALPACA_STREAM(data_feed='sip'):
     return stream
 
 
-def ALPACA_STREAMCONN():
-    """ ALPACA_STREAMCONN - Stream data from alpaca api. these are live quotes
-    """
-    ALPACA_ID = os.getenv('ALPACA_ID')
-    ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
-    base_url = 'https://paper-api.alpaca.markets'
-    stream = StreamConn(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url)  # <- replace to SIP if you have PRO subscription, iex is for non-pro
-    return stream
+#def ALPACA_STREAMCONN():
+#    """ ALPACA_STREAMCONN - Stream data from alpaca api. these are live quotes
+#    """
+#    ALPACA_ID = os.getenv('ALPACA_ID')
+#    ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
+#    base_url = 'https://paper-api.alpaca.markets'
+#    stream = StreamConn(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url)  # <- replace to SIP if you have PRO subscription, iex is for non-pro
+#    return stream
 
 # subscribing to event
 #stream.subscribe_trades(trade_callback, 'AAPL')
