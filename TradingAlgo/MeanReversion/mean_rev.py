@@ -417,6 +417,8 @@ class MeanRevAlgo:
             return
 
         # have a position position, let's submit orders
+        if self._position is not None and type([])==type(self._position):
+            self._update_positions_single()
         if self._position is not None:
 
             cost_basis = float(self._position.avg_entry_price)
@@ -848,6 +850,8 @@ class MeanRevAlgo:
         if float(self._position.qty)<0:
             trade_side='buy'
             qty_for_order = str(abs(int(qty_for_order)))
+            if self._state=='FAIL_SELL' and self._limit<0:
+                self._limit = cost_basis/1.6
             limit_price = round(min([self._limit, current_price,p_close_last_bar]),2)
             if self._target>0:
                 limit_price = round(min([self._limit, current_price,p_close_last_bar,self._target]),2)
@@ -951,8 +955,8 @@ def main(args):
     while 1:
         try:
             loop.run_until_complete(asyncio.gather(stream._run_forever(),periodic()))
-        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError,TimeoutError,socket.gaierror):
-            logger.info(f'Connection error. will try to restart after 10s')
+        except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError,TimeoutError,socket.gaierror,ConnectionResetError,OSError,asyncio.exceptions.TimeoutError) as e:
+            logger.info(f'Connection error. will try to restart after 10s: {e}')
             time.sleep(10)
             pass
     loop.close()
