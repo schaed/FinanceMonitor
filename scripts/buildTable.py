@@ -165,7 +165,7 @@ def formatInput(stock, ticker, rel_spy=[1.0,1.0,1.0,1.0], spy=None):
     info_list+=list(readShortInfo(ticker))
     return info_list
     
-api = ALPACA_REST()
+#api = ALPACA_REST()
 ts = ALPHA_TIMESERIES()
 ticker='X'
 ticker='TSLA'

@@ -244,7 +244,11 @@ def ALPACA_STREAM(data_feed='sip'):
     ALPACA_ID = os.getenv('ALPACA_ID')
     ALPACA_PAPER_KEY = os.getenv('ALPACA_PAPER_KEY')
     base_url = 'https://paper-api.alpaca.markets'
-    stream = Stream(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url,data_feed=data_feed)  # <- replace to SIP if you have PRO subscription, iex is for non-pro
+    stream = Stream(ALPACA_ID,ALPACA_PAPER_KEY,base_url = base_url,data_feed=data_feed,
+    websocket_params = {
+    "ping_interval": 10,
+    "ping_timeout": 180,
+    "max_queue": 5024,})  # <- replace to SIP if you have PRO subscription, iex is for non-pro
     return stream
 
 
@@ -955,6 +959,10 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
     tstock_info = pd.concat([tstock_info]+extrainfo,axis=1)
     return tstock_info
 
+#
+# collect midair refuel
+def GetMidAirRefuel(data):
+    return data[((data['close']-data['open'])<0) & ((data['close'].shift(1)-data['open'].shift(1))>0) & ((data['close'].shift(2)-data['open'].shift(2))>0) & ((data['close'].shift(3)-data['open'].shift(3))<0) & (data['low']<data['low'].shift(1)) & (data['low']<data['low'].shift(2)) & (data['high']>data['high'].shift(1)) & (data['high']>data['high'].shift(2)) & (data['low'].shift(3)<data['low'].shift(1)) & (data['low'].shift(3)<data['low'].shift(2)) & (data['high'].shift(3)>data['high'].shift(1)) & (data['high'].shift(3)>data['high'].shift(2))]
 
 # fills data with info & adds NN info
 # ticker = ticker

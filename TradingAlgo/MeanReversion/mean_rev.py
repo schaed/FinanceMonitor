@@ -165,6 +165,60 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
             dfnow.to_csv(fname, sep=' ',index=False)
     return return_sold_at_loss
 
+class Record:
+    """ record previous orders, etc
+        _order_history: list of orders
+        _time_of_last_change: time of last change
+        _position_history: positions
+        _
+    """
+    def __init__(self, status):
+        self._order_history = []
+        self._time_of_last_change=datetime.datetime.now(tz=est)
+        self._position_history = []
+        self._status_history = [status]
+        self._current_status = status
+        self._current_order = None
+        self._current_position = None
+        
+    # return state
+    def GetStatus(self):
+        return self._current_status
+    # timeout operation after 3 minutes
+    def IsTimeOut(self):
+        return (datetime.datetime.now(tz=est) - self._time_of_last_change)> datetime.timedelta(minutes=3)
+    # update last time that something changed
+    def UpdateTime(self):
+        self._time_of_last_change=datetime.datetime.now(tz=est)
+    # update time and status
+    def UpdateStatus(self,status):
+        old_status = self._current_status
+        self._current_status = status
+        self._status_history +=[status]
+        if old_status!=status:
+            self.UpdateTime()
+    
+    # update orders, status and position
+    def Update(self,status,orders,positions):
+        self._order_history = orders
+        self._position_history = positions
+        if status!='start':
+            self.UpdateStatus(status)
+    # update orders, status and position
+    def UpdateCurrent(self,status,order,position):
+        self._order_history += [order]
+        self._position_history = [position]
+        self.UpdateStatus(status)
+        self._current_position = position
+        self._current_order = order
+        
+    # update the position
+    def UpdatePositions(self,positions):
+        self._position_history += positions
+    # update the order
+    def UpdateOrder(self,order):
+        self._order_history += [order]
+        
 class MeanRevAlgo:
     """ api is the contact to order stocks
         _ts: alpha vantage time series
@@ -192,7 +246,7 @@ class MeanRevAlgo:
         self._raise_stop=1.01
         self._df = df
         self._bars = []
-        self._state = ''
+        self._state = Record('search_to_buy_or_short')
         self._avg_entry_price = -1.0
         self._fit_on_transaction = []
         self._l = logger.getChild(self._symbol)
@@ -293,54 +347,80 @@ class MeanRevAlgo:
         order = [o for o in self._api.list_orders() if o.symbol == symbol]
         position = [p for p in self._api.list_positions()
                     if p.symbol == symbol]
-
+        # add orders to history
+        self._state.Update('start',order,position)
         self._order = order[0] if len(order) > 0 else None
         self._position = position[0] if len(position) > 0 else None
         if self._position is not None:
             if self._order is None:
+                if float(self._position.qty)<0:
+                    self._state.UpdateCurrent('monitor_short',order,position)                    
+                elif float(self._position.qty)>0:                    
+                    self._state.UpdateCurrent('monitor_long',order,position)
+                else:
+                    self._state.UpdateCurrent('error',order,position)                    
                 # TODO
                 pass
-                #self._state = 'TO_TRAILSTOP'
                 #self._submit_trailing_stop()
             else:
-                self._state = 'SELL_SUBMITTED'
-                if self._order.side != 'sell':
-                    self._l.warning(f'state {self._state} mismatch order {self._order}')
-                if self._order.type == 'trailing_stop':
-                    self._state = 'TRAILSTOP_SUBMITTED'
+                # TODO: maybe check that the order goes the right direction? put into the Record class?
+                if float(self._position.qty)<0:
+                    self._state.UpdateCurrent('wait_close_short',order,position)                    
+                elif float(self._position.qty)>0:                    
+                    self._state.UpdateCurrent('wait_close_long',order,position)
+                else:
+                    self._state.UpdateCurrent('error',order,position)                
         else:
-            if self._order is None and self._state!='':
-                #self._state = 'TO_BUY'
+            if self._order is None and self._state.GetStatus()!='search_to_buy_or_short':
                 self._l.warning(f'Init_state is trying to submit an order state {self._state} order {self._order}')
-                #self._submit_buy()
             elif self._order is not None:
-                self._state = 'BUY_SUBMITTED'
-                if self._order.side != 'buy':
+                if self._order['side']=='buy':
+                    self._state.UpdateCurrent('wait_buy',order,position)
+                elif self._order['side']=='short':
+                    self._state.UpdateCurrent('wait_short',order,position)
+                else:
+                    self._state.UpdateCurrent('error',order,position)                    
                     self._l.warning(f'state {self._state} mismatch order {self._order}')
-            elif self._state=='':
-                    self._l.warning(f'No state {self._state} initialized {self._order} for {self._symbol}')
+            elif self._state.GetStatus()=='error':
+                self._l.warning(f'No state {self._state} initialized {self._order} for {self._symbol}')
                     
     def _now(self):
         return pd.Timestamp.now(tz='America/New_York')
 
     def _update_status(self):
-        self._update_orders()
-        self._update_positions()
+        self._update_orders_single()
+        self._update_positions_single()        
         if self._order!=None and self._position!=None :
-            self._state = 'SELL_SUBMITTED'
+            if float(self._position.qty)<0:
+                self._state.UpdateCurrent('wait_close_short',self._order,self._position)                    
+            elif float(self._position.qty)>0:                    
+                self._state.UpdateCurrent('wait_close_long',self._order,self._position)
+            else:
+                self._state.UpdateCurrent('error',self._order,self._position)
         if self._order!=None and self._position==None :
-            self._state = 'BUY_SUBMITTED'
+            if self._order['side']=='buy':
+                self._state.UpdateCurrent('wait_buy',order,position)
+            elif self._order['side']=='short':
+                self._state.UpdateCurrent('wait_short',order,position)
+            else:
+                self._state.UpdateCurrent('error',order,position)                    
+                self._l.warning(f'state {self._state} mismatch order {self._order}')
 
     def _update_orders(self):
         self._order = [o for o in self._api.list_orders() if o.symbol == self._symbol]
+    def _update_orders_single(self):
+        self._update_orders()
+        order = self._order
+        self._order = order[0] if len(order) > 0 else None        
 
     def _update_positions(self):
         self._position = [p for p in self._api.list_positions()
                     if p.symbol == self._symbol ]
         
     def _update_positions_single(self):
-        #self._position = self._api.get_position(self._symbol)        
-        position = self._update_positions()
+        #self._position = self._api.get_position(self._symbol)
+        self._update_positions()
+        position = self._position
         self._position = position[0] if len(position) > 0 else None
 
     def _outofmarket(self):
@@ -367,14 +447,22 @@ class MeanRevAlgo:
             self._lot = float(my_account.cash)
 
     def checkup(self, position):
+        # TODO
         # Check if anything has failed and we need to try submitting it again
         # self._l.info('periodic task')
-        if self._state == 'FAIL_SELL' and self._order is None :
+        if self._state.GetStatus() == 'error' :
+            self._update_status()
+            self._l.warning(f'Was in the error state but updated to {self._state} initialized {self._order} for {self._symbol}')            
+        if self._state.GetStatus() == 'FAIL_SELL' and self._order is None :
             self._submit_sell()
-        if self._state == 'FAIL_TRAILSTOP' and self._order is None :
+        if self._state.GetStatus() == 'FAIL_TRAILSTOP' and self._order is None :
             self._submit_trailing_stop()
-        if self._state == 'FAIL_BUY' and self._order is None:
+        if self._state.GetStatus() == 'FAIL_BUY' and self._order is None:
             self._submit_buy()
+        # TODO maybe other states to check for timeout?
+        # checking the transition to submission
+        if self._state.GetStatus() in ['to_short','to_buy','to_close_short','to_close_long'] and self._state.IsTimeOut():
+            self._update_status()            
 
     def _cancel_order(self):
         if self._order is not None:
@@ -452,7 +540,7 @@ class MeanRevAlgo:
                                 self._l.info(f'Sell low - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                                 self._limit=current_price
                                 self._cancel_order()
-                                self._transition('TO_SELL')
+                                self._transition('to_close_long')
                                 self._submit_sell()
                         #else: # improve the exiting when we are losing
                         #    # if we have an order check that it is not already a market order or in the extended hours
@@ -480,7 +568,7 @@ class MeanRevAlgo:
                             old_lim = new_limit_price
                             self._l.info(f'Sell 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             self._cancel_order()
-                            self._transition('TO_SELL')
+                            self._transition('to_close_long')
                             self._submit_sell()
                     # fit mean is less than 0.75sigma from the entry; sell if we are making money
                     elif self.fig[0] < (self._avg_entry_price + 0.75*self.fig[1] ) and current_price> self._avg_entry_price:
@@ -490,7 +578,7 @@ class MeanRevAlgo:
                             old_lim = new_limit_price
                             self._l.info(f'Sell 0.75 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}') 
                             self._cancel_order()
-                            self._transition('TO_SELL')
+                            self._transition('to_close_long')
                             self._submit_sell()
                     else: # set limit order to the fit mean
                         # only submit if there is greater than .33 percent change
@@ -498,7 +586,7 @@ class MeanRevAlgo:
                             self._l.info(f'Sell limit order at fit mean update - Current price {current_price} and limit price {limit_price}, target: {self._target}')   
                             self._limit=self.fig[0]
                             self._cancel_order()
-                            self._transition('TO_SELL')
+                            self._transition('to_close_long')
                             self._submit_sell()
                         
                 else: # short position
@@ -511,7 +599,7 @@ class MeanRevAlgo:
                                 self._limit=new_limit_price
                                 self._l.info(f'Buy for short position - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')
                                 self._cancel_order()
-                                self._transition('TO_SELL')
+                                self._transition('to_close_short')
                                 self._submit_sell()
                         #else: # TODO improve the exit procedure when we are losing
                         #    if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
@@ -537,7 +625,7 @@ class MeanRevAlgo:
                             old_lim = new_limit_price
                             self._l.info(f'Buy for short position - 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             self._cancel_order()
-                            self._transition('TO_SELL')
+                            self._transition('to_close_short')
                             self._submit_sell()
                     # fit mean is more than 0.75sigma from the entry. Sell if we are making making.
                     elif self.fig[0] > (self._avg_entry_price - 0.75*self.fig[1] ) and current_price < self._avg_entry_price:
@@ -547,7 +635,7 @@ class MeanRevAlgo:
                             old_lim = new_limit_price                            
                             self._cancel_order()
                             self._l.info(f'Buy for short position - 0.75 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
-                            self._transition('TO_SELL')
+                            self._transition('to_close_short')
                             self._submit_sell()
                     else: # set limit order to the fit mean
                         # only submit if there is greater than .33 percent change
@@ -555,7 +643,7 @@ class MeanRevAlgo:
                             self._limit=self.fig[0]
                             self._l.info(f'Buy for short position - update order pricing - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                             self._cancel_order()
-                            self._transition('TO_SELL')
+                            self._transition('to_close_short')
                             self._submit_sell()
 
             # TODO - setting up the trailing stops
@@ -576,12 +664,12 @@ class MeanRevAlgo:
             if float(self._position.qty)<0 and self._avg_entry_price>0.0 and current_price>((self._avg_entry_price)*self._stop_percent):
                 self._l.info('Bailout! trying to get rid of our short')
                 self._cancel_order()                
-                self._transition('TO_SELL')
+                self._transition('to_close_short')
                 self._submit_sell(bailout=True)
             if float(self._position.qty)>0 and self._avg_entry_price>0.0 and current_price<((self._avg_entry_price)/self._stop_percent):
                 self._l.info('Bailout! trying to sell long position')
                 self._cancel_order()                
-                self._transition('TO_SELL')
+                self._transition('to_close_long')
                 self._submit_sell(bailout=True)
                 
             # selling for buy orders
@@ -696,52 +784,56 @@ class MeanRevAlgo:
             #
             # Send signal to update the input file indicated what happened in the sale!
             self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
-            if self._state == 'BUY_SUBMITTED':
+            # we are waiting to close an position
+            if self._state.GetStatus().count('wait_close'):
                 self._update_positions_single()
+                if self._position==None:
+                    self._state.UpdateCurrent('search_to_buy_or_short',self._order,self._position)
+                else:
+                    if float(self._position.qty)>0:
+                        self._state.UpdateCurrent('wait_long',self._order,self._position)
+                    elif float(self._position.qty)<0:
+                        self._state.UpdateCurrent('wait_short',self._order,self._position)                        
+                    else:
+                        self._state.UpdateCurrent('error',self._order,self._position) 
+            # waiting for the order to be filled to have a position
+            elif self._state.GetStatus().count('wait_'):
+                # TODO do some error messaging if we dont have a position
+                self._update_positions_single()
+                if self._position==None:
+                    self._state.UpdateCurrent('search_to_buy_or_short',self._order,self._position)
+                else:
+                    if float(self._position.qty)>0:
+                        self._state.UpdateCurrent('wait_long',self._order,self._position)
+                    elif float(self._position.qty)<0:
+                        self._state.UpdateCurrent('wait_short',self._order,self._position)                        
+                    else:
+                        self._state.UpdateCurrent('error',self._order,self._position)                 
                 # TODO
                 #self._transition('TO_TRAILSTOP')
                 #self._submit_trailing_stop()
                 return
-            elif self._state == 'TRAILSTOP_SUBMITTED':
-                self._update_positions_single()
-                self._transition('EXIT')
-                self._l.info(f'exiting because position is sold with trailing stop order ')
-                return
-            elif self._state == 'SELL_SUBMITTED':
-                self._update_positions_single()
-                self._transition('EXIT')
-                self._l.info(f'exiting because position is sold with limit order ')
-                return
             else:
                 self._l.info(f'unclear state, so we are updating... {self._state}')
                 self._update_positions_single()
+                self._update_state()
         elif event == 'partial_fill':
             self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             self._update_positions_single()
             self._order = self._api.get_order(order['id'])
+            self._update_state()
             return
         elif event in ('canceled', 'rejected'):
             if event == 'rejected':
-                self._l.warning(f'order rejected: current order = {self._order}')
-                if self._state == 'TO_CANCEL':
-                    self._cancel_order()
-            if event == 'canceled':
-                self._order = None
-            if self._state == 'TO_CANCEL':
-                self._l.info(f'expected cancel event for {event}: {self._state}')                
-                pass
-            elif self._state == 'BUY_SUBMITTED':
-                if self._position is not None:
-                    self._transition('TO_SELL')
-                    self._submit_trailing_stop()
-                else:
-                    self._transition('TO_BUY')
-            elif self._state == 'SELL_SUBMITTED':
-                self._transition('TO_SELL')
-                self._submit_sell(bailout=True)
-            #elif self._state == 'TRAILSTOP_SUBMITTED':
-                #self._transition('TO_SELL')
-                #self._submit_trailing_stop()
+                self._update_state()                
+                self._l.warning(f'order rejected: current order after update = {self._order}')
+                #if self._state == 'TO_CANCEL':
+                #    self._cancel_order()
+            elif event == 'canceled':
+                self._update_state()                
+                self._l.warning(f'order cancelled: current order after update = {self._order}')                
+                #self._order = None
+
             else:
                 self._l.warning(f'unexpected state for {event}: {self._state}')
 
@@ -770,7 +862,11 @@ class MeanRevAlgo:
         if self._afterhours():
             time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
             extended_hours=True
-        self._transition('TO_BUY')
+        if self.trade_side=='sell':
+            self._transition('to_short')
+        else:
+            self._transition('to_buy')
+        self._limit = limit
         try:
             order = self._api.submit_order(
                 symbol=self._symbol,
@@ -787,12 +883,15 @@ class MeanRevAlgo:
             self._fit_on_transaction = copy.deepcopy(self.fig)
         except Exception as e:
             self._l.info(e)
-            self._transition('FAIL_BUY')
+            self._transition('error')
             return
 
         self._order = order
         self._l.info(f'submitted buy {order}')
-        self._transition('BUY_SUBMITTED')
+        if self.trade_side=='sell':
+            self._transition('wait_short')
+        else:
+            self._transition('wait_long')
 
     def _submit_trailing_stop(self):
         extended_hours=False
@@ -850,7 +949,7 @@ class MeanRevAlgo:
         if float(self._position.qty)<0:
             trade_side='buy'
             qty_for_order = str(abs(int(qty_for_order)))
-            if self._state=='FAIL_SELL' and self._limit<0:
+            if self._state.GetStatus()=='FAIL_SELL' and self._limit<0:
                 self._limit = cost_basis/1.6
             limit_price = round(min([self._limit, current_price,p_close_last_bar]),2)
             if self._target>0:
@@ -875,25 +974,58 @@ class MeanRevAlgo:
                 if 'limit_price' in params:
                     params['limit_price']=None
 
+        if self.trade_side=='buy':
+            self._transition('to_close_short')
+        else:
+            self._transition('to_close_long')        
         # submiting orders
         try:
             order = self._api.submit_order(**params)
         except Exception as e:
             self._l.error(e)
-            self._transition('FAIL_SELL')
+            self._transition('error')
             return
 
         self._order = order
+        if self.trade_side=='buy':
+            self._transition('wait_close_short')
+        else:
+            self._transition('wait_close_long')                
         self._l.info(f'submitted sell {order}')
-        self._transition('SELL_SUBMITTED')
 
     def _transition(self, new_state):
         self._l.info(f'transition from {self._state} to {new_state}')
-        self._state = new_state
+        self._state.UpdateStatus(new_state)
 
+def DeclareStream(symbols,sold_short):
+    stream = ALPACA_STREAM(data_feed='sip')
+
+    async def on_bars(data):
+        if data.symbol in fleet:
+            fleet[data.symbol].on_bar(data)
+    
+    for symbol in symbols:
+        # check for wash sales
+        if symbol in sold_short and sold_short[symbol]:
+            logger.info(f'This {symbol} has a wash sale, so we are skipping.')
+            continue
+        
+        logger.info(f'{symbol}')
+        sys.stdout.flush()
+        #stream.subscribe_trades(on_bars, symbol)
+        stream.subscribe_bars(on_bars, symbol)
+    
+    async def on_trade_updates(data):
+        logger.info(f'trade_updates {data}')
+        symbol = data.order['symbol']
+        if symbol in fleet:
+            fleet[symbol].on_order_update(data.event, data.order, data)
+    
+    stream.subscribe_trade_updates(on_trade_updates)
+    return stream
 
 def main(args):
-    stream = ALPACA_STREAM(data_feed='sip')
+
     api = ALPACA_REST()
     sys.stdout.flush()
     ts = ALPHA_TIMESERIES()
@@ -916,29 +1048,6 @@ def main(args):
             algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])            
             fleet[symbol] = algo
 
-    async def on_bars(data):
-        if data.symbol in fleet:
-            fleet[data.symbol].on_bar(data)
-
-    for symbol in symbols:
-        # check for wash sales
-        if symbol in sold_short and sold_short[symbol]:
-            logger.info(f'This {symbol} has a wash sale, so we are skipping.')
-            continue
-        
-        logger.info(f'{symbol}')
-        sys.stdout.flush()
-        #stream.subscribe_trades(on_bars, symbol)
-        stream.subscribe_bars(on_bars, symbol)
-    
-    async def on_trade_updates(data):
-        logger.info(f'trade_updates {data}')
-        symbol = data.order['symbol']
-        if symbol in fleet:
-            fleet[symbol].on_order_update(data.event, data.order, data)
-    
-    stream.subscribe_trade_updates(on_trade_updates)
-    
     async def periodic():
         while True:
             CheckTimeToExit(logger)
@@ -950,16 +1059,34 @@ def main(args):
             for symbol, algo in fleet.items():
                 pos = [p for p in positions if p.symbol == symbol]
                 algo.checkup(pos[0] if len(pos) > 0 else None)
-                
+
+    stream = DeclareStream(symbols,sold_short)
     loop = asyncio.get_event_loop()
+    AcceptedFailures = 0
+    RestartStream = False
     while 1:
         try:
             loop.run_until_complete(asyncio.gather(stream._run_forever(),periodic()))
         except (ConnectionResetError,urllib3.exceptions.ProtocolError,requests.exceptions.ConnectionError,APIError,ValueError,AttributeError,RuntimeError,TimeoutError,socket.gaierror,ConnectionResetError,OSError,asyncio.exceptions.TimeoutError) as e:
-            logger.info(f'Connection error. will try to restart after 10s: {e}')
+            AcceptedFailures += 1;            
+            logger.info(f'Connection error. will try to restart after 10s: {e} failure number {AcceptedFailures}')
             time.sleep(10)
+            RestartStream = True
+
+            if AcceptedFailures >100:
+                logger.warning(f'Connection restart!')
+                loop.close()
+                return True
             pass
+        if RestartStream:
+            try:
+                stream = DeclareStream(symbols,sold_short)
+                RestartStream=False
+            except:
+                logger.info(f'Connection error restarting stream...try again in 10s: {e} failure number {AcceptedFailures}')
+                time.sleep(10)                
     loop.close()
+    return False
 
 if __name__ == '__main__':
     import argparse
@@ -977,5 +1104,6 @@ if __name__ == '__main__':
     parser.add_argument('--lot', type=float, default=-1,help='The amount of cash to spend')
     parser.add_argument('--limit', type=float, default=-1,help='The limit price to buy')
     parser.add_argument('--target', type=float, default=-1,help='The target price to sell')
-
-    main(parser.parse_args())
+    doRestart = True
+    while doRestart:
+        doRestart = main(parser.parse_args())

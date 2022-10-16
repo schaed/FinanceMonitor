@@ -1,6 +1,6 @@
 from techindicators import techindicators
 #import techindicators as techindicators
-from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS,MakePlotMulti,MakePlot,POS_MARKET_PLOTS,AddSMA
+from ReadData import ALPACA_REST,ALPHA_TIMESERIES,is_date,runTickerAlpha,runTicker,SQL_CURSOR,ConfigTable,GetTimeSlot,AddInfo,IS_ALPHA_PREMIUM_WAIT_ITER,GLOBAL_MARKET_PLOTS,MakePlotMulti,MakePlot,POS_MARKET_PLOTS,AddSMA,GetMidAirRefuel
 import pandas as pd
 import numpy as np
 import sys
@@ -8,7 +8,7 @@ import datetime
 import base as b
 import pickle
 import time
-import os
+import os,copy
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
 import matplotlib
@@ -273,6 +273,16 @@ def PlotTiming(data, ticker):
     top_plt.plot(data.index, data["sma50"],color='yellow',label='SMA50')
     top_plt.plot(data.index, data["sma20"],color='green',label='SMA20')
     top_plt.plot(data.index, data["ema13"],color='blue',label='EMA13')
+    # add a vertical line when the coppuck changes from negative to positive
+    #data['copp1']=data.copp.shift(1)
+    #print(data[['copp','copp1']])
+    #print(data[((data['copp']-data['copp'].shift(1))>data['copp']) & (data['copp']*data['copp'].shift(1)<0)][['copp','adj_close']])
+    #print(data[((data['copp']-data['copp'].shift(1))<data['copp']) & (data['copp']*data['copp'].shift(1)<0)][['copp','adj_close']])    
+    #print(data[((data['copp']-data['copp'].shift(1))>0) & (data['copp']<-10)][['copp','adj_close']])
+    midair = GetMidAirRefuel(data)
+    if len(midair)>0:
+        print('Midair refuel')
+        print(GetMidAirRefuel(data))
     plt.legend(loc="upper center")
     techindicators.supportLevels(data)
     top_plt.grid(1)
@@ -747,7 +757,7 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     endBa = time.time()
     if debug: print('Process time to process FitWithBand', ticker,' drawing: %s' %(endBa - startBa))    
         
-def DrawPlots(my_stock_info,ticker,market,plttext=''):
+def DrawPlots(my_stock_info,ticker,market,plttext='',fullhist=[]):
     """ DrawPlots - Draw all plots of the stock along with market comparisons
         
          Parameters:
@@ -766,6 +776,8 @@ def DrawPlots(my_stock_info,ticker,market,plttext=''):
     MakePlotMulti(my_stock_info.index, yaxis=[my_stock_info['adj_close'],my_stock_info['sma50'],my_stock_info['sma200']],colors=['black','green','red'], labels=['Closing','SMA50','SMA200'], xname='Date',yname='Closing price',saveName='price_support%s_%s' %(plttext,ticker), doSupport=True,my_stock_info=my_stock_info,title='Support Lines',draw=draw,doPDFs=doPDFs,outdir=outdir)
     startE = time.time()    
     MakePlot(my_stock_info.index, my_stock_info['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve',draw=draw,doPDFs=doPDFs,outdir=outdir)
+    if len(fullhist)>0:
+        MakePlot(fullhist.index, fullhist['copp'], xname='Date',yname='Coppuck Curve',saveName='copp%s_%s_lifetime' %(plttext,ticker),hlines=[(0.0,'black','-')],title='Coppuck Curve',draw=draw,doPDFs=doPDFs,outdir=outdir)    
     endE = time.time()
     if debug: print('Process time to copp: %s' %(endE - startE))
     MakePlot(my_stock_info.index, my_stock_info['sharpe'], xname='Date',yname='Sharpe Ratio',saveName='sharpe%s_%s' %(plttext,ticker),title='Sharpe Ratio',draw=draw,doPDFs=doPDFs,outdir=outdir)
@@ -901,9 +913,19 @@ def SARTradingStategy(stock):
     plt.grid()
     plt.show()
         
-api = ALPACA_REST()
+#api = ALPACA_REST()
 ts = ALPHA_TIMESERIES()
-spy = runTicker(api,'SPY')
+#from alpaca_trade_api.rest import TimeFrame
+#import pytz
+#import datetime
+#est = pytz.timezone('US/Eastern')
+#filter_shift_days = 0
+#today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
+#todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))
+#d1 = todayFilter.strftime("%Y-%m-%dT%H:%M:%S-05:00")
+#thirty_days = (todayFilter + datetime.timedelta(days=-720)).strftime("%Y-%m-%dT%H:%M:%S-05:00")
+#spy = runTicker(api,'SPY',timeframe=TimeFrame.Hour,start=thirty_days,end=d1)
+#print(GetMidAirRefuel(spy)[['high','low']])
 ticker='TSLA'
 #ticker='TSLA'
 stock_info=None
@@ -919,7 +941,9 @@ bib,j = ConfigTable('BIB', sqlcursor,ts,readType,j, hoursdelay=15)
 gush,j = ConfigTable('GUSH', sqlcursor,ts,readType,j, hoursdelay=15)
 drip,j = ConfigTable('DRIP', sqlcursor,ts,readType,j, hoursdelay=15)
 print('spy')
+#print(spy.to_string())
 print(spy)
+print(GetMidAirRefuel(spy))
 #if loadFromPickle and os.path.exists("%s.p" %ticker):
 #    stock_info = pickle.load( open( "%s.p" %ticker, "rb" ) )
 #    #spy = pickle.load( open( "SPY.p", "rb" ) )
@@ -942,7 +966,7 @@ except ValueError:
     spy,j = ConfigTable('SPY', sqlcursor,ts,readType, hoursdelay=15)
     spy = AddInfo(spy, spy)
 spy_1year = GetTimeSlot(spy)
-DrawPlots(spy_1year,'SPY',spy_1year)
+DrawPlots(spy_1year,'SPY',spy_1year,fullhist=spy)
 n_ALPHA_PREMIUM_WAIT_ITER = IS_ALPHA_PREMIUM_WAIT_ITER()
 j=0
 cdir = os.getcwd()
@@ -1056,10 +1080,11 @@ if doStocks:
             sqlcursor.cursor().execute('DROP TABLE %s' %s[0])
             j+=1
             continue
-                
+
+        tstock_info_hist = copy.deepcopy(tstock_info)
         tstock_info = GetTimeSlot(tstock_info) # gets the one year timeframe
         start = time.time()
-        chartSignals =DrawPlots(tstock_info,s[0],spy_1year)
+        chartSignals =DrawPlots(tstock_info,s[0],spy_1year,fullhist=tstock_info_hist)
         if len(chartSignals)>0.0:
             chartSignals = pd.DataFrame(chartSignals,columns=['Chart Signal', 'Yesterday','Two Days Ago','In Last 5 days'])
             chartSignals = chartSignals.groupby(chartSignals['Chart Signal']).sum().reset_index()
