@@ -218,6 +218,15 @@ class Record:
     # update the order
     def UpdateOrder(self,order):
         self._order_history += [order]
+    # is the state monitoring an existing position
+    def IsMonitor(self):
+        return self._state.count('monitor_')
+    def IsSearchMode(self):
+        return (self._state=='search_to_buy_or_short')
+    def IsWait(self):
+        return self._state in ['wait_short','wait_long']
+    def IsWaitClose(self):
+        return self._state in ['wait_close_short','wait_close_long']
         
 class MeanRevAlgo:
     """ api is the contact to order stocks
@@ -466,7 +475,7 @@ class MeanRevAlgo:
 
     def _cancel_order(self):
         if self._order is not None:
-            self._transition('TO_CANCEL')
+            self._transition('error')
             self._api.cancel_order(self._order.id)
         self._update_orders()
         order = self._order
@@ -816,24 +825,23 @@ class MeanRevAlgo:
             else:
                 self._l.info(f'unclear state, so we are updating... {self._state}')
                 self._update_positions_single()
-                self._update_state()
+                self._update_status()
         elif event == 'partial_fill':
             self.sold_at_loss = HandleTradeExit(self._symbol, order['filled_avg_price'], self._avg_entry_price, order['filled_at'],full_data, return_sold_at_loss_current=self.sold_at_loss)
             self._update_positions_single()
             self._order = self._api.get_order(order['id'])
-            self._update_state()
+            self._update_status()
             return
         elif event in ('canceled', 'rejected'):
             if event == 'rejected':
-                self._update_state()                
+                self._update_status()                
                 self._l.warning(f'order rejected: current order after update = {self._order}')
                 #if self._state == 'TO_CANCEL':
                 #    self._cancel_order()
             elif event == 'canceled':
-                self._update_state()                
+                self._update_status()                
                 self._l.warning(f'order cancelled: current order after update = {self._order}')                
                 #self._order = None
-
             else:
                 self._l.warning(f'unexpected state for {event}: {self._state}')
 
@@ -862,11 +870,27 @@ class MeanRevAlgo:
         if self._afterhours():
             time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
             extended_hours=True
+        self._limit = limit
+        
+        # update order if requested.
+        if not self._state.IsWait() and self._order!=None and self._position==None:
+            try:
+                self._api.replace_order(self._order.id,limit_price=self._limit)
+            except (APIError) as e:
+                self._l.info(e)
+                self._transition('error')
+                return
+
+        # if it is not in the search mode, then exit
+        if not self._state.IsSearchMode():
+            self._l.error('trying to submit but not in search mode')
+            return
+
         if self.trade_side=='sell':
             self._transition('to_short')
         else:
             self._transition('to_buy')
-        self._limit = limit
+
         try:
             order = self._api.submit_order(
                 symbol=self._symbol,
@@ -954,7 +978,8 @@ class MeanRevAlgo:
             limit_price = round(min([self._limit, current_price,p_close_last_bar]),2)
             if self._target>0:
                 limit_price = round(min([self._limit, current_price,p_close_last_bar,self._target]),2)
-            
+        # update the limit price
+        self._limit = limit_price
         # creating sell params
         params = dict(
             symbol=self._symbol,
@@ -963,9 +988,9 @@ class MeanRevAlgo:
             extended_hours=extended_hours,
             #replaces , # id number that this order replaces
             time_in_force=time_in_force)
-        
+
         # final limit price update
-        params.update(dict(type='limit',limit_price=limit_price))
+        params.update(dict(type='limit',limit_price=self._limit))
         self._l.info(f'{params}')
         
         if bailout:
@@ -974,10 +999,24 @@ class MeanRevAlgo:
                 if 'limit_price' in params:
                     params['limit_price']=None
 
+        # update order if requested.
+        if not self._state.IsWaitClose() and self._order!=None and self._position!=None:
+            try:
+                self._api.replace_order(self._order.id,limit_price=self._limit)                
+            except (APIError) as e:
+                self._l.info(e)
+                self._transition('error')
+                return
+
+        # if it is not monitor, then dont submit
+        if not self._state.IsMonitor():
+            self._l.error('trying to exit but not in monitor mode')
+            return
+
         if self.trade_side=='buy':
             self._transition('to_close_short')
         else:
-            self._transition('to_close_long')        
+            self._transition('to_close_long')
         # submiting orders
         try:
             order = self._api.submit_order(**params)
@@ -997,7 +1036,7 @@ class MeanRevAlgo:
         self._l.info(f'transition from {self._state} to {new_state}')
         self._state.UpdateStatus(new_state)
 
-def DeclareStream(symbols,sold_short):
+def DeclareStream(symbols,sold_short,fleet):
     stream = ALPACA_STREAM(data_feed='sip')
 
     async def on_bars(data):
@@ -1060,7 +1099,7 @@ def main(args):
                 pos = [p for p in positions if p.symbol == symbol]
                 algo.checkup(pos[0] if len(pos) > 0 else None)
 
-    stream = DeclareStream(symbols,sold_short)
+    stream = DeclareStream(symbols,sold_short,fleet)
     loop = asyncio.get_event_loop()
     AcceptedFailures = 0
     RestartStream = False
@@ -1080,7 +1119,7 @@ def main(args):
             pass
         if RestartStream:
             try:
-                stream = DeclareStream(symbols,sold_short)
+                stream = DeclareStream(symbols,sold_short,fleet)
                 RestartStream=False
             except:
                 logger.info(f'Connection error restarting stream...try again in 10s: {e} failure number {AcceptedFailures}')
