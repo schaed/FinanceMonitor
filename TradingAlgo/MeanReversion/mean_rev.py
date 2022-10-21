@@ -129,6 +129,7 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
     in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/'
     files_names_to_check=[in_file_name+'out_meanrev_instructions.csv',]
     return_sold_at_loss = return_sold_at_loss_current
+
     for fname in files_names_to_check:
         try:
             dfnow = pd.read_csv(fname, sep=' ')
@@ -145,6 +146,7 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
         # if we already sold at a loss, then keep that designation
         if not return_sold_at_loss:
             return_sold_at_loss = sold_at_loss
+        logger.info(f'HandleTradeExit: {fname} sale: {sale_price} Bought: {buy_price} qty: {full_data.position_qty} sold at loss: {sold_at_loss}')
         df_new = pd.DataFrame(data=[[ticker,
                                      ticker,
                                     full_data.event,
@@ -220,13 +222,14 @@ class Record:
         self._order_history += [order]
     # is the state monitoring an existing position
     def IsMonitor(self):
-        return self._state.count('monitor_')
+        #return self._current_status.count('monitor_')
+        return self._current_status.count('to_close_')
     def IsSearchMode(self):
-        return (self._state=='search_to_buy_or_short')
+        return (self._current_status=='search_to_buy_or_short')
     def IsWait(self):
-        return self._state in ['wait_short','wait_long']
+        return self._current_status in ['wait_short','wait_long']
     def IsWaitClose(self):
-        return self._state in ['wait_close_short','wait_close_long']
+        return self._current_status in ['wait_close_short','wait_close_long']
         
 class MeanRevAlgo:
     """ api is the contact to order stocks
@@ -548,17 +551,20 @@ class MeanRevAlgo:
                             if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-current_price)/current_price>0.0033):
                                 self._l.info(f'Sell low - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                                 self._limit=current_price
-                                self._cancel_order()
+                                #self._cancel_order()
                                 self._transition('to_close_long')
                                 self._submit_sell()
-                        #else: # improve the exiting when we are losing
-                        #    # if we have an order check that it is not already a market order or in the extended hours
-                        #    if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
-                        #        self._cancel_order()
-                        #        self._l.info(f'Sell immediate - Current price {current_price} and limit price {limit_price}, target: {self._target}')
-                        #    if self._order==None:
-                        #        self._transition('TO_SELL')
-                        #        self._l.info(f'Sell immediate - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                        else: # improve the exiting when we are losing
+                            if self._order==None or self._limit==None or self._limit!=self._avg_entry_price:
+                                self._limit = self._avg_entry_price
+                                self._submit_sell()
+                            # if we have an order check that it is not already a market order or in the extended hours
+                            #if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
+                            #    self._cancel_order()
+                            #    self._l.info(f'Sell immediate - Current price {current_price} and limit price {limit_price}, target: {self._target}')
+                            #if self._order==None:
+                            #    self._transition('TO_SELL')
+                            #    self._l.info(f'Sell immediate - bailout 0.1 - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                         #        self._submit_sell(bailout=True)
 
                     # fit mean is less than 0.25sigma from the entry, then we exit with a profit if possible. Otherwise, just exit
@@ -576,7 +582,7 @@ class MeanRevAlgo:
                             self._limit = new_limit_price
                             old_lim = new_limit_price
                             self._l.info(f'Sell 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._transition('to_close_long')
                             self._submit_sell()
                     # fit mean is less than 0.75sigma from the entry; sell if we are making money
@@ -586,7 +592,7 @@ class MeanRevAlgo:
                             self._limit=new_limit_price
                             old_lim = new_limit_price
                             self._l.info(f'Sell 0.75 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}') 
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._transition('to_close_long')
                             self._submit_sell()
                     else: # set limit order to the fit mean
@@ -594,7 +600,7 @@ class MeanRevAlgo:
                         if (self._order==None) or self._order.limit_price==None or  (self._order!=None  and self._position!=None and abs(float(self._order.limit_price) - self.fig[0])/float(self._order.limit_price)>0.0033):
                             self._l.info(f'Sell limit order at fit mean update - Current price {current_price} and limit price {limit_price}, target: {self._target}')   
                             self._limit=self.fig[0]
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._transition('to_close_long')
                             self._submit_sell()
                         
@@ -607,9 +613,13 @@ class MeanRevAlgo:
                                 old_lim = new_limit_price
                                 self._limit=new_limit_price
                                 self._l.info(f'Buy for short position - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')
-                                self._cancel_order()
+                                #self._cancel_order()
                                 self._transition('to_close_short')
                                 self._submit_sell()
+                        else: # improve the exiting when we are losing
+                            if self._order==None or self._limit==None or self._limit!=self._avg_entry_price:
+                                self._limit = self._avg_entry_price
+                                self._submit_sell()                                
                         #else: # TODO improve the exit procedure when we are losing
                         #    if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
                         #    # if we have an order check that it is not already a market order or in the extended hours
@@ -633,7 +643,7 @@ class MeanRevAlgo:
                             self._limit = new_limit_price
                             old_lim = new_limit_price
                             self._l.info(f'Buy for short position - 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._transition('to_close_short')
                             self._submit_sell()
                     # fit mean is more than 0.75sigma from the entry. Sell if we are making making.
@@ -642,7 +652,7 @@ class MeanRevAlgo:
                         if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-current_price)/current_price>0.0033):
                             self._limit=current_price
                             old_lim = new_limit_price                            
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._l.info(f'Buy for short position - 0.75 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             self._transition('to_close_short')
                             self._submit_sell()
@@ -651,7 +661,7 @@ class MeanRevAlgo:
                         if (self._order==None) or self._order.limit_price==None or (self._order!=None and self._position!=None and abs(float(self._order.limit_price) - self.fig[0])/float(self._order.limit_price)>0.0033):
                             self._limit=self.fig[0]
                             self._l.info(f'Buy for short position - update order pricing - Current price {current_price} and limit price {limit_price}, target: {self._target}')
-                            self._cancel_order()
+                            #self._cancel_order()
                             self._transition('to_close_short')
                             self._submit_sell()
 
@@ -672,12 +682,12 @@ class MeanRevAlgo:
             # - TODO improve the bailout procedure
             if float(self._position.qty)<0 and self._avg_entry_price>0.0 and current_price>((self._avg_entry_price)*self._stop_percent):
                 self._l.info('Bailout! trying to get rid of our short')
-                self._cancel_order()                
+                self._cancel_order()
                 self._transition('to_close_short')
                 self._submit_sell(bailout=True)
             if float(self._position.qty)>0 and self._avg_entry_price>0.0 and current_price<((self._avg_entry_price)/self._stop_percent):
                 self._l.info('Bailout! trying to sell long position')
-                self._cancel_order()                
+                self._cancel_order()
                 self._transition('to_close_long')
                 self._submit_sell(bailout=True)
                 
@@ -955,6 +965,7 @@ class MeanRevAlgo:
         extended_hours=False
         time_in_force = 'day'
         if self._afterhours():
+            self._cancel_order()
             time_in_force = 'day' # opg - market on open or limit on open, fok : fill or kill, ioc: immediate or cancel (partial order)
             extended_hours=True
                 
@@ -1001,8 +1012,10 @@ class MeanRevAlgo:
 
         # update order if requested.
         if not self._state.IsWaitClose() and self._order!=None and self._position!=None:
+            self._l.info(f'will update the existing order {self._order.id}')
             try:
-                self._api.replace_order(self._order.id,limit_price=self._limit)                
+                self._api.replace_order(self._order.id,limit_price=self._limit)
+                return
             except (APIError) as e:
                 self._l.info(e)
                 self._transition('error')
@@ -1010,7 +1023,7 @@ class MeanRevAlgo:
 
         # if it is not monitor, then dont submit
         if not self._state.IsMonitor():
-            self._l.error('trying to exit but not in monitor mode')
+            self._l.error(f'trying to exit but not in monitor mode. currently in {self._state.GetStatus()}. with {self._order} and {self._position}')
             return
 
         if self.trade_side=='buy':
@@ -1084,7 +1097,15 @@ def main(args):
             logger.info(f'This {symbol} has a wash sale, so we are skipping.')
             continue
         if args.lot>0:
-            algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])            
+            algo=None
+            collected=False
+            while not collected:
+                try:
+                    algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])
+                    collected=True
+                except:
+                    time.sleep(10)
+                    logger.error(f'This {symbol} error starting algo.')                    
             fleet[symbol] = algo
 
     async def periodic():
@@ -1117,6 +1138,7 @@ def main(args):
                 loop.close()
                 return True
             pass
+        
         if RestartStream:
             try:
                 stream = DeclareStream(symbols,sold_short,fleet)
