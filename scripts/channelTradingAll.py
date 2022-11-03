@@ -979,7 +979,10 @@ if not args.skip:
     os.chdir(cdir)
     
 getPEShiller()
-POS_MARKET_PLOTS(outdir,debug,doPDFs,spy=spy)
+try:
+    POS_MARKET_PLOTS(outdir,debug,doPDFs,spy=spy)
+except:
+    print('could not do position market plots')
 os.chdir(outdir)
 b.makeHTML('POSITION.html' ,'POSITION',filterPattern='*POSITION_exchange_*',describe='Position of stocks relative to moving averages')
 os.chdir(cdir)    

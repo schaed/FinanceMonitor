@@ -962,8 +962,10 @@ def EarningsPreprocessing(ticker, sqlcursor, ts, spy, connectionCal, j=0, ReDown
 #
 # collect midair refuel
 def GetMidAirRefuel(data):
-    return data[((data['close']-data['open'])<0) & ((data['close'].shift(1)-data['open'].shift(1))>0) & ((data['close'].shift(2)-data['open'].shift(2))>0) & ((data['close'].shift(3)-data['open'].shift(3))<0) & (data['low']<data['low'].shift(1)) & (data['low']<data['low'].shift(2)) & (data['high']>data['high'].shift(1)) & (data['high']>data['high'].shift(2)) & (data['low'].shift(3)<data['low'].shift(1)) & (data['low'].shift(3)<data['low'].shift(2)) & (data['high'].shift(3)>data['high'].shift(1)) & (data['high'].shift(3)>data['high'].shift(2))]
-
+    try:
+        return data[((data['close']-data['open'])<0) & ((data['close'].shift(1)-data['open'].shift(1))>0) & ((data['close'].shift(2)-data['open'].shift(2))>0) & ((data['close'].shift(3)-data['open'].shift(3))<0) & (data['low']<data['low'].shift(1)) & (data['low']<data['low'].shift(2)) & (data['high']>data['high'].shift(1)) & (data['high']>data['high'].shift(2)) & (data['low'].shift(3)<data['low'].shift(1)) & (data['low'].shift(3)<data['low'].shift(2)) & (data['high'].shift(3)>data['high'].shift(1)) & (data['high'].shift(3)>data['high'].shift(2))]
+    except:
+        return False
 # fills data with info & adds NN info
 # ticker = ticker
 # ts = time series from alpha

@@ -139,10 +139,10 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
             dfnow=[]
         # fill the data to write out
         sold_at_loss = False
-        if float(full_data.qty)>0 and buy_price>0: # this is buying to remove shares sold short
-            sold_at_loss = (buy_price<float(sale_price))
-        elif buy_price>0:
+        if float(full_data.qty)>0 and buy_price>0 and full_data.order['side']=='sell': # this is buying to remove shares sold short
             sold_at_loss = (buy_price>float(sale_price))
+        elif buy_price>0 and full_data.order['side']=='buy':
+            sold_at_loss = (buy_price<float(sale_price))
         # if we already sold at a loss, then keep that designation
         if not return_sold_at_loss:
             return_sold_at_loss = sold_at_loss
@@ -251,6 +251,8 @@ class MeanRevAlgo:
         self._symbol = symbol
         self._lot = lot
         self._limit = limit
+        self._stop_loss_when_in_black = 0.0
+        self._extreme_price
         self._target = target
         self._trail_percent = 4.9
         self._stop_percent = 1.05
@@ -267,6 +269,7 @@ class MeanRevAlgo:
         self.fig=[]
         self.fig_36d=[]
         self.sold_at_loss = False
+        
 
         today = datetime.datetime.now(tz=est) 
         d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
@@ -290,7 +293,7 @@ class MeanRevAlgo:
         self._fit()
         
         # collecting longer term checks for overbought or oversold
-        daily_prices,j    = ConfigTable(self._symbol, self._sqlcursor,self._ts,'full',hoursdelay=22)
+        daily_prices,j    = ConfigTable(self._symbol, self._sqlcursor,self._ts,'full',hoursdelay=24)
         try:
             start = time.time()
             daily_prices = AddInfo(daily_prices, self._spy, debug=debug)
@@ -545,9 +548,17 @@ class MeanRevAlgo:
                 # long position
                 # side: buy or sell or short
                 if float(self._position.qty)>0:
+
+                    # if the position is in the black, then set a stop order to avoid going into a loss
+                    # setting the stop at 25% of the gains...value is not set by anything tested
+                    # collecting the max price
+                    self._extreme_price = max(self._extreme_price,current_price,float(bar.high))
+                    if (self._avg_entry_price + self.fig[1])<self._extreme_price:
+                        self._stop_loss_when_in_black = 0.25*(self._extreme_price - self._avg_entry_price)+self._avg_entry_price
+                        
                     # fit mean is less than 0.1sigma from the entry, bailout. Exit as soon as possible
                     if self.fig[0] < (self._avg_entry_price + 0.1*self.fig[1] ) :
-                        if current_price>= self._avg_entry_price or True:
+                        if current_price>= self._avg_entry_price:
                             if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-current_price)/current_price>0.0033):
                                 self._l.info(f'Sell low - Current price {current_price} and limit price {limit_price}, target: {self._target}')
                                 self._limit=current_price
@@ -557,6 +568,8 @@ class MeanRevAlgo:
                         else: # improve the exiting when we are losing
                             if self._order==None or self._limit==None or self._limit!=self._avg_entry_price:
                                 self._limit = self._avg_entry_price
+                                self._transition('to_close_long')
+                                self._l.info(f'Sell low...currently underwater - Current price {current_price} and limit price {limit_price}, target: {self._target}')                                
                                 self._submit_sell()
                             # if we have an order check that it is not already a market order or in the extended hours
                             #if self._order!=None and (self._order.type!='market' or not self._order.extended_hours):
@@ -585,6 +598,12 @@ class MeanRevAlgo:
                             #self._cancel_order()
                             self._transition('to_close_long')
                             self._submit_sell()
+                    # if we need to update the order, then submit it. we are triggering a stop loss for purchases in the black.
+                    elif self._stop_loss_when_in_black!=0.0 and current_price<self._stop_loss_when_in_black*1.000005 and current_price>self._avg_entry_price and self._limit>self._stop_loss_when_in_black:
+                        self._limit = round(self._stop_loss_when_in_black,2)
+                        self._transition('to_close_long')
+                        self._l.info(f'Sell trigger stoploss attempt...price is coming down but still in the black - Current price {current_price} and limit price {limit_price}, target: {self._target}') 
+                        self._submit_sell()      
                     # fit mean is less than 0.75sigma from the entry; sell if we are making money
                     elif self.fig[0] < (self._avg_entry_price + 0.75*self.fig[1] ) and current_price> self._avg_entry_price:
                         new_limit_price = current_price
@@ -605,6 +624,14 @@ class MeanRevAlgo:
                             self._submit_sell()
                         
                 else: # short position
+
+                    # if the position is in the black, then set a stop order to avoid going into a loss
+                    # setting the stop at 25% of the gains...value is not set by anything tested
+                    # collecting the min price
+                    self._extreme_price = min(current_price if self._extreme_price==0.0 else self._extreme_price,current_price,float(bar.low))
+                    if (self._avg_entry_price - self.fig[1])>self._extreme_price:
+                        self._stop_loss_when_in_black = self._avg_entry_price - 0.25*(self._avg_entry_price - self._extreme_price)
+
                     # fit mean is more than than 0.1sigma from the entry
                     if self.fig[0] > (self._avg_entry_price - 0.1*self.fig[1] ) :
                         new_limit_price=current_price                        
@@ -618,7 +645,10 @@ class MeanRevAlgo:
                                 self._submit_sell()
                         else: # improve the exiting when we are losing
                             if self._order==None or self._limit==None or self._limit!=self._avg_entry_price:
+                                old_lim = new_limit_price                                
                                 self._limit = self._avg_entry_price
+                                self._transition('to_close_short')                                
+                                self._l.info(f'Buy for short position...curenntly underwater - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')                                
                                 self._submit_sell()                                
                         #else: # TODO improve the exit procedure when we are losing
                         #    if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
@@ -646,6 +676,13 @@ class MeanRevAlgo:
                             #self._cancel_order()
                             self._transition('to_close_short')
                             self._submit_sell()
+                    # if we need to update the order, then submit it. we are triggering a stop loss for purchases in the black.
+                    elif self._stop_loss_when_in_black!=0.0 and current_price>self._stop_loss_when_in_black*1.000005 and current_price<self._avg_entry_price and self._limit<self._stop_loss_when_in_black:
+                        self._limit = round(self._stop_loss_when_in_black,2)
+                        self._transition('to_close_short')
+                        self._l.info(f'Sell trigger for short position...stoploss attempt...price is coming down but still in the black - Current price {current_price} and limit price {limit_price}, target: {self._target}') 
+                        self._submit_sell()
+
                     # fit mean is more than 0.75sigma from the entry. Sell if we are making making.
                     elif self.fig[0] > (self._avg_entry_price - 0.75*self.fig[1] ) and current_price < self._avg_entry_price:
                         
@@ -766,7 +803,7 @@ class MeanRevAlgo:
                 if self.no_long:
                     self._l.info('long term (yearly) indicates this is already overbought')
                     return
-                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
+                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._cancel_order()
                     self._submit_buy()
@@ -782,7 +819,7 @@ class MeanRevAlgo:
                 if self.no_short:
                     self._l.info('long term (yearly) indicates this is already oversold')                    
                     return
-                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(self._order.limit_price-self._limit)/self._limit>0.033):
+                elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._cancel_order()
                     self._submit_buy()
@@ -808,6 +845,8 @@ class MeanRevAlgo:
                 self._update_positions_single()
                 if self._position==None:
                     self._state.UpdateCurrent('search_to_buy_or_short',self._order,self._position)
+                    self._extreme_price = 0.0
+                    self._stop_loss_when_in_black = 0.0
                 else:
                     if float(self._position.qty)>0:
                         self._state.UpdateCurrent('wait_long',self._order,self._position)
@@ -978,7 +1017,11 @@ class MeanRevAlgo:
         self._avg_entry_price = cost_basis
         #limit_price = round(max([cost_basis * self._take_profit, current_price, self._target,p_now]),2)
         limit_price = round(max([self._limit, current_price, self._target,p_close_last_bar]),2)
-        self._l.info('%s' %([self._limit, current_price, self._target,p_close_last_bar]))
+        # if we are approaching a loss after being in the black, then let's exit with a profit
+        if self._stop_loss_when_in_black!=0.0 and current_price<self._stop_loss_when_in_black*1.000005 and current_price>cost_basis and limit_price>self._stop_loss_when_in_black:
+            limit_price = round(self._stop_loss_when_in_black,2)
+            
+        self._l.info('%s' %([self._limit, current_price, self._target,p_close_last_bar,self._stop_loss_when_in_black]))        
         trade_side='sell'
         qty_for_order = self._position.qty
         if float(self._position.qty)<0:
@@ -989,6 +1032,9 @@ class MeanRevAlgo:
             limit_price = round(min([self._limit, current_price,p_close_last_bar]),2)
             if self._target>0:
                 limit_price = round(min([self._limit, current_price,p_close_last_bar,self._target]),2)
+            # if we are approaching a loss after being in the black, then let's exit with a profit
+            if self._stop_loss_when_in_black!=0.0 and current_price>self._stop_loss_when_in_black*1.000005 and current_price<cost_basis and limit_price<self._stop_loss_when_in_black:
+                limit_price = round(self._stop_loss_when_in_black,2)                
         # update the limit price
         self._limit = limit_price
         # creating sell params
@@ -1085,7 +1131,7 @@ def main(args):
     sqlcursor = SQL_CURSOR('%s/stocksAV.db' %STOCK_DB_PATH)
     fleet = {}
 
-    spy,j    = ConfigTable('SPY', sqlcursor,ts,'full',hoursdelay=22)
+    spy,j    = ConfigTable('SPY', sqlcursor,ts,'full',hoursdelay=24)
     spy = AddInfo(spy,spy,debug=debug)
     # check if this was already sold short
     sold_short = read_csv()
@@ -1101,6 +1147,7 @@ def main(args):
             collected=False
             while not collected:
                 try:
+                #if True:
                     algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])
                     collected=True
                 except:
