@@ -533,9 +533,12 @@ def LongTermPlot(my_stock_info_cp,market,ticker,plttext='',ratioName='SPY'):
         my_stock_info5y = my_stock_info5y[-min_length:]
         market5y = market5y[-min_length:]
 
-    if len(market5y['adj_close'])<1 or len(my_stock_info5y['adj_close'])<1:
-        print('Ticker has no adjusted close info: %s' %ticker)
-        return
+    try:
+        if len(market5y['adj_close'])<1 or len(my_stock_info5y['adj_close'])<1:
+            print('Ticker has no adjusted close info: %s' %ticker)
+            return
+    except Exception as e:
+        print(f'error could not load the 5y info...leaving function LongTermPlot with error {e}')
     my_stock_info5y['year5_return']=my_stock_info5y['adj_close']/my_stock_info5y['adj_close'][0]-1
     market5y['year5_return']=market5y['adj_close']/market5y['adj_close'][0]-1
     # comparison to the market

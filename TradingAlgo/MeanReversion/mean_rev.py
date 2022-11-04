@@ -43,8 +43,8 @@ def MoveOldSignals(api):
     for fname in files_names_to_check:
         try:
             dfnow = pd.read_csv(fname, sep=' ')
-        except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            logger.error(f'Could not load input csv: {fname}')
+        except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError) as e:
+            logger.error(f'Could not load input csv: {fname} with error {e}')
             dfnow=[]
         if len(dfnow)>0:
             out_df = []
@@ -60,9 +60,9 @@ def MoveOldSignals(api):
                 time_of_signal=''
                 try:
                     time_of_signal = datetime.datetime.strptime(dfnow[dfnow['ticker']==t]['signal_date'].values[0],"%Y-%m-%dT%H:%M:%S-04:00")
-                except:
+                except Exception as e:
                     print(dfnow[dfnow['ticker']==t]['signal_date'])
-                    print('Error loading: %s' %(dfnow[dfnow['ticker']==t]['signal_date'].values[0]))
+                    print(f'Error {e} loading: %s' %(dfnow[dfnow['ticker']==t]['signal_date'].values[0]))
                     sys.stdout.flush()
                 time_of_signal = time_of_signal.replace(tzinfo=est)
                 # if more than 5 days, then let's remove it or replace it.
@@ -85,8 +85,8 @@ def MoveOldSignals(api):
                         out_df.drop_duplicates(inplace=True)
                     out_df.to_csv(fname_old, sep=' ',index=False)
                     dfnow.to_csv(fname, sep=' ',index=False)
-                except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-                    logger.error(f'Could not load output csv OLD: {fname}')
+                except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError) as e:
+                    logger.error(f'Could not load output csv OLD: {fname} and error: {e}')
 
 def read_csv(in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_meanrev_instructions.csv'):
     """read_csv - reads in the csv files and applies basic sanity checks like that the price is not already above the new recommendation
@@ -109,8 +109,8 @@ def read_csv(in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_
         dfnow['timestamp']  = pd.to_datetime(dfnow.timestamp)
         # make sure the wash sale was more than 30 days ago
         dfnow = dfnow[dfnow.timestamp>(pd.Timestamp.now(tz=est)+datetime.timedelta(days=-32))]
-    except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-        logger.warning(f'Could not load input csv other: {in_file_name}')
+    except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError) as e:
+        logger.warning(f'Could not load input csv other: {in_file_name} error: {e}')
         dfnow=[]
     if len(dfnow)>0:
         for ticker in dfnow['symbol'].values:
@@ -134,8 +134,8 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
         try:
             dfnow = pd.read_csv(fname, sep=' ')
             sale_price = float(sale_price)
-        except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError):
-            logger.error(f'Could not load input csv LS check: {fname} {sale_price}')
+        except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError) as e:
+            logger.error(f'Could not load input csv LS check: {fname} {sale_price} and error: {e}')
             dfnow=[]
         # fill the data to write out
         sold_at_loss = False
@@ -161,7 +161,12 @@ def HandleTradeExit(ticker, sale_price, buy_price, sale_date, full_data, return_
                               columns=['isymbol','symbol','fill_status','side','position_qty','sale_price','sale_qty','avg_entry_price','sold_at_loss','timestamp','execution_id'])
         if len(dfnow)==0:
             dfnow = df_new
+        elif len(dfnow)>0 and ('execution_id' in dfnow.columns) and len(dfnow[dfnow['execution_id'].isin([full_data.execution_id])])>0:
+            logger.info(f'HandleTradeExit: {fname} sale: {sale_price} Bought: {buy_price} qty: {full_data.position_qty} sold at loss: {sold_at_loss}. Not writing because this is already in the dataframe and would be a duplicate {full_data.execution_id})')
+            #return return_sold_at_loss
+            continue
         if len(dfnow)>0:
+            logger.info(f'HandleTradeExit: writing the position: {fname} sale: {sale_price} Bought: {buy_price} qty: {full_data.position_qty} sold at loss: {sold_at_loss}. {full_data.execution_id}')
             #sell_date sold_at_loss sold
             dfnow = pd.concat([dfnow,df_new])
             dfnow.to_csv(fname, sep=' ',index=False)
@@ -252,7 +257,8 @@ class MeanRevAlgo:
         self._lot = lot
         self._limit = limit
         self._stop_loss_when_in_black = 0.0
-        self._extreme_price
+        self._extreme_price = 0.0
+        self._most_recent_trade = None        
         self._target = target
         self._trail_percent = 4.9
         self._stop_percent = 1.05
@@ -286,7 +292,7 @@ class MeanRevAlgo:
         minute_prices_thirty['sma200']=minute_prices_thirty['close']
         minute_prices_thirty['sma100']=minute_prices_thirty['close']
         minute_prices_thirty['sma50']=minute_prices_thirty['close']
-        self.minute_prices_36d = minute_prices_thirty        
+        self.minute_prices_36d = minute_prices_thirty
         self.minute_prices_18d = GetTimeSlot(self.minute_prices_36d,days=18,timez=est)
         self.minute_prices_60m = GetTimeSlot(self.minute_prices_36d,days=0,minutes=-60,timez=est)
         self._bars_since_fit=0
@@ -330,6 +336,7 @@ class MeanRevAlgo:
         tomorrow = (now + pd.Timedelta('1day')).strftime('%Y-%m-%d')
         self._update_status()
         self._init_state()
+        self._collect_most_recent_trade()
 
     def _fit(self):
         # fit the minute bars to extract the pol2 price prediction and error bands
@@ -349,6 +356,20 @@ class MeanRevAlgo:
         
         self._bars_since_fit=0
         
+    # collect the most recent trade to compute the max or min price since it was purchased
+    def _collect_most_recent_trade(self):
+        recent_trades = self._api.list_orders(status='closed',symbols=[self._symbol])
+        self._most_recent_trade = None
+        for r in recent_trades:
+            if r.filled_at!=None:
+                self._most_recent_trade = r
+                break;
+        if self._most_recent_trade!=None and len(self.minute_prices_36d)>0:
+            if self._position is not None and float(self._position.qty)>0:
+                self.extreme_price = self.minute_prices_36d[self.minute_prices_36d.index>self._most_recent_trade.filled_at]['high'].max()
+            elif self._position is not None and float(self._position.qty)<0:
+                self.extreme_price = self.minute_prices_36d[self.minute_prices_36d.index>self._most_recent_trade.filled_at]['low'].min()
+            
     def _init_state(self):
 
         symbol = self._symbol
@@ -389,9 +410,9 @@ class MeanRevAlgo:
             if self._order is None and self._state.GetStatus()!='search_to_buy_or_short':
                 self._l.warning(f'Init_state is trying to submit an order state {self._state} order {self._order}')
             elif self._order is not None:
-                if self._order['side']=='buy':
+                if self._order.side=='buy':
                     self._state.UpdateCurrent('wait_buy',order,position)
-                elif self._order['side']=='short':
+                elif self._order.side=='sell':
                     self._state.UpdateCurrent('wait_short',order,position)
                 else:
                     self._state.UpdateCurrent('error',order,position)                    
@@ -413,9 +434,9 @@ class MeanRevAlgo:
             else:
                 self._state.UpdateCurrent('error',self._order,self._position)
         if self._order!=None and self._position==None :
-            if self._order['side']=='buy':
+            if self._order.side=='buy':
                 self._state.UpdateCurrent('wait_buy',order,position)
-            elif self._order['side']=='short':
+            elif self._order.side=='sell':
                 self._state.UpdateCurrent('wait_short',order,position)
             else:
                 self._state.UpdateCurrent('error',order,position)                    
@@ -442,7 +463,7 @@ class MeanRevAlgo:
         isOpen = True
         try:
             isOpen = self.api.get_clock().is_open
-        except:
+        except Exception as e:
             pass
         return self._now().time() > pd.Timestamp('15:59',tz=est).time() and isOpen
 
@@ -1150,9 +1171,9 @@ def main(args):
                 #if True:
                     algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])
                     collected=True
-                except:
+                except Exception as e:
                     time.sleep(10)
-                    logger.error(f'This {symbol} error starting algo.')                    
+                    logger.error(f'This {symbol} error starting algo. {e}')
             fleet[symbol] = algo
 
     async def periodic():
@@ -1190,7 +1211,7 @@ def main(args):
             try:
                 stream = DeclareStream(symbols,sold_short,fleet)
                 RestartStream=False
-            except:
+            except Exception as e:
                 logger.info(f'Connection error restarting stream...try again in 10s: {e} failure number {AcceptedFailures}')
                 time.sleep(10)                
     loop.close()
