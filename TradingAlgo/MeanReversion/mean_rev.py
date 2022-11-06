@@ -261,6 +261,8 @@ class Slopes:
         self.curvature = 0
         # change in the last two minutes
         self.slope = 0
+        # additional significance based on the time period
+        self.additional_signif = 0.0
         
     def Fit(self,t,time_periods=[]):
         my_time_periods=self._time_periods
@@ -303,6 +305,7 @@ class Slopes:
             self._l.info(self._fit_results_map[self.max_dw_iter])
             self.curvature = self._fit_results_map[self.max_dw_iter][0]
             self.slope  = self.EndSlope(self._fitted_values_map[self.max_dw_iter])
+            self.additional_signif = 0.2*self.max_dw_iter            
             return self.curvature>0 and self.slope>0
         
         if side=='sell':
@@ -310,6 +313,7 @@ class Slopes:
             self._l.info(self._fit_results_map[self.max_up_iter])
             self.curvature = self._fit_results_map[self.max_up_iter][0]
             self.slope  = self.EndSlope(self._fitted_values_map[self.max_up_iter])
+            self.additional_signif = 0.2*self.max_up_iter            
             return self.curvature<0 and self.slope<0            
         return False
             
@@ -935,11 +939,15 @@ class MeanRevAlgo:
                 except Exception as e:
                     self._is_slope_check = True; # default is to ignore currently
                     self._l.error(f'could not run long slope check {e}')
+
+                # increase the significance thresholds if the slope check is failed
+                signif_slope_check = (timeline<5*500 and abs(self.fig[2])>(signif_hi+self._slopes.additional_signif) and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>(signif_lo+self._slopes.additional_signif) and self.fig[2]<0);
+                    
                 if self.no_long:
                     self._l.info('long term (yearly) indicates this is already overbought')
                     return
-                elif not self._is_slope_check:
-                    self._l.info(f'failed the slope check for long: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)}')
+                elif not self._is_slope_check and not signif_slope_check:
+                    self._l.info(f'failed the slope check for long: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)} with current significance: {self.fig[2]}. Increased threshold: {self._slopes.additional_signif}')
                     return                
                 elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
@@ -959,12 +967,16 @@ class MeanRevAlgo:
                     self._is_slope_check = self._slopes.DecideOnPivot(t=self.minute_prices_18d,side=self.trade_side)
                 except Exception as e:
                     self._is_slope_check = True; # default is to ignore currently
-                    self._l.error(f'could not run short slope check {e}')                
+                    self._l.error(f'could not run short slope check {e}')
+
+                # increase the significance thresholds if the slope check is failed
+                signif_slope_check = (self.fig[2]>(signif_lo+self._slopes.additional_signif) and (timeline>=5*500 or timeline<0)) or (self.fig[2]>(signif_hi+self._slopes.additional_signif) and timeline<=5*500);
+                
                 if self.no_short:
                     self._l.info('long term (yearly) indicates this is already oversold')
                     return
-                elif not self._is_slope_check:
-                    self._l.info(f'failed the slope check for short: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)}')
+                elif not self._is_slope_check and not signif_slope_check:
+                    self._l.info(f'failed the slope check for short: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)} with current significance: {self.fig[2]}. Increased threshold: {self._slopes.additional_signif}')
                     return
                 elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
