@@ -1307,10 +1307,19 @@ def AddData(t):
     """ AddData:
           t - dataframe of minute data for  stock
     """
-    t['slope']=0.0
-    t['slope'] = t.close.rolling(8).apply(tValLinR)
+    t['slope5']=0.0
+    t['slope5'] = t.close.rolling(5).apply(tValLinR)
+    t['slope8']=0.0
+    t['slope8'] = t.close.rolling(8).apply(tValLinR)
+    t['slope15']=0.0
+    t['slope15'] = t.close.rolling(15).apply(tValLinR)
     t['slope30']=0.0
     t['slope30'] = t.close.rolling(30).apply(tValLinR)
+    #t['slope60']=0.0
+    #t['slope60'] = t.close.rolling(60).apply(tValLinR)
+    #t['slope240']=0.0
+    #t['slope240'] = t.close.rolling(240).apply(tValLinR)
+    
     t['time']  = t.index
     t['i'] = range(0,len(t))
     #t['slope_volume'] = t.volume.rolling(8).apply(tValLinR) 
@@ -1340,6 +1349,23 @@ def AddData(t):
     t['change'] -= t.open.values[-1]
     t['change'] /= t.open.values[-1]
 
+def PerformFit(t_in,window=5,poly_order=2):
+    z4=None
+    p4=None
+    t = None
+    try:
+        #print(x,prices)
+        #sys.stdout.flush()
+        t = t_in[-1*window:]
+        z4 = np.polyfit(t.i, t.close, poly_order)
+        p4 = np.poly1d(z4)
+    except (np.linalg.LinAlgError) as e:
+        print("Testing multiple exceptions. {}".format(e.args[-1]))
+        print(x,prices)
+        sys.stdout.flush()
+
+    return z4,p4
+    
 def FitWithBandMeanRev(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly_order = 2, price_key='adj_close',doDateKey=False,spy_comparison=[], doRelative=False, doPlot=False, doJoin=True, debug=False):
     """
     my_index : datetime array

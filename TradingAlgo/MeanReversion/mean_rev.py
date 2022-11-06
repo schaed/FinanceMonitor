@@ -235,7 +235,110 @@ class Record:
         return self._current_status in ['wait_short','wait_long']
     def IsWaitClose(self):
         return self._current_status in ['wait_close_short','wait_close_long']
+    
+class Slopes:
+    """ fits time periods with a polynomial
+    _poly_order: int : order of polynomial
+    _time_periods list of time periods to fit
+    _fit_results_map : polynomial fit parameters mapped to the length of time used to fit. array of [a,b,c] for a x^2 + b x + c
+    _fitted_values_map : polynomial fit parameters
+    _l : logger
+    """
+    def __init__(self, l, time_periods=[5,8,15,30,60,240],poly_order=2):
+        self._time_periods = time_periods
+        self._poly_order = poly_order
+        self._fit_results_map = {}
+        self._fitted_values_map = {}
+        self._l = l
+        # explains more than 80% of the drawdown. 1.0 would just pick the max drawdown time period
+        # less than 1 favours the earlier time periods in the list, so shorter time periods in the current setup
+        self.draw_down_explained = 0.80
+
+        # values for which time_period has the max draw down
+        self.max_up_iter = 0
+        self.max_dw_iter = 0
+        # curvature is the sign of the quadratic coefficient
+        self.curvature = 0
+        # change in the last two minutes
+        self.slope = 0
         
+    def Fit(self,t,time_periods=[]):
+        my_time_periods=self._time_periods
+        if len(time_periods)>0:
+            my_time_periods = time_periods
+        for tp in my_time_periods:
+            self._l.info(f'Time period fit: {tp}')
+            z,p = self.PerformFit(t, window = tp, poly_order = self._poly_order)
+            self._fit_results_map[tp] = z
+            self._fitted_values_map[tp] = p(t.close[-5:])
+
+    # collect the last two points and take the difference
+    def EndSlope(self,p4):
+        self._l.debug(f'{p4}')
+        if len(p4)<2:
+            self._l.error('too few data points for the slope')
+            return 0
+        return p4[len(p4)-1] - p4[len(p4)-2]
+    
+    def PerformFit(self,t_in,window=5,poly_order=2):
+        z4=None
+        p4=None
+        t = None
+        try:
+            t = t_in[-1*window:]
+            z4 = np.polyfit(t.i, t.close, poly_order)
+            p4 = np.poly1d(z4)
+        except (np.linalg.LinAlgError) as e:
+            self._l.error("Testing multiple exceptions. {}".format(e.args[-1]))
+            self._l.error(f'{x},{prices}')
+
+        return z4,p4
+
+    # Collect the appropriate fit and decide whether this is a pivot point
+    def DecideOnPivot(self,t,side='buy'):
+        self.FindMaxDrawDownPeriod(t)
+        #print(t[['i','close']])
+        if side=='buy':
+            self.Fit(t,time_periods=[self.max_dw_iter])
+            self._l.info(self._fit_results_map[self.max_dw_iter])
+            self.curvature = self._fit_results_map[self.max_dw_iter][0]
+            self.slope  = self.EndSlope(self._fitted_values_map[self.max_dw_iter])
+            return self.curvature>0 and self.slope>0
+        
+        if side=='sell':
+            self.Fit(t,time_periods=[self.max_up_iter])
+            self._l.info(self._fit_results_map[self.max_up_iter])
+            self.curvature = self._fit_results_map[self.max_up_iter][0]
+            self.slope  = self.EndSlope(self._fitted_values_map[self.max_up_iter])
+            return self.curvature<0 and self.slope<0            
+        return False
+            
+    # Find the max draw down on the allowed for time periods
+    def FindMaxDrawDownPeriod(self,t):
+        #max_time_period = max(self._time_periods)
+        diffs = []
+        self.max_up_iter = 0
+        self.max_dw_iter = 0        
+        if len(t)==0:
+            self._l.error('No data for MaxDrawDownPeriod')
+            return
+        
+        current_close = t.close[len(t)-1]
+
+        it =0
+        for tp in self._time_periods:
+            if tp>=len(t):
+                continue
+            entry = t.close[len(t)-tp] - current_close
+            diffs += [entry]
+            if entry*self.draw_down_explained>diffs[self.max_up_iter]:
+                self.max_up_iter = it
+            if entry*self.draw_down_explained<diffs[self.max_dw_iter]:
+                self.max_dw_iter = it
+            it +=1
+        self._l.info(f'{diffs},{self.max_up_iter},{self.max_dw_iter}')
+        return 
+            
 class MeanRevAlgo:
     """ api is the contact to order stocks
         _ts: alpha vantage time series
@@ -275,8 +378,9 @@ class MeanRevAlgo:
         self.fig=[]
         self.fig_36d=[]
         self.sold_at_loss = False
+        self._slopes  = Slopes(self._l)
+        self._is_slope_check = True; # default is to ignore currently
         
-
         today = datetime.datetime.now(tz=est) 
         d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
         d1_set = today.strftime("%Y-%m-%d")
@@ -390,33 +494,35 @@ class MeanRevAlgo:
         if self._position is not None:
             if self._order is None:
                 if float(self._position.qty)<0:
-                    self._state.UpdateCurrent('monitor_short',order,position)                    
+                    self._state.UpdateCurrent('monitor_short',self._order,self._position)
                 elif float(self._position.qty)>0:                    
-                    self._state.UpdateCurrent('monitor_long',order,position)
+                    self._state.UpdateCurrent('monitor_long',self._order,self._position)
                 else:
-                    self._state.UpdateCurrent('error',order,position)                    
+                    self._l.error(f'Init_state position but no qty and no order: {self._state} position {self._position}')
+                    self._state.UpdateCurrent('error',self._order,self._position) 
                 # TODO
                 pass
                 #self._submit_trailing_stop()
             else:
                 # TODO: maybe check that the order goes the right direction? put into the Record class?
                 if float(self._position.qty)<0:
-                    self._state.UpdateCurrent('wait_close_short',order,position)                    
+                    self._state.UpdateCurrent('wait_close_short',self._order,self._position)
                 elif float(self._position.qty)>0:                    
-                    self._state.UpdateCurrent('wait_close_long',order,position)
+                    self._state.UpdateCurrent('wait_close_long',self._order,self._position)
                 else:
-                    self._state.UpdateCurrent('error',order,position)                
+                    self._state.UpdateCurrent('error',self._order,self._position)
+                    self._l.error(f'Init_state position but no qty and order: {self._state} order {self._position} and order: self._order')                    
         else:
             if self._order is None and self._state.GetStatus()!='search_to_buy_or_short':
                 self._l.warning(f'Init_state is trying to submit an order state {self._state} order {self._order}')
             elif self._order is not None:
                 if self._order.side=='buy':
-                    self._state.UpdateCurrent('wait_buy',order,position)
+                    self._state.UpdateCurrent('wait_buy',self._order,self._position)
                 elif self._order.side=='sell':
-                    self._state.UpdateCurrent('wait_short',order,position)
+                    self._state.UpdateCurrent('wait_short',self._order,self._position)
                 else:
-                    self._state.UpdateCurrent('error',order,position)                    
-                    self._l.warning(f'state {self._state} mismatch order {self._order}')
+                    self._state.UpdateCurrent('error',self._order,self._position) 
+                    self._l.error(f'state {self._state} mismatch order {self._order}')
             elif self._state.GetStatus()=='error':
                 self._l.warning(f'No state {self._state} initialized {self._order} for {self._symbol}')
                     
@@ -425,21 +531,22 @@ class MeanRevAlgo:
 
     def _update_status(self):
         self._update_orders_single()
-        self._update_positions_single()        
+        self._update_positions_single()
         if self._order!=None and self._position!=None :
             if float(self._position.qty)<0:
-                self._state.UpdateCurrent('wait_close_short',self._order,self._position)                    
+                self._state.UpdateCurrent('wait_close_short',self._order,self._position) 
             elif float(self._position.qty)>0:                    
                 self._state.UpdateCurrent('wait_close_long',self._order,self._position)
             else:
+                self._l.error(f'state {self._state} mismatch order {self._order}')
                 self._state.UpdateCurrent('error',self._order,self._position)
         if self._order!=None and self._position==None :
             if self._order.side=='buy':
-                self._state.UpdateCurrent('wait_buy',order,position)
+                self._state.UpdateCurrent('wait_buy',self._order,self._position)
             elif self._order.side=='sell':
-                self._state.UpdateCurrent('wait_short',order,position)
+                self._state.UpdateCurrent('wait_short',self._order,self._position)
             else:
-                self._state.UpdateCurrent('error',order,position)                    
+                self._state.UpdateCurrent('error',self._order,self._position)                    
                 self._l.warning(f'state {self._state} mismatch order {self._order}')
 
     def _update_orders(self):
@@ -502,6 +609,7 @@ class MeanRevAlgo:
 
     def _cancel_order(self):
         if self._order is not None:
+            self._l.info(f'Cancelling order, so putting into error state for {self._order}')
             self._transition('error')
             self._api.cancel_order(self._order.id)
         self._update_orders()
@@ -821,9 +929,18 @@ class MeanRevAlgo:
                 max_price = current_price # max(current_price,trade.price)
                 self._limit = int(100*max_price*1.002)/100.0
                 self.trade_side='buy'
+                self._is_slope_check = True; # default is to ignore currently
+                try:
+                    self._is_slope_check = self._slopes.DecideOnPivot(t=self.minute_prices_18d,side=self.trade_side)
+                except Exception as e:
+                    self._is_slope_check = True; # default is to ignore currently
+                    self._l.error(f'could not run long slope check {e}')
                 if self.no_long:
                     self._l.info('long term (yearly) indicates this is already overbought')
                     return
+                elif not self._is_slope_check:
+                    self._l.info(f'failed the slope check for long: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)}')
+                    return                
                 elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
                     self._cancel_order()
@@ -837,8 +954,17 @@ class MeanRevAlgo:
                 min_price = current_price #min(current_price,trade.price)                
                 self._limit = int(100*min_price/1.002)/100.0
                 self.trade_side='sell'
+                self._is_slope_check = True;
+                try:
+                    self._is_slope_check = self._slopes.DecideOnPivot(t=self.minute_prices_18d,side=self.trade_side)
+                except Exception as e:
+                    self._is_slope_check = True; # default is to ignore currently
+                    self._l.error(f'could not run short slope check {e}')                
                 if self.no_short:
-                    self._l.info('long term (yearly) indicates this is already oversold')                    
+                    self._l.info('long term (yearly) indicates this is already oversold')
+                    return
+                elif not self._is_slope_check:
+                    self._l.info(f'failed the slope check for short: curvature: {self._slopes.curvature} slope: {self._slopes.slope} with current price: {current_price} at {datetime.datetime.now(tz=est)}')
                     return
                 elif self._order!=None and (self._position==None ) and (self._limit>0 and abs(float(self._order.limit_price)-self._limit)/self._limit>0.033):
                     self._l.info(f'Update Short signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}')
@@ -872,9 +998,10 @@ class MeanRevAlgo:
                     if float(self._position.qty)>0:
                         self._state.UpdateCurrent('wait_long',self._order,self._position)
                     elif float(self._position.qty)<0:
-                        self._state.UpdateCurrent('wait_short',self._order,self._position)                        
+                        self._state.UpdateCurrent('wait_short',self._order,self._position)
                     else:
-                        self._state.UpdateCurrent('error',self._order,self._position) 
+                        self._l.error(f'unclear state...we have no position but waiting to close it {self._state}')
+                        self._state.UpdateCurrent('error',self._order,self._position)
             # waiting for the order to be filled to have a position
             elif self._state.GetStatus().count('wait_'):
                 # TODO do some error messaging if we dont have a position
@@ -885,9 +1012,10 @@ class MeanRevAlgo:
                     if float(self._position.qty)>0:
                         self._state.UpdateCurrent('wait_long',self._order,self._position)
                     elif float(self._position.qty)<0:
-                        self._state.UpdateCurrent('wait_short',self._order,self._position)                        
+                        self._state.UpdateCurrent('wait_short',self._order,self._position)
                     else:
-                        self._state.UpdateCurrent('error',self._order,self._position)                 
+                        self._l.error(f'unclear state...we have no position but waiting on something {self._state}')
+                        self._state.UpdateCurrent('error',self._order,self._position)
                 # TODO
                 #self._transition('TO_TRAILSTOP')
                 #self._submit_trailing_stop()
@@ -947,7 +1075,7 @@ class MeanRevAlgo:
             try:
                 self._api.replace_order(self._order.id,limit_price=self._limit)
             except (APIError) as e:
-                self._l.info(e)
+                self._l.error(f'api replace order error: {e}')
                 self._transition('error')
                 return
 
@@ -976,7 +1104,7 @@ class MeanRevAlgo:
             )
             self._fit_on_transaction = copy.deepcopy(self.fig)
         except Exception as e:
-            self._l.info(e)
+            self._l.error(f'trying to create an order: {e}')
             self._transition('error')
             return
 
@@ -1084,7 +1212,7 @@ class MeanRevAlgo:
                 self._api.replace_order(self._order.id,limit_price=self._limit)
                 return
             except (APIError) as e:
-                self._l.info(e)
+                self._l.error(f'trying to replace order and failed {e}')
                 self._transition('error')
                 return
 
@@ -1101,7 +1229,7 @@ class MeanRevAlgo:
         try:
             order = self._api.submit_order(**params)
         except Exception as e:
-            self._l.error(e)
+            self._l.error(f'trying to submit an order and failed: {e}')
             self._transition('error')
             return
 
