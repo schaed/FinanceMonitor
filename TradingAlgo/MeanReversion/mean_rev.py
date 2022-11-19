@@ -108,7 +108,7 @@ def read_csv(in_file_name='/home/schae/testarea/FinanceMonitor/Instructions/out_
         dfnow['sold_at_loss']  = dfnow.sold_at_loss.astype(bool)
         dfnow['timestamp']  = pd.to_datetime(dfnow.timestamp)
         # make sure the wash sale was more than 30 days ago
-        dfnow = dfnow[dfnow.timestamp>(pd.Timestamp.now(tz=est)+datetime.timedelta(days=-32))]
+        dfnow = dfnow[dfnow.timestamp>(pd.Timestamp.now(tz=est)+datetime.timedelta(days=-31))]
     except (ValueError,FileNotFoundError,ConnectionResetError,FileExistsError) as e:
         logger.warning(f'Could not load input csv other: {in_file_name} error: {e}')
         dfnow=[]
@@ -305,7 +305,7 @@ class Slopes:
             self._l.info(self._fit_results_map[self.max_dw_iter])
             self.curvature = self._fit_results_map[self.max_dw_iter][0]
             self.slope  = self.EndSlope(self._fitted_values_map[self.max_dw_iter])
-            self.additional_signif = 0.2*self.max_dw_iter            
+            self.additional_signif = 0.1*self.max_dw_iter + 0.2
             return self.curvature>0 and self.slope>0
         
         if side=='sell':
@@ -313,10 +313,17 @@ class Slopes:
             self._l.info(self._fit_results_map[self.max_up_iter])
             self.curvature = self._fit_results_map[self.max_up_iter][0]
             self.slope  = self.EndSlope(self._fitted_values_map[self.max_up_iter])
-            self.additional_signif = 0.2*self.max_up_iter            
+            self.additional_signif = 0.1*self.max_up_iter + 0.2
             return self.curvature<0 and self.slope<0            
         return False
-            
+
+    # get entry
+    def GetLastEntry(self,t,col='slope8'):
+        if len(t)==0 or (col not in t.columns):
+            self._l.error(f'No data for GetLastEntry for column: {col}')
+            return 0
+        return t[col][len(t)-1]
+
     # Find the max draw down on the allowed for time periods
     def FindMaxDrawDownPeriod(self,t):
         #max_time_period = max(self._time_periods)
@@ -333,7 +340,7 @@ class Slopes:
         for tp in self._time_periods:
             if tp>=len(t):
                 continue
-            entry = t.close[len(t)-tp] - current_close
+            entry = current_close - t.close[len(t)-tp]
             diffs += [entry]
             if entry*self.draw_down_explained>diffs[self.max_up_iter]:
                 self.max_up_iter = it
@@ -686,9 +693,16 @@ class MeanRevAlgo:
                     # setting the stop at 25% of the gains...value is not set by anything tested
                     # collecting the max price
                     self._extreme_price = max(self._extreme_price,current_price,float(bar.high))
-                    if (self._avg_entry_price + self.fig[1])<self._extreme_price:
-                        self._stop_loss_when_in_black = 0.25*(self._extreme_price - self._avg_entry_price)+self._avg_entry_price
-                        
+                    # when really close to the break even point, we are monitoring the 15 minute slope to make sure we didn't buy too early
+                    if self._slopes.GetLastEntry(self.minute_prices_60m,col='slope15')<0.0 and self._extreme_price>1.003*self._avg_entry_price and current_price<1.0012*self._avg_entry_price:
+                        self._stop_loss_when_in_black = 1.0008*self._avg_entry_price
+                    elif (self._avg_entry_price + 0.4*self.fig[1])<self._extreme_price:
+                        self._stop_loss_when_in_black = 0.2*(self._extreme_price - self._avg_entry_price)+self._avg_entry_price
+                        # if the slope is negative for the pol2 fit, then let's get out
+                        slope_check = slope(self.fig[4],[self.fig[5],self.fig[5]+1])
+                        if slope_check<0:
+                            self._stop_loss_when_in_black = 0.35*(self._extreme_price - self._avg_entry_price)+self._avg_entry_price
+
                     # fit mean is less than 0.1sigma from the entry, bailout. Exit as soon as possible
                     if self.fig[0] < (self._avg_entry_price + 0.1*self.fig[1] ) :
                         if current_price>= self._avg_entry_price:
@@ -725,8 +739,9 @@ class MeanRevAlgo:
                         
                         # check if we need to update the order
                         if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
+                            old_lim = self._limit
                             self._limit = new_limit_price
-                            old_lim = new_limit_price
+
                             self._l.info(f'Sell 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             #self._cancel_order()
                             self._transition('to_close_long')
@@ -741,8 +756,9 @@ class MeanRevAlgo:
                     elif self.fig[0] < (self._avg_entry_price + 0.75*self.fig[1] ) and current_price> self._avg_entry_price:
                         new_limit_price = current_price
                         if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-new_limit_price)/current_price>0.0033):
+                            old_lim = self._limit
                             self._limit=new_limit_price
-                            old_lim = new_limit_price
+
                             self._l.info(f'Sell 0.75 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}') 
                             #self._cancel_order()
                             self._transition('to_close_long')
@@ -762,9 +778,15 @@ class MeanRevAlgo:
                     # setting the stop at 25% of the gains...value is not set by anything tested
                     # collecting the min price
                     self._extreme_price = min(current_price if self._extreme_price==0.0 else self._extreme_price,current_price,float(bar.low))
-                    if (self._avg_entry_price - self.fig[1])>self._extreme_price:
-                        self._stop_loss_when_in_black = self._avg_entry_price - 0.25*(self._avg_entry_price - self._extreme_price)
-
+                    # when really close to the break even point, we are monitoring the 15 minute slope to make sure we didn't buy too early
+                    if self._slopes.GetLastEntry(self.minute_prices_60m,col='slope15')>0.0 and self._extreme_price<self._avg_entry_price/1.003 and current_price>self._avg_entry_price/1.0012:
+                        self._stop_loss_when_in_black = self._avg_entry_price/1.0008
+                    elif (self._avg_entry_price - 0.4*self.fig[1])>self._extreme_price:
+                        self._stop_loss_when_in_black = self._avg_entry_price - 0.2*(self._avg_entry_price - self._extreme_price)
+                        # if the slope is positive for the pol2 fit, then let's get out
+                        slope_check = slope(self.fig[4],[self.fig[5],self.fig[5]+1])
+                        if slope_check>0:
+                            self._stop_loss_when_in_black = self._avg_entry_price - 0.35*(self._avg_entry_price - self._extreme_price)
                     # fit mean is more than than 0.1sigma from the entry
                     if self.fig[0] > (self._avg_entry_price - 0.1*self.fig[1] ) :
                         new_limit_price=current_price                        
@@ -778,7 +800,7 @@ class MeanRevAlgo:
                                 self._submit_sell()
                         else: # improve the exiting when we are losing
                             if self._order==None or self._limit==None or self._limit!=self._avg_entry_price:
-                                old_lim = new_limit_price                                
+                                old_lim = new_limit_price
                                 self._limit = self._avg_entry_price
                                 self._transition('to_close_short')                                
                                 self._l.info(f'Buy for short position...curenntly underwater - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')                                
@@ -803,8 +825,9 @@ class MeanRevAlgo:
                             new_limit_price = self._avg_entry_price
                         
                         if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
+                            old_lim = self._limit
                             self._limit = new_limit_price
-                            old_lim = new_limit_price
+
                             self._l.info(f'Buy for short position - 0.25 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             #self._cancel_order()
                             self._transition('to_close_short')
@@ -820,8 +843,8 @@ class MeanRevAlgo:
                     elif self.fig[0] > (self._avg_entry_price - 0.75*self.fig[1] ) and current_price < self._avg_entry_price:
                         
                         if self._order==None or self._limit==None or (current_price>0.0 and abs(self._limit-current_price)/current_price>0.0033):
+                            old_lim = self._limit
                             self._limit=current_price
-                            old_lim = new_limit_price                            
                             #self._cancel_order()
                             self._l.info(f'Buy for short position - 0.75 - Current price {current_price} and limit price {self._limit}, old lim: {old_lim}, target: {self._target}')
                             self._transition('to_close_short')
