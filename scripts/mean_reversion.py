@@ -390,10 +390,11 @@ def FitWithBand(my_index, arr_prices, doMarker=True, ticker='X',outname='', poly
     # create an error band
     diff = prices - p4(x)
     stddev = diff.std()
-
+    print('p4:',z4[0],z4,x[-1],my_index[-1])
+    print(-z4[1]/z4[0]/2.0)
     output_lines = '%s,%s,%s,%s' %(p4(x)[-1],stddev,diff[-1],prices[-1])
     if stddev!=0.0:
-        output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])    
+        output_lines = '%0.3f,%0.3f,%0.3f,%s,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],p4)    
     if doRelative:
         diff /= p4(x)
         stddev = diff.std() #*p4(x).mean()
@@ -494,7 +495,8 @@ ticker='KZR'
 #ticker='PLBY'
 ticker='RENT'
 ticker='IINN'
-filter_shift_days = 0
+ticker='SPY'
+filter_shift_days = 62
 today = datetime.datetime.now(tz=est) #+ datetime.timedelta(minutes=5)
 todayFilter = (today + datetime.timedelta(days=-1*filter_shift_days))
 d1 = todayFilter.strftime("%Y-%m-%dT%H:%M:%S-05:00")
@@ -527,7 +529,9 @@ daily_prices_5y   = GetTimeSlot(daily_prices, days=5*365+filter_shift_days)
 daily_prices_180d['daily_return'] = daily_prices_180d['adj_close'].pct_change(periods=1)
 #print('ticker,time_span,fit_difference_in_stddev,current_price,stddev')
 print('ticker,time_span,fit_expectations,stddev,fit_diff_significance,current_price')
-FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
+sixtyday  = FitWithBand(daily_prices_60d.index, daily_prices_60d [['adj_close','high','low','open','close']],ticker=ticker,outname='60d')
+print(sixtyday)
+
 FitWithBand(daily_prices_180d.index,daily_prices_180d[['adj_close','high','low','open','close']],ticker=ticker,outname='180d')
 FitWithBand(daily_prices_365d.index,daily_prices_365d[['adj_close','high','low','open','close']],ticker=ticker,outname='365d')
 FitWithBand(daily_prices_3y.index,  daily_prices_3y  [['adj_close','high','low','open','close']],ticker=ticker,outname='3y')

@@ -20,12 +20,21 @@ def LoadData(df, sqlcursorExtra, tableName='SPY200MA', index_label='Date'):
         stock = stock.set_index('Date')
         stock = stock.sort_index()
 
+        
         if len(stock)>0 and (todayDateTime - stock.index[-1])<datetime.timedelta(days=1,hours=20):
             print('already loaded %s! %s' %(tableName,stock.index[-1]))
             Load=False
+        if len(stock)>0:
+            for c in stock.columns:
+                if c not in df.columns and c!=index_label:
+                    df[c]=0
+            #df['61.8perc_Retracement_from_the_52_Week_Low']=0
+            df = df[stock.columns]
     except pd.io.sql.DatabaseError:
         pass
-
+    #print(stock.columns)
+    #print(stock)
+    #print(df)
     if Load:
         UpdateTable(df,tableName,sqlcursorExtra, index_label=index_label)
 

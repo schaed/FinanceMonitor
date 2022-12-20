@@ -362,7 +362,7 @@ class MeanRevAlgo:
         _avg_entry_price : float average entry price
         _raise_stop : float gain percentage to raise the stop to ensure there is no loss
     """
-    def __init__(self, api, ts, sqlcursor, spy, symbol, lot, limit, target, df=[]):
+    def __init__(self, api, ts, sqlcursor, spy, symbol, lot, limit, target, df=[],spy_side='none',spy_additional_signif = 0.0):
         self._api = api
         self._ts = ts
         self._sqlcursor = sqlcursor
@@ -391,6 +391,8 @@ class MeanRevAlgo:
         self.sold_at_loss = False
         self._slopes  = Slopes(self._l)
         self._is_slope_check = True; # default is to ignore currently
+        self._spy_side = spy_side
+        self._spy_additional_signif = spy_additional_signif
         
         today = datetime.datetime.now(tz=est) 
         d1 = today.strftime("%Y-%m-%dT%H:%M:%S-05:00")
@@ -429,13 +431,17 @@ class MeanRevAlgo:
 
         self.daily_prices_365d = GetTimeSlot(daily_prices,days=365)
         self.daily_prices_180d = GetTimeSlot(daily_prices,days=180)
+        #self.daily_prices_60d = GetTimeSlot(daily_prices,days=60)        
         self.input_keysd = ['adj_close','high','low','open','close','sma200','sma100','sma50','sma20']
         self.fit_365d = FitWithBandMeanRev(self.daily_prices_365d.index,self.daily_prices_365d[self.input_keysd],ticker=self._symbol,outname='365d')
         self.fit_180d = FitWithBandMeanRev(self.daily_prices_180d.index,self.daily_prices_180d[self.input_keysd],ticker=self._symbol,outname='180d')
+        #self.fit_60d = FitWithBandMeanRev(self.daily_prices_60d.index,self.daily_prices_60d[self.input_keysd],ticker=self._symbol,outname='60d')
+        #self._l.info(f'60D: {self.fit_60d}')
         self._l.info(f'180D: {self.fit_180d}')
         self._l.info(f'365D: {self.fit_365d}')
         p_now = self.minute_prices_18d['close'][-1]
-        self.signif_180d = (p_now - self.fit_180d[0])/(self.fit_180d[1]/2)
+        #self.signif_60d = (p_now - self.fit_60d[0])/(self.fit_60d[1]/2)
+        self.signif_180d = (p_now - self.fit_180d[0])/(self.fit_180d[1]/2)        
         self.signif_365d = (p_now - self.fit_365d[0])/(self.fit_365d[1]/2)
         # Longer term trend indicates that this stock is oversold or overbought.
         #   - idea is not to fight the bigger trend to avoid a big mean reversion that goes opposite to the general trend
@@ -651,6 +657,7 @@ class MeanRevAlgo:
         self._bars_since_fit+=1
         if self._bars_since_fit>15:
             self._fit()
+
         # do not make decisions based on bad data
         if type(self.fig)==type(None) or len(self.fig)==0 or np.isnan(self.fig[0]):
             self._l.error(f'cannot make a decision without an 18d fit: {self.fig}')
@@ -658,7 +665,11 @@ class MeanRevAlgo:
         if type(self.fig_36d)==type(None) or len(self.fig_36d)==0 or np.isnan(self.fig_36d[0]):
             self._l.error(f'cannot make a decision without an 36d fit: {self.fig_36d}') 
             return
-
+        # update the significance
+        if self.fig[1]!=0.0:
+            self.fig[2] = (current_price - self.fig[0])/self.fig[1]
+            self.fig_36d[2] = (current_price - self.fig_36d[0])/self.fig_36d[1]
+        
         # have a position position, let's submit orders
         if self._position is not None and type([])==type(self._position):
             self._update_positions_single()
@@ -696,6 +707,7 @@ class MeanRevAlgo:
                     # when really close to the break even point, we are monitoring the 15 minute slope to make sure we didn't buy too early
                     if self._slopes.GetLastEntry(self.minute_prices_60m,col='slope15')<0.0 and self._extreme_price>1.003*self._avg_entry_price and current_price<1.0012*self._avg_entry_price:
                         self._stop_loss_when_in_black = 1.0008*self._avg_entry_price
+                        self._l.info(f'Sell long -> trying to exit on a trend that is reversing - Current price {current_price} stop loss when in black: {self._stop_loss_when_in_black}')
                     elif (self._avg_entry_price + 0.4*self.fig[1])<self._extreme_price:
                         self._stop_loss_when_in_black = 0.2*(self._extreme_price - self._avg_entry_price)+self._avg_entry_price
                         # if the slope is negative for the pol2 fit, then let's get out
@@ -747,7 +759,7 @@ class MeanRevAlgo:
                             self._transition('to_close_long')
                             self._submit_sell()
                     # if we need to update the order, then submit it. we are triggering a stop loss for purchases in the black.
-                    elif self._stop_loss_when_in_black!=0.0 and current_price<self._stop_loss_when_in_black*1.000005 and current_price>self._avg_entry_price and self._limit>self._stop_loss_when_in_black:
+                    elif self._stop_loss_when_in_black!=0.0 and current_price<self._stop_loss_when_in_black*1.000005 and current_price>self._avg_entry_price/1.002 and self._limit>self._stop_loss_when_in_black:
                         self._limit = round(self._stop_loss_when_in_black,2)
                         self._transition('to_close_long')
                         self._l.info(f'Sell trigger stoploss attempt...price is coming down but still in the black - Current price {current_price} and limit price {limit_price}, target: {self._target}') 
@@ -781,6 +793,7 @@ class MeanRevAlgo:
                     # when really close to the break even point, we are monitoring the 15 minute slope to make sure we didn't buy too early
                     if self._slopes.GetLastEntry(self.minute_prices_60m,col='slope15')>0.0 and self._extreme_price<self._avg_entry_price/1.003 and current_price>self._avg_entry_price/1.0012:
                         self._stop_loss_when_in_black = self._avg_entry_price/1.0008
+                        self._l.info(f'Sell short -> trying to exit on a trend that is reversing - Current price {current_price} stop loss when in black: {self._stop_loss_when_in_black}')
                     elif (self._avg_entry_price - 0.4*self.fig[1])>self._extreme_price:
                         self._stop_loss_when_in_black = self._avg_entry_price - 0.2*(self._avg_entry_price - self._extreme_price)
                         # if the slope is positive for the pol2 fit, then let's get out
@@ -803,7 +816,7 @@ class MeanRevAlgo:
                                 old_lim = new_limit_price
                                 self._limit = self._avg_entry_price
                                 self._transition('to_close_short')                                
-                                self._l.info(f'Buy for short position...curenntly underwater - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')                                
+                                self._l.info(f'Buy for short position...currently underwater - 0.1 - Current price {current_price} and limit price {self._limit}, old limit: {old_lim}, target: {self._target}')                                
                                 self._submit_sell()                                
                         #else: # TODO improve the exit procedure when we are losing
                         #    if self._order==None or self._limit==None or (self._limit>0.0 and abs(self._limit-new_limit_price)/self._limit>0.0033):
@@ -833,7 +846,7 @@ class MeanRevAlgo:
                             self._transition('to_close_short')
                             self._submit_sell()
                     # if we need to update the order, then submit it. we are triggering a stop loss for purchases in the black.
-                    elif self._stop_loss_when_in_black!=0.0 and current_price>self._stop_loss_when_in_black*1.000005 and current_price<self._avg_entry_price and self._limit<self._stop_loss_when_in_black:
+                    elif self._stop_loss_when_in_black!=0.0 and current_price>self._stop_loss_when_in_black*1.000005 and current_price<self._avg_entry_price*1.002 and self._limit<self._stop_loss_when_in_black:
                         self._limit = round(self._stop_loss_when_in_black,2)
                         self._transition('to_close_short')
                         self._l.info(f'Sell trigger for short position...stoploss attempt...price is coming down but still in the black - Current price {current_price} and limit price {limit_price}, target: {self._target}') 
@@ -914,10 +927,10 @@ class MeanRevAlgo:
             slope_check_36d = slope(self.fig_36d[4],[self.fig_36d[5],self.fig_36d[5]+1])
         
             # set these slope checks using historical data?
-            # at 5d or 5*500min, then 1.5 sigma. add 0.5 for each day shorter than 0.5sigma
+            # at 5d or 5*500min, then 2.0 sigma. add 0.5 for each day shorter than 0.5sigma
             switch_slope = 0.00006
-            signif_hi=2.0
-            signif_lo=1.5
+            signif_hi=2.5
+            signif_lo=2.0
             timeline=5*500
             timeline_36d=5*500
             # add the time to achieve a full reversion to the mean
@@ -928,13 +941,28 @@ class MeanRevAlgo:
                 if timeline>5*500 or timeline<0.0:
                     switch_slope = slope_check
                 else:
-                    signif_hi = 1.5+0.5*(5*500.0 - timeline)/500.0
+                    signif_hi = 2.0+0.5*(5*500.0 - timeline)/500.0
                     if timeline_36d>0 and timeline_36d<5*500 and timeline>timeline_36d:
-                        signif_hi = 1.5+0.5*(5*500.0 - timeline_36d)/500.0                        
+                        signif_hi = 2.0+0.5*(5*500.0 - timeline_36d)/500.0                        
 
-                    # when there is downtrend in the slope, then set the significance at 1.5sigma
-                    signif_lo = 1.5 #+0.5*(5*500.0 - timeline)/500.0
-
+                    # when there is downtrend in the slope, then set the significance at 2.0sigma
+                    signif_lo = 2.0 #+0.5*(5*500.0 - timeline)/500.0
+            # raise the signif
+            if self._symbol=='AAPL':
+                signif_hi+=2.0
+                signif_lo+=2.0
+            # adding spy inputs from 60d fit
+            signif_long_hi = signif_hi
+            signif_long_lo = signif_lo
+            signif_short_hi = signif_hi
+            signif_short_lo = signif_lo
+            if self._spy_side=='long':
+                signif_long_hi+=self._spy_additional_signif
+                signif_long_lo+=self._spy_additional_signif
+            elif self._spy_side=='short':
+                signif_short_hi+=self._spy_additional_signif
+                signif_short_lo+=self._spy_additional_signif
+                
             # check that the 36d and the 18d agree
             signif_18d = self.fig[2]
             signif_36d = self.fig_36d[2]
@@ -945,13 +973,13 @@ class MeanRevAlgo:
             if abs(signif_36d)<0.5:
                 self._l.info(f' 36d indicates nothing is out of order - 18d: %0.2f 36d: %0.2f' %(signif_18d,signif_36d))
                 return
-                    
+            
             # set the limit price                
             self.trade_side='buy'
             # if the fit slope is larger than the switch_slope, then check the significance. The significance is also less than 0 indicating below the mean price
             #   - the switch slope could be optimized -> just using the timeline to be more clear
-            self._l.info(f'considering trade: signif 18d: %0.2f signif 36d: %0.2f signif_hi: %0.2f signif_lo: %0.2f timeline: %0.1f min 36d: %0.1f slope: %0.6f ' %(self.fig[2],self.fig_36d[2],signif_hi,signif_lo,timeline,timeline_36d,slope_check)+f'current_price: {current_price} fit: {self.fig}')
-            if (timeline<5*500 and abs(self.fig[2])>signif_hi and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>signif_lo and self.fig[2]<0):
+            self._l.info(f'considering trade: signif 18d: %0.2f signif 36d: %0.2f signif_long_hi: %0.2f signif_short_lo: %0.2f signif_short_hi: %0.2f timeline: %0.1f min 36d: %0.1f slope: %0.6f ' %(self.fig[2],self.fig_36d[2],signif_long_hi,signif_short_lo,signif_short_hi,timeline,timeline_36d,slope_check)+f'current_price: {current_price} fit: {self.fig}')
+            if (timeline<5*500 and abs(self.fig[2])>signif_long_hi and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>signif_long_lo and self.fig[2]<0):
                 #trade = self._api.get_last_trade(self._symbol)
                 max_price = current_price # max(current_price,trade.price)
                 self._limit = int(100*max_price*1.002)/100.0
@@ -964,7 +992,7 @@ class MeanRevAlgo:
                     self._l.error(f'could not run long slope check {e}')
 
                 # increase the significance thresholds if the slope check is failed
-                signif_slope_check = (timeline<5*500 and abs(self.fig[2])>(signif_hi+self._slopes.additional_signif) and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>(signif_lo+self._slopes.additional_signif) and self.fig[2]<0);
+                signif_slope_check = (timeline<5*500 and abs(self.fig[2])>(signif_long_hi+self._slopes.additional_signif) and self.fig[2]<0) or ((timeline>=5*500 or timeline<0) and abs(self.fig[2])>(signif_long_lo+self._slopes.additional_signif) and self.fig[2]<0);
                     
                 if self.no_long:
                     self._l.info('long term (yearly) indicates this is already overbought')
@@ -980,7 +1008,7 @@ class MeanRevAlgo:
                     self._l.info(f'Buy signal - Current price {current_price} and limit price {self._limit}, trade side: {self.trade_side} target: {self._target}') 
                     self._submit_buy()
                 #print('over sold or bought!',self.fig,self.minute_prices_18d.index[-1],'minute slope: %0.3f' %self.minute_prices_18d['slope'][-1],' p4 slope: %0.4f' %slope(self.fig[4],[self.fig[5],self.fig[5]+1]))
-            elif (self.fig[2]>signif_lo and (timeline>=5*500 or timeline<0)) or (self.fig[2]>signif_hi and timeline<=5*500) :
+            elif (self.fig[2]>signif_short_lo and (timeline>=5*500 or timeline<0)) or (self.fig[2]>signif_short_hi and timeline<=5*500) :
                 #trade = self._api.get_last_trade(self._symbol)
                 min_price = current_price #min(current_price,trade.price)                
                 self._limit = int(100*min_price/1.002)/100.0
@@ -993,7 +1021,7 @@ class MeanRevAlgo:
                     self._l.error(f'could not run short slope check {e}')
 
                 # increase the significance thresholds if the slope check is failed
-                signif_slope_check = (self.fig[2]>(signif_lo+self._slopes.additional_signif) and (timeline>=5*500 or timeline<0)) or (self.fig[2]>(signif_hi+self._slopes.additional_signif) and timeline<=5*500);
+                signif_slope_check = (self.fig[2]>(signif_short_lo+self._slopes.additional_signif) and (timeline>=5*500 or timeline<0)) or (self.fig[2]>(signif_short_hi+self._slopes.additional_signif) and timeline<=5*500);
                 
                 if self.no_short:
                     self._l.info('long term (yearly) indicates this is already oversold')
@@ -1029,6 +1057,7 @@ class MeanRevAlgo:
                     self._state.UpdateCurrent('search_to_buy_or_short',self._order,self._position)
                     self._extreme_price = 0.0
                     self._stop_loss_when_in_black = 0.0
+                    self._avg_entry_price = -1.0
                 else:
                     if float(self._position.qty)>0:
                         self._state.UpdateCurrent('wait_long',self._order,self._position)
@@ -1043,6 +1072,9 @@ class MeanRevAlgo:
                 self._update_positions_single()
                 if self._position==None:
                     self._state.UpdateCurrent('search_to_buy_or_short',self._order,self._position)
+                    self._extreme_price = 0.0
+                    self._stop_loss_when_in_black = 0.0                    
+                    self._avg_entry_price = -1.0                    
                 else:
                     if float(self._position.qty)>0:
                         self._state.UpdateCurrent('wait_long',self._order,self._position)
@@ -1319,7 +1351,35 @@ def main(args):
     spy = AddInfo(spy,spy,debug=debug)
     # check if this was already sold short
     sold_short = read_csv()
-    
+
+    # loading spy
+    spy_additional_signif=0.0
+    spy_side = 'none'
+    time_from_peak = -10000
+    try: 
+        daily_prices_60d = GetTimeSlot(spy,days=60)        
+        input_keysd = ['adj_close','high','low','open','close','sma200','sma100','sma50','sma20']
+        fit_60d = FitWithBandMeanRev(daily_prices_60d.index,daily_prices_60d[input_keysd],ticker='SPY',outname='60d')
+        peak_pos = -fit_60d[6][1]/2.0/fit_60d[6][0]
+        time_from_peak = (peak_pos - fit_60d[5]);
+        curvature = 2.0*fit_60d[6][0]
+        if curvature>0.0:
+            spy_side = 'long'
+        else:
+            spy_side = 'short'
+        if time_from_peak>=25.0 and time_from_peak<50.0:
+            spy_additional_signif=0.5
+        elif time_from_peak>=0 and time_from_peak<25.0:
+            spy_additional_signif=1.0
+        elif time_from_peak<0 and time_from_peak>-12.0:
+            spy_additional_signif=1.0
+        elif time_from_peak<0 and time_from_peak>-15.0:
+            spy_additional_signif=0.5
+        elif time_from_peak<0 and time_from_peak>-20.0:
+            spy_additional_signif=0.25
+    except Exception as e:
+        logger.error(f'Failure collecting fit for 60d spy: {e}')
+    logger.info(f'SPY conditions: {spy_side} for time from peak: {time_from_peak}days added signif: {spy_additional_signif}')
     symbols = args.symbols #.split(',')
     for symbol in symbols:
         # check for wash sales
@@ -1332,7 +1392,7 @@ def main(args):
             while not collected:
                 try:
                 #if True:
-                    algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[])
+                    algo = MeanRevAlgo(api, ts, sqlcursor, spy, symbol, lot=args.lot, limit=args.limit, target=args.target, df=[],spy_side=spy_side,spy_additional_signif = spy_additional_signif)
                     collected=True
                 except Exception as e:
                     time.sleep(10)

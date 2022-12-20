@@ -1098,6 +1098,7 @@ def MakePlotMulti(xaxis, yaxis=[], colors=[], labels=[], dash=[], xname='Date',y
     if draw: plt.show()
     if doPDFs: plt.savefig(outdir+'%s.pdf' %(saveName))
     plt.savefig(outdir+'%s.png' %(saveName))
+    #print('saved: ',saveName)
     if not draw: plt.close()
 
 def MakePlot(xaxis, yaxis, xname='Date',yname='Beta',saveName='', hlines=[],title='',doSupport=False,my_stock_info=None, doScatter=False,doBox=False,doPDFs=False,draw=False,outdir='/tmp/'):
@@ -1189,6 +1190,8 @@ def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False, spy=[])
             stock['Date']=pd.to_datetime(stock['Date'])
             stock = stock.set_index('Date')
             stock = stock.sort_index()
+            #print(stock)
+            #stock.dropna(inplace=True)
             stockList+=[stock]
             if MA=="200MA":
                 stockList200+=[stock]
@@ -1198,9 +1201,11 @@ def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False, spy=[])
         # interesting values Low,Previous_Close,High,Last
         if len(stockList)>0:
             plotYs = []
+            plotXs=[]
             for s in stockList:
+                plotXs+=[s.index]                
                 plotYs+=[s['Last']]
-            MakePlotMulti(stockList[0].index, yaxis=plotYs, colors=['black','green','red','cyan'], labels=['20MA','50MA','100MA','200MA'], xname='Date',yname='Percent of stocks in %s above MA' %exchange,saveName='POSITION_exchange_'+exchange, hlines=[],title=exchange,doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir)
+            MakePlotMulti(plotXs, yaxis=plotYs, colors=['black','green','red','cyan'], labels=['20MA','50MA','100MA','200MA'], xname='Date',yname='Percent of stocks in %s above MA' %exchange,saveName='POSITION_exchange_'+exchange, hlines=[],title=exchange,doSupport=False,my_stock_info=None,draw=draw,doPDFs=doPDFs,outdir=outdir,doIterX=True)
         # Now compare with the same MA but different exchanges
         if len(stockList200)>0:
             plotXs=[]
@@ -1219,10 +1224,12 @@ def POS_MARKET_PLOTS(outdir='/tmp/',debug=False,doPDFs=False,draw=False, spy=[])
 
     # read in the number of new lows and highs in different exchanges
     stock = pd.read_sql('SELECT * FROM summary', sqlcursor)
+    stock.dropna(inplace=True)
     stock['Date']=pd.to_datetime(stock.Date.astype(str), format='%Y-%m-%d')
     for exch in ['NYSE','NASDAQ','ETFs','PRICE_lt_$10','PRICE_gt_$10','NYSE_Arca','OVERALL','VOL_lt_100K','VOL_gt_100K','OTC-US']:
 
         if len(stock)==0 or 'Period' not in stock.columns:
+            print('empty stock info')
             continue
         
         #if exch not in list(stock['Period'].unique()):
@@ -1433,7 +1440,7 @@ def FitWithBandMeanRev(my_index, arr_prices, doMarker=True, ticker='X',outname='
     output_linesn = [p4(x)[-1],stddev,0,prices[-1],p4,x[-1]]
     if stddev!=0.0:
         output_lines = '%0.3f,%0.3f,%0.3f,%s' %(p4(x)[-1],stddev,diff[-1]/stddev,prices[-1])
-        output_linesn = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],p4,x[-1]]
+        output_linesn = [p4(x)[-1],stddev,diff[-1]/stddev,prices[-1],p4,x[-1],z4]
     if doRelative:
         diff /= p4(x)
         stddev = diff.std() #*p4(x).mean()

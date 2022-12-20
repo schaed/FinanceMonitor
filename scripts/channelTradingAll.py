@@ -984,8 +984,8 @@ if not args.skip:
 getPEShiller()
 try:
     POS_MARKET_PLOTS(outdir,debug,doPDFs,spy=spy)
-except:
-    print('could not do position market plots')
+except Exception as e:
+    print(f'could not do position market plots {e}')
 os.chdir(outdir)
 b.makeHTML('POSITION.html' ,'POSITION',filterPattern='*POSITION_exchange_*',describe='Position of stocks relative to moving averages')
 os.chdir(cdir)    
