@@ -1,0 +1,69 @@
+================================================================================
+ENHANCED MULTI-TIMEFRAME BACKTEST - SPY
+Period: 6 months | Min Confidence: MEDIUM
+================================================================================
+
+Weights: 1m=0.25x, 15m=0.25x, 1h=3.0x, daily=4.0x
+Volume Aggregation: Bottom 10%
+
+1. Fetching 6 months of data...
+   1-min: 2590 bars
+   15-min: 10591 bars
+   1-hour: 2653 bars
+   Daily: 373 bars
+   Backtest points (4-hour): 575
+
+2. Running backtest...
+  Progress: 0/575 | Processed: 0 | Skipped: 0
+  Progress: 100/575 | Processed: 0 | Skipped: 0
+  Progress: 200/575 | Processed: 0 | Skipped: 0
+  Progress: 300/575 | Processed: 0 | Skipped: 0
+  Progress: 400/575 | Processed: 0 | Skipped: 0
+  Progress: 500/575 | Processed: 0 | Skipped: 0
+
+  Final: Processed 0/575 decision points
+  Skipped 0 points due to insufficient data
+
+================================================================================
+BACKTEST RESULTS
+================================================================================
+
+Total Trades: 2
+  Long: 0 | Short: 2
+
+Win Rate: 50.0%
+  Winning: 1 | Losing: 1
+
+Total Return: -0.28%
+  Initial Capital: $100,000.00
+  Final Capital: $99,723.39
+  Total P&L: $-276.61
+
+Avg Trade P&L: -0.15%
+  Best: 0.05%
+  Worst: -0.36%
+
+Position Sizing:
+  Avg: 1.38x
+  Max: 1.73x
+
+Confidence Breakdown:
+  MEDIUM:  2 trades,  50.0% win rate,   -0.31% total return
+
+Max Drawdown: -0.56%
+Sharpe Ratio (annualized): -3.37
+
+Buy & Hold: 0.50%
+Outperformance: -0.78%
+
+3. Saving results...
+   Saved: backtest_enhanced_trades_SPY.csv
+   Saved: backtest_enhanced_equity_SPY.csv
+   Saved: backtest_enhanced_decisions_SPY.csv
+
+4. Creating backtest visualization...
+   Saved: backtest_enhanced_SPY.html
+
+================================================================================
+BACKTEST COMPLETE
+================================================================================

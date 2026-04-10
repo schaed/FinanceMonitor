@@ -1,0 +1,2 @@
+timestamp,action,confidence,position_size,weighted_score,timeframes_aligned,1min_signal,1min_std,15min_signal,15min_std,1hour_signal,1hour_std,daily_signal,daily_std
+2026-04-08,short,low,0.9252037160267073,9.252037160267072,1,neutral,0.09663974666790637,neutral,-1.7049981643271572,neutral,1.5954542149480357,short,2.313009290066768

@@ -1,0 +1,2 @@
+entry_time,entry_price,entry_std_distance,exit_time,exit_price,bars_held,position_type,position_size,gross_pnl,net_pnl,exit_reason
+2026-04-01 09:10:00+00:00,652.57,-2.0068195767617936,2026-04-02 12:33:00+00:00,645.4,1143,long,2.0,-0.021974654060101052,-0.022374654060101053,mean_reversion
