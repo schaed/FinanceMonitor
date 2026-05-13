@@ -21,7 +21,7 @@ TIMEFRAME_WEIGHTS = {
     '1-min': 0.25,   # Low weight - high noise
     '15-min': 0.25,  # Low weight - still noisy
     '1-hour': 3.0,   # High weight - proven performer
-    'daily': 4.0     # Highest weight - defines trend
+    'daily': 1.0     # Highest weight - defines trend
 }
 
 # Volume-weighted bar aggregation
@@ -252,7 +252,7 @@ def make_trading_decision(signals):
 # ==========================================
 print(f"1. Fetching {BACKTEST_MONTHS} months of data...")
 
-end_date = "2026-04-08"
+end_date = "2026-04-16"
 end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 start_backtest = (end_dt - timedelta(days=BACKTEST_MONTHS * 30)).strftime("%Y-%m-%d")
 
@@ -270,7 +270,8 @@ start_daily = (end_dt - timedelta(days=BACKTEST_MONTHS * 30 + 365)).strftime("%Y
 df_daily_full = api.get_bars(symbol=SYMBOL, start=start_daily, end=end_date, timeframe="1Day").df
 
 # Get 4-hour bars for backtest (make decisions every 4 hours)
-df_backtest = api.get_bars(symbol=SYMBOL, start=start_backtest, end=end_date, timeframe="4Hour").df
+df_backtest = api.get_bars(symbol=SYMBOL, start=start_backtest, end=end_date, timeframe="4Hour").df #4Hour
+
 
 print(f"   1-min: {len(df_1min_full)} bars")
 print(f"   15-min: {len(df_15min_full)} bars")

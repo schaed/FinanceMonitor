@@ -21,7 +21,7 @@ print("="*80)
 # ==========================================
 
 # Stock symbol to analyze
-SYMBOL = "SPY"
+SYMBOL = "EWL" #
 
 # Timeframe weights for signal aggregation
 # Lower weights for short timeframes (more noise)
@@ -141,7 +141,7 @@ def aggregate_low_volume_bars(df, volume_percentile=VOLUME_PERCENTILE):
 # ==========================================
 print("\n1. Fetching multi-timeframe data...")
 
-end_date = "2026-04-10"
+end_date = "2026-04-24"
 end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
 # Fetch all timeframes
@@ -200,7 +200,7 @@ def calculate_polynomial_bands(df, window_size, poly_degree=2):
             poly_fit = np.polyval(coeffs, x)
             residuals = y - poly_fit
             std_dev = np.std(residuals)
-
+            #print(coeffs)
             current_poly_value = poly_fit[-1]
             current_price = y[-1]
 
@@ -530,9 +530,9 @@ def plot_polynomial_fit(df, row, col, title, lookback=100):
     )
 
 # Plot polynomial fits for each timeframe
-plot_polynomial_fit(df_1min, 1, 1, '1-min', lookback=150)
-plot_polynomial_fit(df_15min, 2, 1, '15-min', lookback=100)
-plot_polynomial_fit(df_1hour, 3, 1, '1-hour', lookback=100)
+plot_polynomial_fit(df_1min, 1, 1, '1-min', lookback=int(len(df_1min)/2) ) #150
+plot_polynomial_fit(df_15min, 2, 1, '15-min', lookback=int(len(df_15min)/2)) # 100
+plot_polynomial_fit(df_1hour, 3, 1, '1-hour', lookback=150)
 plot_polynomial_fit(df_daily, 4, 1, 'Daily', lookback=100)
 
 # Row 1 Col 2: Decision summary table

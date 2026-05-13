@@ -108,10 +108,10 @@ def get_current_signal(df):
 def make_trading_decision(signals):
     """Combine signals from multiple timeframes into a single decision"""
     weights = {
-        '1-min': 1.0,
-        '15-min': 2.0,
+        '1-min': 0.25,
+        '15-min': 0.5,
         '1-hour': 3.0,
-        'daily': 4.0
+        'daily': 2.0
     }
 
     long_score = 0
